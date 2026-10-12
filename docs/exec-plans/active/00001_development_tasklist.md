@@ -36,9 +36,9 @@ flowchart TD
 - [x] **1.3 Plan-First Orchestrator Engine**
   - [x] Implement plan lifecycle manager (`DRAFT` → `SIMULATION_VERIFIED` → `SAFETY_APPROVED` → `EXECUTING` → `COMPLETED` / `ROLLED_BACK`).
   - [x] Implement Plan artifact serializer and file-based state tracker (`docs/exec-plans/active/` and `completed/`).
-- [ ] **1.4 Dynamic Capability Classifier**
-  - [ ] Build intent-based tool/capability dispatcher (Osprey pattern) to keep LLM context compact.
-  - [ ] Implement capability registries for agents.
+- [x] **1.4 Dynamic Capability Classifier**
+  - [x] Build intent-based tool/capability dispatcher (Osprey pattern) to keep LLM context compact.
+  - [x] Implement capability registries for agents.
 
 ---
 
