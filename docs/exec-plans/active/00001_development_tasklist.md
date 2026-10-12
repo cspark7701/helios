@@ -74,16 +74,16 @@ flowchart TD
 
 ## Phase 4: Diagnostics, Telemetry & Anomaly Detection
 
-- [ ] **4.1 Telemetry Pipeline**
-  - [ ] Real-time BPM signal ingestion (RMS orbit distortion, beam phase, energy calculation).
-  - [ ] BLM loss profile aggregator and beam transmission calculator.
-  - [ ] Wire scanner / emittance reconstruction utilities.
-- [ ] **4.2 Data Archiver Bridge**
-  - [ ] EPICS Archiver Appliance query client.
-  - [ ] Telemetry snapshot recorder (HDF5 / JSON provenance).
-- [ ] **4.3 Anomaly & Fault Detection**
-  - [ ] RF cavity trip detector and phase jump monitor.
-  - [ ] Vacuum degradation and steerer current drift monitors.
+- [x] **4.1 Telemetry Pipeline**
+  - [x] Real-time BPM signal ingestion (RMS orbit distortion, beam phase, energy calculation).
+  - [x] BLM loss profile aggregator and beam transmission calculator.
+  - [x] Wire scanner / emittance reconstruction utilities.
+- [x] **4.2 Data Archiver Bridge**
+  - [x] EPICS Archiver Appliance query client / mock.
+  - [x] Telemetry snapshot recorder (JSON / provenance).
+- [x] **4.3 Anomaly & Fault Detection**
+  - [x] RF cavity trip detector and phase jump monitor.
+  - [x] Vacuum degradation and steerer current drift monitors.
 
 ---
 
