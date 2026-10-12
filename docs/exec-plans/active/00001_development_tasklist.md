@@ -30,9 +30,9 @@ flowchart TD
   - [x] Set up `pyproject.toml` with modern build backend (setuptools/wheel).
   - [x] Configure core dependencies (`pydantic>=2.5`, `numpy`, `scipy`, `pyyaml`, `rich`, `typer`).
   - [x] Set up development tooling (pytest, pytest-asyncio, pytest-cov).
-- [ ] **1.2 Data Schemas & State Models**
-  - [ ] Define `ExecutionPlan`, `PlanStep`, `PlanState`, and `ValidationResult` Pydantic models.
-  - [ ] Define `MachineState`, `SetpointBatch`, `TelemetrySnapshot`, and `AnomalyReport` schemas.
+- [x] **1.2 Data Schemas & State Models**
+  - [x] Define `ExecutionPlan`, `PlanStep`, `PlanState`, and `ValidationResult` Pydantic models.
+  - [x] Define `MachineState`, `SetpointBatch`, `TelemetrySnapshot`, and `AnomalyReport` schemas.
 - [ ] **1.3 Plan-First Orchestrator Engine**
   - [ ] Implement plan lifecycle manager (`DRAFT` → `SIMULATION_VERIFIED` → `SAFETY_APPROVED` → `EXECUTING` → `COMPLETED` / `ROLLED_BACK`).
   - [ ] Implement Plan artifact serializer and file-based state tracker (`docs/exec-plans/active/` and `completed/`).
