@@ -102,15 +102,15 @@ flowchart TD
 
 ## Phase 6: Safety Guardrails, Rollback Stack & Graduated Autonomy
 
-- [ ] **6.1 Deterministic Safety Gatekeeper**
-  - [ ] Hard software boundary enforcement (min/max current, max power, temperature limits).
-  - [ ] Machine Protection System (MPS) interlock state verifier.
-- [ ] **6.2 Instant Rollback Controller**
-  - [ ] Rollback snapshot stack: automatic capture of pre-action setpoints.
-  - [ ] Atomic rollback trigger upon beam loss trip or operator abort.
-- [ ] **6.3 Graduated Autonomy Policy Engine**
-  - [ ] Implement Autonomy Levels (0: Advisory, 1: Assisted, 2: Supervised, 3: Bounded Auto, 4: Fully Auto).
-  - [ ] Interactive human operator sign-off gates.
+- [x] **6.1 Deterministic Safety Gatekeeper**
+  - [x] Hard software boundary enforcement (min/max current, max power, temperature limits).
+  - [x] Machine Protection System (MPS) interlock state verifier.
+- [x] **6.2 Instant Rollback Controller**
+  - [x] Rollback snapshot stack: automatic capture of pre-action setpoints.
+  - [x] Atomic rollback trigger upon beam loss trip or operator abort.
+- [x] **6.3 Graduated Autonomy Policy Engine**
+  - [x] Implement Autonomy Levels (0: Advisory, 1: Assisted, 2: Supervised, 3: Bounded Auto, 4: Fully Auto).
+  - [x] Interactive human operator sign-off gates.
 
 ---
 
