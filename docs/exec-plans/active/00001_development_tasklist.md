@@ -59,16 +59,16 @@ flowchart TD
 
 ## Phase 3: Accelerator Physics, Simulation & Digital Twin Engine
 
-- [ ] **3.1 Lattice Model & Physics Abstraction**
-  - [ ] Define linac beamline elements (Solenoid, Quadrupole, Dipole, RF Cavity, Drift, BPM, BLM).
-  - [ ] Implement lattice importer/exporter (TraceWin `.dat`, IMPACT-Z input, Elegant `.lte`).
-- [ ] **3.2 Beam Dynamics Simulator Wrappers**
-  - [ ] Create standardized wrapper interface `BeamDynamicsEngine`.
-  - [ ] Implement TraceWin wrapper (envelope tracking and multi-particle runs).
-  - [ ] Implement IMPACT-Z wrapper for 3D space-charge intensive sections.
-- [ ] **3.3 Fast Neural Surrogate Engine**
-  - [ ] Define surrogate model inference pipeline (ONNX / PyTorch) for sub-second envelope & loss prediction.
-  - [ ] Pre-flight physics verification tool for proposed setpoints.
+- [x] **3.1 Lattice Model & Physics Abstraction**
+  - [x] Define linac beamline elements (Solenoid, Quadrupole, Dipole, RF Cavity, Drift, BPM, BLM).
+  - [x] Implement lattice importer/exporter (TraceWin `.dat`, IMPACT-Z input, Elegant `.lte`).
+- [x] **3.2 Beam Dynamics Simulator Wrappers**
+  - [x] Create standardized wrapper interface `BeamDynamicsEngine`.
+  - [x] Implement TraceWin wrapper (envelope tracking and multi-particle runs).
+  - [x] Implement IMPACT-Z wrapper for 3D space-charge intensive sections.
+- [x] **3.3 Fast Neural Surrogate Engine**
+  - [x] Define surrogate model inference pipeline (ONNX / PyTorch / Analytic) for sub-second envelope & loss prediction.
+  - [x] Pre-flight physics verification tool for proposed setpoints.
 
 ---
 
