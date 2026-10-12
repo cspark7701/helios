@@ -116,12 +116,12 @@ flowchart TD
 
 ## Phase 7: Operator CLI, Interactive Console & Benchmarks
 
-- [ ] **7.1 Command Line & Interactive Console**
-  - [ ] Rich/Typer-based CLI for orchestrator launch, plan inspection, and execution monitoring.
-  - [ ] Human-in-the-loop interactive review prompt.
-- [ ] **7.2 End-to-End Simulation Benchmarks**
-  - [ ] Closed-loop MEBT steering benchmark on virtual linac.
-  - [ ] SCL RF phase scan and fault recovery benchmark.
-- [ ] **7.3 Documentation & Tutorials**
-  - [ ] Developer guide and API reference.
-  - [ ] Quickstart tutorial using mock linac simulation.
+- [x] **7.1 Command Line & Interactive Console**
+  - [x] Rich/Typer-based CLI for orchestrator launch, plan inspection, and execution monitoring.
+  - [x] Human-in-the-loop interactive review prompt.
+- [x] **7.2 End-to-End Simulation Benchmarks**
+  - [x] Closed-loop MEBT steering benchmark on virtual linac.
+  - [x] SCL RF phase scan and fault recovery benchmark.
+- [x] **7.3 Documentation & Tutorials**
+  - [x] Developer guide and API reference.
+  - [x] Quickstart tutorial using mock linac simulation.
