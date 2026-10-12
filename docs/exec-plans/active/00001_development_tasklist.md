@@ -33,9 +33,9 @@ flowchart TD
 - [x] **1.2 Data Schemas & State Models**
   - [x] Define `ExecutionPlan`, `PlanStep`, `PlanState`, and `ValidationResult` Pydantic models.
   - [x] Define `MachineState`, `SetpointBatch`, `TelemetrySnapshot`, and `AnomalyReport` schemas.
-- [ ] **1.3 Plan-First Orchestrator Engine**
-  - [ ] Implement plan lifecycle manager (`DRAFT` → `SIMULATION_VERIFIED` → `SAFETY_APPROVED` → `EXECUTING` → `COMPLETED` / `ROLLED_BACK`).
-  - [ ] Implement Plan artifact serializer and file-based state tracker (`docs/exec-plans/active/` and `completed/`).
+- [x] **1.3 Plan-First Orchestrator Engine**
+  - [x] Implement plan lifecycle manager (`DRAFT` → `SIMULATION_VERIFIED` → `SAFETY_APPROVED` → `EXECUTING` → `COMPLETED` / `ROLLED_BACK`).
+  - [x] Implement Plan artifact serializer and file-based state tracker (`docs/exec-plans/active/` and `completed/`).
 - [ ] **1.4 Dynamic Capability Classifier**
   - [ ] Build intent-based tool/capability dispatcher (Osprey pattern) to keep LLM context compact.
   - [ ] Implement capability registries for agents.

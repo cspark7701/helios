@@ -15,6 +15,11 @@ from helios.core.schemas import (
     ValidationCheck,
     ValidationResult,
 )
+from helios.core.plan_engine import (
+    PlanArtifactStore,
+    PlanLifecycleManager,
+    PlanTransitionError,
+)
 
 __all__ = [
     "AnomalyReport",
@@ -22,8 +27,11 @@ __all__ = [
     "AutonomyLevel",
     "ExecutionPlan",
     "MachineState",
+    "PlanArtifactStore",
+    "PlanLifecycleManager",
     "PlanState",
     "PlanStep",
+    "PlanTransitionError",
     "SetpointBatch",
     "SetpointTarget",
     "StepStatus",
