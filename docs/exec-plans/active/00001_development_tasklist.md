@@ -48,12 +48,12 @@ flowchart TD
   - [x] Define heavy ion linac device hierarchy (Ion Source, LEBT, RFQ, MEBT, SCL QWR/HWR, HEBT).
   - [x] Implement semantic alias resolution (e.g. `"MEBT Quad 01 gradient"` → `MEBT:QD01:BField_Set`).
   - [x] Support YAML/JSON linac lattice channel configuration files.
-- [ ] **2.2 EPICS CA / PVA Interface Layer**
-  - [ ] Implement unified `EPICSInterface` with asynchronous `caget`, `caput`, and PV monitoring.
-  - [ ] Build readback verification (`caget` confirmation after `caput` with tolerance and timeout).
-  - [ ] Implement slew-rate limiter and rate-of-change clamping to protect hardware.
-- [ ] **2.3 Mock / Virtual EPICS Environment**
-  - [ ] Implement `MockEPICSInterface` for offline development, automated tests, and simulation bridging.
+- [x] **2.2 EPICS CA / PVA Interface Layer**
+  - [x] Implement unified `EPICSInterface` with asynchronous `caget`, `caput`, and PV monitoring.
+  - [x] Build readback verification (`caget` confirmation after `caput` with tolerance and timeout).
+  - [x] Implement slew-rate limiter and rate-of-change clamping to protect hardware.
+- [x] **2.3 Mock / Virtual EPICS Environment**
+  - [x] Implement `MockControlInterface` for offline development, automated tests, and simulation bridging.
 
 ---
 
