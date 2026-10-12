@@ -60,7 +60,9 @@ For detailed agent roles, interaction protocols, and decision boundaries, see [A
 helios/
 ├── README.md               # Project overview and documentation
 ├── AGENTS.md               # Multi-agent architecture and role specifications
+├── LICENSE                 # MIT License
 ├── docs/                   # Architecture designs, manuals, and technical notes
+│   └── exec-plans/         # Active and completed plan-first execution plans
 ├── helios/                 # Core HELIOS Python package
 │   ├── agents/             # Agent definitions (Orchestrator, Physics, Tuning, Safety, etc.)
 │   ├── core/               # Orchestration engine, LLM interfaces, and state management
@@ -86,6 +88,18 @@ helios/
    - First-class support for EPICS Channel Access (CA) and pvAccess (PVA) with integrated rate-limiting and soft boundaries.
 4. **Safety-by-Design**
    - Strict action boundary checks, automated interlock monitoring, rollbacks, and explicit human sign-off triggers for high-risk operations.
+
+---
+
+## 🔬 Reference Architecture: LBNL Osprey
+
+HELIOS draws architectural principles and foundational design patterns from Lawrence Berkeley National Laboratory's (**LBNL**) **Osprey** framework (the agentic AI framework for accelerator optimization and control deployed at ALS and adopted across DOE facilities):
+
+- **Plan-First Execution Model**: No action or hardware mutation is executed spontaneously. The orchestrator decomposes high-level directives into structured, validated execution plans that detail all dependencies and verification requirements before execution.
+- **Dynamic Capability Classification**: To keep LLM context windows efficient across extensive accelerator subsystems, agent capabilities and tools are dynamically classified and loaded based on the operational context.
+- **Semantic Channel Resolution**: Decouples natural-language operator intent and lattice element identifiers from facility-specific EPICS Process Variable (PV) naming schemes.
+- **Deterministic Guardrails & Safe Execution**: Strict separation between decision-making algorithms and low-level hardware actuation, backed by automated rollback capabilities and human approval gates.
+- **Provenance & Reproducible Artifacts**: Every task generates execution logs, telemetry snapshots, and plan state files stored in version-controlled artifact directories (`docs/exec-plans/`).
 
 ---
 

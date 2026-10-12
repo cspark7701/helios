@@ -167,3 +167,16 @@ HELIOS defines five levels of operational autonomy:
 - **Tool Protocol**: Specialized capabilities (running TraceWin, calling EPICS, computing SVD) are encapsulated as typed tools conforming to OpenAPI/function calling standards.
 - **State Store**: Global machine state, lattice files, and active policies reside in a version-controlled shared state store.
 - **Rollback Invariant**: Prior to any hardware setpoint write, the `ControlAgent` registers the previous known valid setpoints to the `SafetyAgent` rollback stack.
+
+---
+
+## 6. Plan-First Execution Model (LBNL Osprey Alignment)
+
+In alignment with LBNL's Osprey framework, HELIOS enforces a **Plan-First** orchestration workflow before executing any action sequence:
+
+1. **Plan Generation**: High-level natural language directives from physicists are first synthesized into explicit, machine-readable execution plans (`docs/exec-plans/active/<5-digit>_<plan_name>.md`).
+2. **Pre-Flight Validation**: Each action within the plan is independently verified by `HELIOS-Physics` (digital twin evaluation) and `HELIOS-Safety` (boundary, interlock, and rate-of-change validation).
+3. **Approval Gating**: Based on the active Autonomy Level, plans require human confirmation before execution begins.
+4. **Execution & Provenance**: As steps execute, state, parameters, readbacks, and logs are tracked. Upon completion, the finalized record is archived under `docs/exec-plans/completed/<5-digit>_<plan_name>.md` to maintain full reproducibility.
+5. **Dynamic Capability Classification**: Tools and skills are filtered dynamically per sub-task to minimize prompt size and avoid context pollution across extensive accelerator subsystems.
+
