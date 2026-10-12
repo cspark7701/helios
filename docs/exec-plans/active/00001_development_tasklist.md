@@ -26,10 +26,10 @@ flowchart TD
 
 ## Phase 1: Core Foundation & Plan-First Orchestration Engine
 
-- [ ] **1.1 Project Scaffolding & Packaging**
-  - [ ] Set up `pyproject.toml` with modern build backend (Hatch / Flit / setuptools).
-  - [ ] Configure core dependencies (`pydantic>=2.0`, `pyepics>=3.5`, `numpy`, `scipy`, `typer`/`rich`, `torch`).
-  - [ ] Set up development tooling (pytest, ruff, mypy).
+- [x] **1.1 Project Scaffolding & Packaging**
+  - [x] Set up `pyproject.toml` with modern build backend (setuptools/wheel).
+  - [x] Configure core dependencies (`pydantic>=2.5`, `numpy`, `scipy`, `pyyaml`, `rich`, `typer`).
+  - [x] Set up development tooling (pytest, pytest-asyncio, pytest-cov).
 - [ ] **1.2 Data Schemas & State Models**
   - [ ] Define `ExecutionPlan`, `PlanStep`, `PlanState`, and `ValidationResult` Pydantic models.
   - [ ] Define `MachineState`, `SetpointBatch`, `TelemetrySnapshot`, and `AnomalyReport` schemas.

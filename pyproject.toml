@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=65.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "helios-linac"
+version = "0.1.0"
+description = "HELIOS: HEavy ion Linac Intelligent Orchestration - Agentic AI Framework for Accelerator Control"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "Chong Shik Park", email = "cspark7701@gmail.com" },
+    { name = "HELIOS Team" }
+]
+keywords = [
+    "particle accelerator",
+    "heavy ion linac",
+    "agentic AI",
+    "EPICS",
+    "beam physics",
+    "digital twin",
+    "autonomous control",
+    "osprey"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pydantic>=2.5.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "pyyaml>=6.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+    "typing_extensions>=4.8.0",
+]
+
+[project.optional-dependencies]
+epics = [
+    "pyepics>=3.5.0",
+]
+ml = [
+    "torch>=2.0.0",
+]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.scripts]
+helios = "helios.cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["helios*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --import-mode=importlib"
+testpaths = ["tests"]
+asyncio_mode = "auto"
