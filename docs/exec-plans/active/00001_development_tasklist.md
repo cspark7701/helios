@@ -44,10 +44,10 @@ flowchart TD
 
 ## Phase 2: Semantic Channel Resolution & Control System Interface
 
-- [ ] **2.1 Semantic Channel Mapping**
-  - [ ] Define heavy ion linac device hierarchy (Ion Source, LEBT, RFQ, MEBT, SCL QWR/HWR, HEBT).
-  - [ ] Implement semantic alias resolution (e.g. `"MEBT Quad 01 gradient"` → `MEBT:QD01:BField_Set`).
-  - [ ] Support YAML/JSON linac lattice channel configuration files.
+- [x] **2.1 Semantic Channel Mapping**
+  - [x] Define heavy ion linac device hierarchy (Ion Source, LEBT, RFQ, MEBT, SCL QWR/HWR, HEBT).
+  - [x] Implement semantic alias resolution (e.g. `"MEBT Quad 01 gradient"` → `MEBT:QD01:BField_Set`).
+  - [x] Support YAML/JSON linac lattice channel configuration files.
 - [ ] **2.2 EPICS CA / PVA Interface Layer**
   - [ ] Implement unified `EPICSInterface` with asynchronous `caget`, `caput`, and PV monitoring.
   - [ ] Build readback verification (`caget` confirmation after `caput` with tolerance and timeout).

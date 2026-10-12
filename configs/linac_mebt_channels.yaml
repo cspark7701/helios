@@ -1,0 +1,63 @@
+# HELIOS Semantic Linac Channel Configuration (MEBT Example)
+section: MEBT
+description: "Medium Energy Beam Transport section channels and EPICS PV bindings"
+
+devices:
+  - section: MEBT
+    name: QD01
+    device_type: QUADRUPOLE
+    z_position_m: 0.25
+    setpoint_pv: "MEBT:PSC:QD01:CurrentSet"
+    readback_pv: "MEBT:PSC:QD01:CurrentAct"
+    status_pv: "MEBT:PSC:QD01:Status"
+    limits:
+      min_val: -50.0
+      max_val: 50.0
+      max_slew_rate: 5.0
+      units: "A"
+    aliases:
+      - "mebt quad 01"
+      - "mebt first quadrupole"
+      - "mebt qd1"
+
+  - section: MEBT
+    name: QF02
+    device_type: QUADRUPOLE
+    z_position_m: 0.60
+    setpoint_pv: "MEBT:PSC:QF02:CurrentSet"
+    readback_pv: "MEBT:PSC:QF02:CurrentAct"
+    status_pv: "MEBT:PSC:QF02:Status"
+    limits:
+      min_val: -50.0
+      max_val: 50.0
+      max_slew_rate: 5.0
+      units: "A"
+    aliases:
+      - "mebt quad 02"
+      - "mebt second quadrupole"
+
+  - section: MEBT
+    name: CH01
+    device_type: STEERER_H
+    z_position_m: 0.35
+    setpoint_pv: "MEBT:PSC:CH01:CurrentSet"
+    readback_pv: "MEBT:PSC:CH01:CurrentAct"
+    limits:
+      min_val: -10.0
+      max_val: 10.0
+      max_slew_rate: 2.0
+      units: "A"
+    aliases:
+      - "mebt horizontal steerer 1"
+      - "mebt ch1"
+
+  - section: MEBT
+    name: BPM01
+    device_type: BPM
+    z_position_m: 0.80
+    readback_pv: "MEBT:DIAG:BPM01:X_POS"
+    metadata:
+      pv_y: "MEBT:DIAG:BPM01:Y_POS"
+      pv_phase: "MEBT:DIAG:BPM01:PHASE"
+    aliases:
+      - "mebt bpm 1"
