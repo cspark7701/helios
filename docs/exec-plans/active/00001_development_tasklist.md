@@ -89,14 +89,14 @@ flowchart TD
 
 ## Phase 5: Autonomous Tuning & Optimization Engine
 
-- [ ] **5.1 Algorithm Suite**
-  - [ ] Singular Value Decomposition (SVD) and response-matrix orbit correction.
-  - [ ] Multi-objective Bayesian Optimization (BoTorch / Ax integration).
-  - [ ] Extremum Seeking Control (ESC) for real-time beam transmission maximization.
-- [ ] **5.2 Standard Linac Commissioning Workflows**
-  - [ ] MEBT / SCL trajectory and orbit correction workflow.
-  - [ ] Transverse envelope matching across matching sections.
-  - [ ] RF cavity phase and amplitude calibration scan workflow (Time-of-Flight).
+- [x] **5.1 Algorithm Suite**
+  - [x] Singular Value Decomposition (SVD) and response-matrix orbit correction.
+  - [x] Multi-objective Bayesian Optimization (surrogate-assisted exploration).
+  - [x] Extremum Seeking Control (ESC) for real-time beam transmission maximization.
+- [x] **5.2 Standard Linac Commissioning Workflows**
+  - [x] MEBT / SCL trajectory and orbit correction workflow.
+  - [x] Transverse envelope matching across matching sections.
+  - [x] RF cavity phase and amplitude calibration scan workflow (Time-of-Flight).
 
 ---
 
