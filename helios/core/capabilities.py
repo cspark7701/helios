@@ -587,5 +587,15 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["laser tracker", "survey", "girder mover", "fiducial", "mechanical alignment", "cams"],
     ))
 
+    # High-Power Targets, Multipactor, and Radiological Safety Capabilities (Phases 45 - 49)
+    registry.register(Capability(
+        name="simulate_beam_dump_thermal_stress",
+        description="Simulate heavy-ion Bragg peak energy deposition, hydrodynamic shock pressure, and CHF margins in beam dumps",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["beam dump", "bragg peak", "thermal stress", "gruneisen", "chf", "hydrodynamic shock", "target"],
+    ))
+
     return registry
 
