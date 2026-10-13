@@ -112,17 +112,27 @@ HELIOS draws architectural principles and foundational design patterns from Lawr
 
 ### Installation
 
+#### Option 1: Conda Environment (Recommended)
+
 ```bash
 # Clone the repository
 git clone https://github.com/your-org/helios.git
 cd helios
 
+# Create and activate conda environment
+conda env create -f environment.yml
+conda activate helios
+```
+
+#### Option 2: Python venv
+
+```bash
 # Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies (development mode)
-pip install -e ".[dev]"
+pip install -e ".[dev,epics]"
 ```
 
 ---
