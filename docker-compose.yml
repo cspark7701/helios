@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  helios-orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helios-orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - HELIOS_ENV=production
+      - REDIS_HOST=helios-redis
+      - REDIS_PORT=6379
+    depends_on:
+      - helios-redis
+    restart: unless-stopped
+
+  helios-redis:
+    image: redis:7-alpine
+    container_name: helios-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

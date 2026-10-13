@@ -423,4 +423,30 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["rf conditioning", "multipacting", "pulse width", "vacuum interlock", "cavity processing"],
     ))
 
+    # Production Scale Optimization & Digital Twin Capabilities (Phases 24 - 26)
+    registry.register(Capability(
+        name="run_parallel_parameter_sweep",
+        description="Run multi-worker parallel simulation parameter sweeps and Uncertainty Quantification (UQ)",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["parallel", "sweep", "ensemble", "uncertainty quantification", "uq", "confidence"],
+    ))
+    registry.register(Capability(
+        name="assimilate_digital_twin_kalman",
+        description="Continuous Ensemble Kalman Filter assimilating real-time BPM telemetry into digital twin state",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["kalman", "enkf", "synchronize", "observer", "drift detection", "state estimation"],
+    ))
+    registry.register(Capability(
+        name="optimize_pareto_front_nsga2",
+        description="Multi-objective Pareto optimization (NSGA-II) balancing transmission, envelope scalloping, and energy spread",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["pareto", "nsga2", "multi-objective", "genetic", "trade-off", "optics"],
+    ))
+
     return registry
