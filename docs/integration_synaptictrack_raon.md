@@ -10,33 +10,54 @@ HELIOS targets the **RAON** heavy-ion accelerator complex (Rare Isotope Science 
 
 ```mermaid
 flowchart TD
-    subgraph SynapticTrack["synapticTrack (Machine-Neutral Core)"]
-        ST_ML["PyTorch ML Architectures\n(MLPRegressor, Physics Losses)"]
-        ST_Norm["NormalizationBundle\n(Strict Unit & Schema Layouts)"]
-        ST_Track["TRACK / JuTrack Run-Time Adapters\n(OwnedWorkspace, Sobol Sampling)"]
-        ST_Surr["FrozenSurrogateInterface\n(Differentiable Inference)"]
+    classDef stStyle fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1d4ed8;
+    classDef raonStyle fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#a21caf;
+    classDef twinStyle fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#c2410c;
+    classDef heliosStyle fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#15803d;
+    classDef opsStyle fill:#fef2f2,stroke:#dc2626,stroke-width:2px,color:#b91c1c;
+
+    subgraph Sources["1. Core Repositories & Facility Assets"]
+        direction LR
+        subgraph SynapticTrack["synapticTrack (Machine-Neutral Core)"]
+            ST_ML["PyTorch MLP Regressor Engine\n(Physics-Regularized Loss)"]:::stStyle
+            ST_Norm["NormalizationBundle\n(Strict Unit & Dimension Layouts)"]:::stStyle
+            ST_Surr["FrozenSurrogateInterface\n(Differentiable ∇_u y_pred)"]:::stStyle
+        end
+
+        subgraph RAON["raon Private Workspace (Target Facility)"]
+            R_Lattice["RAON Lattices (LEBT / MEBT)\n(track.dat, 3D IRIS Field Maps)"]:::raonStyle
+            R_Models["Trained Surrogate Checkpoints\n(legacy_50000 best_model.pt)"]:::raonStyle
+            R_Adapters["raon_adapters\n(LEBTSurrogateModel, Manifests)"]:::raonStyle
+        end
     end
 
-    subgraph RAON["raon (Confidential Facility Assets)"]
-        R_Lattice["RAON Lattices\n(LEBT / MEBT track.dat Decks)"]
-        R_Models["Trained Checkpoints\n(legacy_50000 best_model.pt, normalizers)"]
-        R_Adapters["raon_adapters\n(LEBTSurrogateModel, Manifests)"]
+    subgraph TwinLayer["2. Digital Twin Host & Surrogate Layer (helios.physics.surrogate)"]
+        Twin_Plugin["RaonFacilityPlugin\n(Dynamic In-Process Loader)"]:::twinStyle
+        Twin_Preflight["Sub-Millisecond Pre-Flight Validation\n(Envelope & Beam Loss Checks <2 ms)"]:::twinStyle
+        Twin_Gym["Gymnasium RL Environment (LinacSurrogateEnv)\n(1,000x Faster than Live TRACK)"]:::twinStyle
+        Twin_MPC["Differentiable Neural MPC Controller\n(Gradient Trajectory Descent)"]:::twinStyle
     end
 
-    subgraph HELIOS["HELIOS (Online Multi-Agent Orchestrator)"]
-        H_Orch["Plan-First Orchestrator & Agents\n(Physics, Diagnostics, Tuner, Safety, Control)"]
-        H_Twin["Digital Twin Host Interface\n(Pre-Flight Verification, EnKF Sync)"]
-        H_RL["RL Continuous Control\n(LinacGymEnv, ActorCriticNetwork, NeuralMPC)"]
-        H_Ops["Web GUI & EPICS Connectors\n(PVA / CA Hardware Actuation)"]
+    subgraph MultiAgent["3. HELIOS Multi-Agent Operations Platform"]
+        H_Orch["HELIOS-Orchestrator\n(Natural Language Planner, Osprey Plan Engine)"]:::heliosStyle
+        H_Tuner["HELIOS-Tuner\n(ActorCriticNetwork RL & SVD ORM)"]:::heliosStyle
+        H_Safety["HELIOS-Safety Gatekeeper\n(Slew Rates, 0.05 A DAC Bounds, Rollback Stack)"]:::heliosStyle
+        H_Diag["HELIOS-Diagnostics\n(BPM Trajectory, ACCT Transmission, Heatmaps)"]:::heliosStyle
     end
 
-    ST_ML --> R_Adapters
-    ST_Surr --> R_Adapters
-    R_Lattice --> R_Models
-    R_Adapters -->|Surrogate Inference Provider| H_Twin
-    R_Models -->|Pre-Trained Weights| H_RL
-    H_Twin -->|Pre-Flight Gatekeeper| H_Ops
+    subgraph ActuationLayer["4. Control Interface & Physical Machine"]
+        H_GUI["Web Operator GUI Dashboard\n(High-Contrast, Prompt Window, LLM Selector)"]:::opsStyle
+        H_Ctrl["HELIOS-Control (EPICS CA / PVA)\n(Atomic caput with Readback Verification)"]:::opsStyle
+        H_HW["RAON Accelerator Hardware\n(LEBT Chopper, MEBT Steerers, 2 K SCL Cryomodules)"]:::opsStyle
+    end
+
+    SynapticTrack -->|"PyTorch ML Contracts & Normalizers"| TwinLayer
+    RAON -->|"Trained Weights & Lattice Decks"| TwinLayer
+    TwinLayer -->|"Sub-Millisecond Pre-Flight Checks & Gym Steps"| MultiAgent
+    MultiAgent -->|"Safety-Approved Setpoint Actuation"| ActuationLayer
 ```
+
+![HELIOS Integration Architecture](integration_synaptictrack_raon.png)
 
 ### Repository Comparison and Roles
 
