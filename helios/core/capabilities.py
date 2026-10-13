@@ -198,6 +198,30 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["surrogate", "neural", "fast", "preflight", "prediction"],
     ))
     registry.register(Capability(
+        name="evaluate_multi_charge_beam",
+        description="Calculate magnetic rigidity, dispersion orbit shifts, and composite envelopes for multi-charge state beams (U, Xe, etc.)",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["multi-charge", "mcs", "brho", "rigidity", "uranium", "species", "heavy ion"],
+    ))
+    registry.register(Capability(
+        name="model_stripper_foil",
+        description="Model charge stripping, mean charge distribution, energy loss dE/dx, and foil degradation lifetime",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["stripper", "carbon foil", "charge state", "stripping", "lifetime", "scattering"],
+    ))
+    registry.register(Capability(
+        name="tune_charge_separator",
+        description="Autonomously tune magnetic chicane slit apertures to optimize charge purity and beam transmission",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["css", "charge separator", "slit", "chicane", "purity", "transmission"],
+    ))
+    registry.register(Capability(
         name="predict_virtual_profile",
         description="Non-interceptive virtual wire scanner reconstructing transverse beam sizes and emittance",
         domain=CapabilityDomain.DIAGNOSTICS,

@@ -24,17 +24,17 @@ flowchart TD
 
 ## Phase 14: Multi-Species & Multi-Charge-State (MCS) Heavy Ion Commissioning
 
-- [ ] **14.1 Multi-Species Beam Modeling & Charge State Distributions**
-  - [ ] Implement multi-species beam parameter definitions ($^{238}\text{U}^{33+/34+}$, $^{124}\text{Xe}^{26+}$, $^{40}\text{Ar}^{11+}$, $^{16}\text{O}^{6+}$, protons).
-  - [ ] Support isotopic abundance ratios, multi-charge state fractions, and composite current distributions.
-- [ ] **14.2 Stripper Foil Degradation & Lifetime Modeling**
-  - [ ] Model carbon / liquid lithium stripper foil Coulomb scattering and mean energy loss ($\Delta E$).
-  - [ ] Thermal sublimation and foil lifetime degradation tracking with autonomous replacement alerts.
-- [ ] **14.3 Charge State Separator (CSS) Autonomous Tuning**
-  - [ ] Autonomous trajectory steering through achromatic charge selectors and magnetic chicane slits.
-  - [ ] Slit transmission maximization and charge-state purity optimization.
-- [ ] **14.4 Multi-Charge-State (MCS) Transverse Matching in SCL**
-  - [ ] Simultaneous envelope matching for multiple charge states across superconducting cryomodules.
+- [x] **14.1 Multi-Species Beam Modeling & Charge State Distributions**
+  - [x] Implement multi-species beam parameter definitions ($^{238}\text{U}^{33+/34+}$, $^{124}\text{Xe}^{26+}$, $^{40}\text{Ar}^{11+}$, $^{16}\text{O}^{6+}$, protons).
+  - [x] Support isotopic abundance ratios, multi-charge state fractions, and composite current distributions.
+- [x] **14.2 Stripper Foil Degradation & Lifetime Modeling**
+  - [x] Model carbon / liquid lithium stripper foil Coulomb scattering and mean energy loss ($\Delta E$).
+  - [x] Thermal sublimation and foil lifetime degradation tracking with autonomous replacement alerts.
+- [x] **14.3 Charge State Separator (CSS) Autonomous Tuning**
+  - [x] Autonomous trajectory steering through achromatic charge selectors and magnetic chicane slits.
+  - [x] Slit transmission maximization and charge-state purity optimization.
+- [x] **14.4 Multi-Charge-State (MCS) Transverse Matching in SCL**
+  - [x] Simultaneous envelope matching for multiple charge states across superconducting cryomodules.
 
 ---
 

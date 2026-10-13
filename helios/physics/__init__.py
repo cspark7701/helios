@@ -23,21 +23,55 @@ from helios.physics.lattice import (
 from helios.physics.surrogate import (
     FastPhysicsSurrogate,
 )
+from helios.physics.species import (
+    AMU_MEV,
+    C_LIGHT,
+    IonSpecies,
+    MultiChargeBeam,
+    MultiChargeComponent,
+    create_argon_beam,
+    create_proton_beam,
+    create_uranium_multicharge_beam,
+    create_xenon_multicharge_beam,
+)
+from helios.physics.stripper import (
+    StripperFoil,
+    StripperPhysicsEngine,
+    StrippingOutcome,
+)
+from helios.physics.css import (
+    CSSTransmissionReport,
+    ChargeStateSeparator,
+)
 
 __all__ = [
+    "AMU_MEV",
     "AnalyticDigitalTwinEngine",
     "BeamDynamicsEngine",
+    "C_LIGHT",
+    "CSSTransmissionReport",
+    "ChargeStateSeparator",
     "DiagnosticElement",
     "Drift",
     "Element",
     "FastPhysicsSurrogate",
     "ImpactZSimulator",
+    "IonSpecies",
     "Lattice",
+    "MultiChargeBeam",
+    "MultiChargeComponent",
     "Quadrupole",
     "RFCavity",
     "Steerer",
+    "StripperFoil",
+    "StripperPhysicsEngine",
+    "StrippingOutcome",
     "TraceWinSimulator",
     "TrackSimulator",
     "TrajectoryPoint",
+    "create_argon_beam",
     "create_baseline_mebt_lattice",
+    "create_proton_beam",
+    "create_uranium_multicharge_beam",
+    "create_xenon_multicharge_beam",
 ]
