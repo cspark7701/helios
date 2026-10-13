@@ -638,6 +638,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.LOW,
         keywords=["microphonics", "lfd", "lorentz force", "piezo", "fxlms", "feedforward", "srf detuning", "cavity vibration"],
     ))
+    registry.register(Capability(
+        name="monitor_fast_differential_beam_abort",
+        description="Monitor sub-microsecond ACCT differential current loss and fast diamond BLMs to trigger dual-actuator beam abort",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.CRITICAL,
+        keywords=["fast mps", "differential current", "acct", "diamond blm", "sub-microsecond abort", "chopper", "beam punch-through"],
+    ))
 
     return registry
 
