@@ -116,3 +116,45 @@ def test_bunch_compressor_chicane_optics_and_optimization():
     assert 0.5 < best_v < 8.0
 
 
+def test_linac_uhv_pressure_and_gas_stripping_losses():
+    """Verify UHV pressure profiles, cold-bore condensation, and heavy-ion gas stripping losses."""
+    from helios.physics.vacuum import VacuumSegment, LinacVacuumPhysicsEngine
+
+    engine = LinacVacuumPhysicsEngine()
+
+    # 1. Warm MEBT section (293 K, 120 l/s ion pump)
+    mebt_sec = VacuumSegment(
+        section_name="MEBT_VAC_01",
+        length_m=3.5,
+        tube_diameter_mm=40.0,
+        is_cryogenic=False,
+        ion_pump_speed_l_per_s=120.0,
+        outgassing_rate_mbar_l_s_cm2=2.0e-11,
+        temperature_K=293.15
+    )
+    res_mebt = engine.evaluate_segment_vacuum(mebt_sec, ion_species="U238", ion_charge=33, beam_energy_MeV_u=2.5)
+    assert res_mebt.section_name == "MEBT_VAC_01"
+    assert res_mebt.mean_pressure_mbar > 0.0
+    assert res_mebt.fractional_beam_loss_percent > 0.0
+    assert res_mebt.vacuum_runaway_safety_margin > 2.0
+    assert res_mebt.vacuum_status in ["EXCELLENT_UHV", "ACCEPTABLE"]
+
+    # 2. Superconducting Cryomodule SCL cold-bore (2 K condensation pumping)
+    scl_sec = VacuumSegment(
+        section_name="SCL1_CRYOMODULE_01",
+        length_m=5.0,
+        tube_diameter_mm=35.0,
+        is_cryogenic=True,
+        ion_pump_speed_l_per_s=60.0,
+        outgassing_rate_mbar_l_s_cm2=1.0e-12,
+        temperature_K=2.05
+    )
+    res_scl = engine.evaluate_segment_vacuum(scl_sec, ion_species="U238", ion_charge=33, beam_energy_MeV_u=17.5)
+    # Cold bore cryopumping should produce ultra-high vacuum < 1e-8 mbar
+    assert res_scl.mean_pressure_mbar < 1.0e-8
+    assert res_scl.vacuum_status == "EXCELLENT_UHV"
+    # Loss in clean cryogenic vacuum must be negligible
+    assert res_scl.fractional_beam_loss_percent < 0.01
+
+
+

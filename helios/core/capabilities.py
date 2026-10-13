@@ -654,6 +654,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.LOW,
         keywords=["bunch compressor", "chicane", "r56", "t566", "chirp", "longitudinal dispersion", "peak current"],
     ))
+    registry.register(Capability(
+        name="model_linac_uhv_beam_gas_losses",
+        description="Simulate UHV pressure profiles along linac warm/cryogenic sections and calculate heavy-ion stripping losses",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["vacuum", "uhv", "pressure profile", "gas stripping", "charge exchange", "desorption", "cold-bore"],
+    ))
 
     return registry
 
