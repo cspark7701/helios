@@ -83,14 +83,14 @@ flowchart TD
 
 ## Phase 12: Superconducting RF (SRF) & Advanced Linac Safety Guardrails
 
-- [ ] **12.1 SRF Cavity Quench & Thermal Protection**
-  - [ ] Cryogenic temperature monitor and liquid helium liquid level checks.
-  - [ ] Cavity gradient limits, forward/reflected power ratio trips, and multipacting protection.
-- [ ] **12.2 Persistent Rollback Stack & Crash Recovery**
-  - [ ] SQLite / disk-persisted rollback journal ensuring recovery survives power outages or process crashes.
-  - [ ] One-click emergency panic button: global machine shutdown setpoint triggers.
-- [ ] **12.3 Machine Protection System (MPS) Latency Modeling**
-  - [ ] Fast interlock verification with millisecond response constraints.
+- [x] **12.1 SRF Cavity Quench & Thermal Protection**
+  - [x] Cryogenic temperature monitor and liquid helium liquid level checks.
+  - [x] Cavity gradient limits, forward/reflected power ratio trips, and multipacting protection.
+- [x] **12.2 Persistent Rollback Stack & Crash Recovery**
+  - [x] SQLite / disk-persisted rollback journal ensuring recovery survives power outages or process crashes.
+  - [x] One-click emergency panic button: global machine shutdown setpoint triggers.
+- [x] **12.3 Machine Protection System (MPS) Latency Modeling**
+  - [x] Fast interlock verification with microsecond response constraints.
 
 ---
 

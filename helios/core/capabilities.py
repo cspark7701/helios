@@ -239,6 +239,22 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.CRITICAL,
         keywords=["rollback", "abort", "restore", "trip", "emergency"],
     ))
+    registry.register(Capability(
+        name="verify_srf_quench_margins",
+        description="Verify cryogenic helium temperature, multipacting bands, and quench limits on SRF cavities",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["srf", "quench", "cryo", "helium", "cavity protection", "multipacting"],
+    ))
+    registry.register(Capability(
+        name="panic_shutdown_machine",
+        description="Execute emergency one-click machine dump, zeroing critical RF and magnet setpoints",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.CRITICAL,
+        keywords=["panic", "shutdown", "dump", "kill beam", "emergency zero"],
+    ))
 
     # Control & Data Agent Capabilities
     registry.register(Capability(
