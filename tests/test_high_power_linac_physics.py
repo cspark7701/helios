@@ -124,3 +124,39 @@ def test_hofmann_stability_charts_and_rematching():
     assert res_st.stability_status == "STABLE"
 
 
+def test_zero_copy_cosimulation_bridge():
+    """Verify in-memory zero-copy IPC co-simulation streaming and clock sync."""
+    import numpy as np
+    from helios.sim.cosim import ZeroCopyCoSimBridge
+
+    bridge = ZeroCopyCoSimBridge(buffer_capacity=4)
+
+    # Create dummy 6D bunch and loss density
+    n_part = 1000
+    particles = np.zeros((n_part, 6))
+    particles[:, 0] = np.random.normal(0, 0.001, n_part)
+    loss_density = np.array([0.0, 0.0, 1.2, 0.5, 0.0])
+
+    pvs = {"MEBT:BPM01:X": 0.02, "SCL1:CAV01:Amp": 2.1}
+
+    # Publish frames at 10 Hz
+    h1 = bridge.publish_frame(rep_rate_Hz=10.0, particles_6d=particles, loss_density_W_m=loss_density, epics_pvs=pvs)
+    assert h1.frame_id == 1
+    assert h1.macroparticle_count == 1000
+    assert h1.total_loss_power_W == 1.7
+    assert h1.epics_pv_snapshot["MEBT:BPM01:X"] == 0.02
+
+    # Consume latest frame
+    consumed = bridge.consume_latest_frame()
+    assert consumed is not None
+    hdr, bunch_arr, loss_arr = consumed
+    assert hdr.frame_id == 1
+    assert bunch_arr.shape == (1000, 6)
+    assert len(loss_arr) == 5
+
+    # Test clock drift synchronization
+    drift_ms = bridge.synchronize_clock(target_rep_rate_Hz=10.0, elapsed_real_time_s=0.1)
+    assert abs(drift_ms) < 10.0  # 1 tick at 10 Hz in 0.1s -> 0 ms drift!
+
+
+

@@ -612,6 +612,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.LOW,
         keywords=["hofmann", "equipartitioning", "space charge", "tune depression", "emittance exchange", "phase advance"],
     ))
+    registry.register(Capability(
+        name="bridge_cosimulation_telemetry",
+        description="Synchronize zero-copy in-memory multi-physics co-simulation buffers with live EPICS machine repetition clock",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["co-simulation", "zero-copy", "streaming", "ipc", "rep-rate", "macro-pulse", "shared memory"],
+    ))
 
     return registry
 
