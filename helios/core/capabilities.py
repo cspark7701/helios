@@ -245,6 +245,22 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.LOW,
         keywords=["calibrate", "fit", "quadrupole calibration", "online calibration", "twiss fit"],
     ))
+    registry.register(Capability(
+        name="run_rl_orbit_tuning",
+        description="Execute continuous Reinforcement Learning (Actor-Critic) policy for dynamic trajectory and envelope control",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.MEDIUM,
+        keywords=["rl", "reinforcement learning", "actor-critic", "ppo", "policy", "self-driving"],
+    ))
+    registry.register(Capability(
+        name="run_neural_mpc_control",
+        description="Execute Model-Predictive Control with neural surrogate for multi-step receding horizon trajectory planning",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.MEDIUM,
+        keywords=["mpc", "model predictive control", "receding horizon", "drift compensation", "planning"],
+    ))
 
     # Safety Agent Capabilities
     registry.register(Capability(

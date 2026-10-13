@@ -5,6 +5,13 @@ from helios.optimization.algorithms import (
     ExtremumSeekingController,
     SVDOrbitCorrection,
 )
+from helios.optimization.mpc import (
+    MPCStepResult,
+    NeuralMPCController,
+)
+from helios.optimization.rl_agent import (
+    LinacRLAgent,
+)
 from helios.optimization.workflows import (
     OrbitCorrectionWorkflow,
     RFPhaseScanWorkflow,
@@ -13,6 +20,9 @@ from helios.optimization.workflows import (
 __all__ = [
     "BayesianOptimizer",
     "ExtremumSeekingController",
+    "LinacRLAgent",
+    "MPCStepResult",
+    "NeuralMPCController",
     "OrbitCorrectionWorkflow",
     "RFPhaseScanWorkflow",
     "SVDOrbitCorrection",

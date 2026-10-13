@@ -40,16 +40,16 @@ flowchart TD
 
 ## Phase 15: Reinforcement Learning (RL) & Advanced Self-Driving Control Policies
 
-- [ ] **15.1 Gymnasium-Compatible Linac Environment (`LinacGymEnv`)**
-  - [ ] Build standard `gymnasium.Env` wrapper around digital twin, surrogate model, and live EPICS control.
-  - [ ] Support customizable observation spaces (BPM orbits, losses, cavity states) and action spaces (steerers, quads, RF setpoints).
-- [ ] **15.2 Deep Reinforcement Learning Agent (PPO / SAC)**
-  - [ ] Train continuous control policies for non-linear dynamic orbit correction and envelope matching under space charge.
-  - [ ] Multi-objective reward formulations penalizing beam loss, halo scraping, and trajectory RMS error.
-- [ ] **15.3 Sim-to-Real Transfer & Domain Randomization**
-  - [ ] Inject parameter noise (magnet alignment errors, calibration offsets, BPM noise) to enable robust sim-to-real transfer.
-- [ ] **15.4 Neural Model-Predictive Control (MPC)**
-  - [ ] High-rate MPC controller utilizing neural surrogates to compensate for 60 Hz mains jitter and cryogenic pressure fluctuations.
+- [x] **15.1 Gymnasium-Compatible Linac Environment (`LinacGymEnv`)**
+  - [x] Build standard `gymnasium.Env` wrapper around digital twin, surrogate model, and live EPICS control.
+  - [x] Support customizable observation spaces (BPM orbits, losses, cavity states) and action spaces (steerers, quads, RF setpoints).
+- [x] **15.2 Deep Reinforcement Learning Agent (PPO / SAC)**
+  - [x] Train continuous control policies for non-linear dynamic orbit correction and envelope matching under space charge.
+  - [x] Multi-objective reward formulations penalizing beam loss, halo scraping, and trajectory RMS error.
+- [x] **15.3 Sim-to-Real Transfer & Domain Randomization**
+  - [x] Inject parameter noise (magnet alignment errors, calibration offsets, BPM noise) to enable robust sim-to-real transfer.
+- [x] **15.4 Neural Model-Predictive Control (MPC)**
+  - [x] High-rate MPC controller utilizing neural surrogates to compensate for 60 Hz mains jitter and cryogenic pressure fluctuations.
 
 ---
 
