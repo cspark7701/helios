@@ -1,0 +1,280 @@
+id: https://w3id.org/helios/ontology
+name: helios_ontology
+title: HELIOS Heavy Ion Linac Ontology & Modeling Schema
+description: >-
+  LinkML specification for heavy-ion linear accelerators (LEBT, RFQ, MEBT, SCL, HEBT),
+  defining beamline devices, magnetic optics, superconducting RF cavities,
+  diagnostic monitors, and ion beam states.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+default_prefix: helios
+default_range: string
+
+prefixes:
+  helios: https://w3id.org/helios/ontology/
+  linkml: https://w3id.org/linkml/
+  qudt: http://qudt.org/schema/qudt/
+  unit: http://qudt.org/vocab/unit/
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
+  schema: http://schema.org/
+
+imports:
+  - linkml:types
+
+enums:
+  AcceleratorSectionEnum:
+    description: Linac accelerator geographic and functional section.
+    permissible_values:
+      LEBT:
+        description: Low Energy Beam Transport
+      RFQ:
+        description: Radio Frequency Quadrupole
+      MEBT:
+        description: Medium Energy Beam Transport
+      SCL1:
+        description: Superconducting Linac Section 1
+      SCL2:
+        description: Superconducting Linac Section 2
+      HEBT:
+        description: High Energy Beam Transport
+
+  DeviceTypeEnum:
+    description: Physical accelerator hardware device classification.
+    permissible_values:
+      QUADRUPOLE:
+        description: Magnetic focusing quadrupole
+      DIPOLE:
+        description: Bending or dipole magnet
+      SOLENOID:
+        description: Longitudinal focusing solenoid
+      STEERER_H:
+        description: Horizontal trajectory correction dipole
+      STEERER_V:
+        description: Vertical trajectory correction dipole
+      RF_CAVITY:
+        description: Accelerating or bunching RF cavity
+      BPM:
+        description: Beam Position Monitor
+      BLM:
+        description: Beam Loss Monitor
+      FARADAY_CUP:
+        description: Interceptive beam current Faraday cup
+      WIRE_SCANNER:
+        description: Transverse beam profile wire scanner
+
+classes:
+  NamedEntity:
+    abstract: true
+    description: Entity with unique identifier and human-readable name.
+    slots:
+      - id
+      - name
+      - description
+
+  BeamlineElement:
+    is_a: NamedEntity
+    description: Base class for all physical elements placed along the beamline.
+    slots:
+      - section
+      - z_position_m
+      - length_m
+      - setpoint_pv
+      - readback_pv
+      - status_pv
+      - upstream_element_id
+      - downstream_element_id
+
+  MagneticElement:
+    is_a: BeamlineElement
+    description: Magnetic optical elements for beam focusing and steering.
+    slots:
+      - magnetic_gradient_t_per_m
+      - magnetic_field_t
+      - current_a
+      - max_current_a
+      - current_tolerance_a
+
+  Quadrupole:
+    is_a: MagneticElement
+    description: Quadrupole focusing magnet.
+    slots:
+      - k1_m_minus2
+
+  DipoleSteerer:
+    is_a: MagneticElement
+    description: Trajectory correction dipole magnet.
+    slots:
+      - kick_angle_mrad
+      - plane
+
+  RFCavityElement:
+    is_a: BeamlineElement
+    description: Superconducting or normal-conducting RF accelerating cavity.
+    slots:
+      - frequency_mhz
+      - voltage_kv
+      - phase_deg
+      - design_beta
+      - cryogenic_temp_k
+      - is_tripped
+
+  DiagnosticElement:
+    is_a: BeamlineElement
+    description: Instrumentation for beam telemetry and health monitoring.
+    slots:
+      - is_interceptive
+
+  BeamPositionMonitor:
+    is_a: DiagnosticElement
+    description: Non-interceptive pickup measuring beam centroid offset and phase.
+    slots:
+      - reading_x_mm
+      - reading_y_mm
+      - reading_phase_deg
+      - resolution_um
+
+  BeamLossMonitor:
+    is_a: DiagnosticElement
+    description: Radiation monitor measuring halo scraping and spill doses.
+    slots:
+      - loss_rate_gy_per_s
+      - alarm_threshold_gy_per_s
+
+  IonBeamState:
+    is_a: NamedEntity
+    description: Heavy ion beam physical parameters and Twiss optics.
+    slots:
+      - mass_number_a
+      - atomic_number_z
+      - charge_state_q
+      - kinetic_energy_mev_u
+      - beam_current_ma
+      - emittance_x_mm_mrad
+      - emittance_y_mm_mrad
+      - beta_x_m
+      - beta_y_m
+      - alpha_x
+      - alpha_y
+
+  LinacLatticeModel:
+    is_a: NamedEntity
+    description: Complete heavy ion linac lattice digital twin representation.
+    slots:
+      - facility_name
+      - section
+      - total_length_m
+      - elements
+      - reference_beam
+
+slots:
+  id:
+    identifier: true
+    range: string
+  name:
+    required: true
+    range: string
+  description:
+    range: string
+  section:
+    range: AcceleratorSectionEnum
+    required: true
+  z_position_m:
+    range: float
+    required: true
+  length_m:
+    range: float
+    required: true
+  setpoint_pv:
+    range: string
+  readback_pv:
+    range: string
+  status_pv:
+    range: string
+  upstream_element_id:
+    range: string
+  downstream_element_id:
+    range: string
+
+  # Magnetic slots
+  magnetic_gradient_t_per_m:
+    range: float
+  magnetic_field_t:
+    range: float
+  current_a:
+    range: float
+  max_current_a:
+    range: float
+  current_tolerance_a:
+    range: float
+  k1_m_minus2:
+    range: float
+  kick_angle_mrad:
+    range: float
+  plane:
+    range: string
+
+  # RF slots
+  frequency_mhz:
+    range: float
+  voltage_kv:
+    range: float
+  phase_deg:
+    range: float
+  design_beta:
+    range: float
+  cryogenic_temp_k:
+    range: float
+  is_tripped:
+    range: boolean
+
+  # Diagnostic slots
+  is_interceptive:
+    range: boolean
+  reading_x_mm:
+    range: float
+  reading_y_mm:
+    range: float
+  reading_phase_deg:
+    range: float
+  resolution_um:
+    range: float
+  loss_rate_gy_per_s:
+    range: float
+  alarm_threshold_gy_per_s:
+    range: float
+
+  # Beam slots
+  mass_number_a:
+    range: integer
+  atomic_number_z:
+    range: integer
+  charge_state_q:
+    range: integer
+  kinetic_energy_mev_u:
+    range: float
+  beam_current_ma:
+    range: float
+  emittance_x_mm_mrad:
+    range: float
+  emittance_y_mm_mrad:
+    range: float
+  beta_x_m:
+    range: float
+  beta_y_m:
+    range: float
+  alpha_x:
+    range: float
+  alpha_y:
+    range: float
+
+  # Linac Lattice slots
+  facility_name:
+    range: string
+  total_length_m:
+    range: float
+  elements:
+    range: BeamlineElement
+    multivalued: true
+    inlined: true
+  reference_beam:
+    range: IonBeamState
+    inlined: true

@@ -31,6 +31,7 @@ class CapabilityDomain(str, Enum):
     EPICS = "EPICS"
     OPTIMIZATION = "OPTIMIZATION"
     OPS = "OPS"
+    ONTOLOGY = "ONTOLOGY"
 
 
 class Capability(BaseModel):
@@ -447,6 +448,24 @@ def get_default_registry() -> CapabilityRegistry:
         target_agent="HELIOS-Tuner",
         risk_level=RiskLevel.LOW,
         keywords=["pareto", "nsga2", "multi-objective", "genetic", "trade-off", "optics"],
+    ))
+
+    # LinkML Ontology & Knowledge Graph Capabilities (Phase 29)
+    registry.register(Capability(
+        name="validate_linkml_schema",
+        description="Validate accelerator device or lattice data against LinkML heavy-ion schema",
+        domain=CapabilityDomain.ONTOLOGY,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["linkml", "ontology", "validate schema", "w3c", "rdf", "schema"],
+    ))
+    registry.register(Capability(
+        name="query_beamline_topology",
+        description="Traverse beamline knowledge graph to locate upstream/downstream neighbors and causal actuators",
+        domain=CapabilityDomain.ONTOLOGY,
+        target_agent="HELIOS-Orchestrator",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["topology", "knowledge graph", "neighbors", "upstream steerer", "causal", "graph"],
     ))
 
     return registry

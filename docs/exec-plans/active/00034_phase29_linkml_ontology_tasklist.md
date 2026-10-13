@@ -35,12 +35,12 @@ flowchart TD
 ## Phase 29: LinkML Accelerator Modeling & Ontology Integration
 
 ### 1. Environment & Packaging Integration
-- [ ] **29.1 Add LinkML Dependency & Tooling Configuration**
+- [x] **29.1 Add LinkML Dependency & Tooling Configuration**
   - Add `linkml` and `linkml-runtime` to `pyproject.toml` under optional dependencies `[project.optional-dependencies] ontology = ["linkml>=1.7.0", "linkml-runtime>=1.7.0", "rdflib>=7.0.0"]`.
   - Provide fallback support for standalone environments without LinkML CLI binaries installed.
 
 ### 2. Canonical LinkML Accelerator Schema Definition (`helios/ontology/`)
-- [ ] **29.2 Define `helios_schema.yaml` Specification**
+- [x] **29.2 Define `helios_schema.yaml` Specification**
   - **Classes**:
     - `BeamlineElement`: Abstract base class with slot definitions (`id`, `name`, `z_position_m`, `length_m`, `section`).
     - `MagneticElement`: Specializes `BeamlineElement` (`Quadrupole`, `Dipole`, `Solenoid`, `SteererH`, `SteererV`) with magnetic fields ($T$, $T/m$), currents, and calibration polynomial coefficients.
@@ -52,20 +52,20 @@ flowchart TD
     - `AcceleratorSectionEnum`, `DeviceTypeEnum`, `InterlockStateEnum`, `RiskLevelEnum`.
 
 ### 3. LinkML Schema Compiler & Runtime Loaders
-- [ ] **29.3 Schema Validation & Dynamic Ingestion Engine (`helios/ontology/loader.py`)**
+- [x] **29.3 Schema Validation & Dynamic Ingestion Engine (`helios/ontology/loader.py`)**
   - Implement programmatic validator using LinkML runtime (`linkml_runtime.loaders.yaml_loader`).
   - Provide seamless bidirectional conversion between LinkML models and existing HELIOS `LinacDevice`, `Lattice`, and `Element` instances.
-- [ ] **29.4 RDF / Turtle (TTL) & OWL Ontology Exporter (`helios/ontology/rdf_exporter.py`)**
+- [x] **29.4 RDF / Turtle (TTL) & OWL Ontology Exporter (`helios/ontology/rdf_exporter.py`)**
   - Export live linac lattice and device states into W3C Turtle (`.ttl`) and OWL formats.
   - Enable semantic reasoning (e.g., verifying whether all superconducting cavities have corresponding cryo sensors).
 
 ### 4. Semantic Query & Knowledge Graph Traverser (`helios/ontology/graph.py`)
-- [ ] **29.5 Graph Traversal & Topology Navigation**
+- [x] **29.5 Graph Traversal & Topology Navigation**
   - Query upstream/downstream beamline neighborhood (e.g. *"Find the nearest two horizontal steerers upstream of BPM02"*).
   - Power the Natural Language Planner (`HELIOS-Planner` / `helios chat`) with structural topology awareness extracted from the ontology.
 
 ### 5. Automated Unit Tests & Verification
-- [ ] **29.6 Verification Suite (`tests/test_linkml_ontology.py`)**
+- [x] **29.6 Verification Suite (`tests/test_linkml_ontology.py`)**
   - Validate `helios_schema.yaml` parsing and conformance against LinkML meta-model.
   - Test serialization/deserialization of RAON, FRIB, and SCL1 lattices via LinkML.
   - Test RDF/OWL export and SPARQL/graph topology queries.
