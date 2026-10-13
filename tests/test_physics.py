@@ -110,3 +110,38 @@ def test_track_and_impact_simulation_run():
     traj_impact = impact_sim.run_simulation(lat)
     assert len(traj_impact) > 0
     assert traj_impact[-1].s_m > 0.0
+
+
+def test_track_run_from_directory_and_lebt_orbit_tuning(tmp_path):
+    """Verify TrackSimulator running from directory decks and LEBT orbit tuning with SVD."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+    from helios.physics.engine import TrackSimulator
+    from examples.tune_orbit_lebt import extract_diagnostic_orbit, STEERERS
+    from helios.optimization.algorithms import SVDOrbitCorrection
+    import numpy as np
+
+    model_dir = Path("examples/lebt")
+    if not model_dir.exists():
+        return
+
+    sim = TrackSimulator(work_dir=tmp_path)
+    if not sim.is_available():
+        return
+
+    # Run baseline
+    traj_base = sim.run_from_directory(model_dir, steerer_kicks={"STM_1": (0.0, 0.0)})
+    assert len(traj_base) > 0
+    assert traj_base[-1].s_m > 12.0
+
+    x0, y0 = extract_diagnostic_orbit(traj_base)
+    assert len(x0) == 6
+    assert np.all(np.isfinite(x0))
+
+    # Single steerer perturbation test
+    traj_kicked = sim.run_from_directory(model_dir, steerer_kicks={"STM_1": (1.0, 0.0)})
+    xk, _ = extract_diagnostic_orbit(traj_kicked)
+    assert not np.allclose(x0, xk)
+

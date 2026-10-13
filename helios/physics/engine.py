@@ -13,7 +13,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from helios.physics.elements import DiagnosticElement, Drift, Quadrupole, RFCavity, Steerer
@@ -209,22 +209,139 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
             res = subprocess.run(
                 cmd,
                 cwd=self.work_dir,
+                stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                start_new_session=True,
                 timeout=30.0,
             )
-            # Parse envelop.out if generated, otherwise fallback
+            # Parse beam.out or envelop.out if generated and non-empty, otherwise fallback
+            beam_file = self.work_dir / "beam.out"
             env_file = self.work_dir / "envelop.out"
-            if env_file.exists():
-                return self._parse_envelope_file(env_file, lattice)
-            else:
-                logger.warning(f"TRACK completed with code {res.returncode} but envelop.out not found; using fallback.")
-                return self.analytic_fallback.run_simulation(lattice, setpoints)
+            if beam_file.exists() and beam_file.stat().st_size > 0:
+                points = self._parse_beam_file(beam_file, lattice)
+                if points:
+                    return points
+            if env_file.exists() and env_file.stat().st_size > 0:
+                points = self._parse_envelope_file(env_file, lattice)
+                if points:
+                    return points
+
+            logger.warning(f"TRACK completed with code {res.returncode} but output was empty; using fallback.")
+            return self.analytic_fallback.run_simulation(lattice, setpoints)
         except Exception as e:
             logger.warning(f"Error running TRACK execution: {e}; falling back to AnalyticDigitalTwin.")
             return self.analytic_fallback.run_simulation(lattice, setpoints)
 
-    def _parse_envelope_file(self, env_path: Path, lattice: Lattice) -> List[TrajectoryPoint]:
+    def _parse_beam_file(self, beam_path: Path, lattice: Optional[Lattice] = None) -> List[TrajectoryPoint]:
+        """Parse standard ANL TRACK beam.out file containing centroid and envelope telemetry."""
+        points: List[TrajectoryPoint] = []
+        with open(beam_path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 35 and parts[0] != "n_el":
+                    try:
+                        name = parts[1]
+                        s_m = float(parts[2])
+                        sig_x = float(parts[5]) * 10.0  # x_rms[cm] to mm
+                        sig_y = float(parts[6]) * 10.0  # y_rms[cm] to mm
+                        xc_mm = float(parts[21]) * 10.0  # Xc[cm] to mm
+                        xpc_mrad = float(parts[22])
+                        yc_mm = float(parts[23]) * 10.0  # Yc[cm] to mm
+                        ypc_mrad = float(parts[24])
+                        n_lost = float(parts[33])
+                        n_left = float(parts[34])
+                        loss_frac = n_lost / max(1.0, (n_lost + n_left))
+                        points.append(TrajectoryPoint(
+                            element_name=name,
+                            s_m=s_m,
+                            x_mm=xc_mm,
+                            xp_mrad=xpc_mrad,
+                            y_mm=yc_mm,
+                            yp_mrad=ypc_mrad,
+                            sigma_x_mm=sig_x,
+                            sigma_y_mm=sig_y,
+                            loss_fraction=loss_frac,
+                        ))
+                    except ValueError:
+                        continue
+        return points
+
+    def run_from_directory(
+        self,
+        input_dir: Path,
+        steerer_kicks: Optional[Dict[str, Tuple[float, float]]] = None,
+        timeout_seconds: float = 40.0,
+    ) -> List[TrajectoryPoint]:
+        """Execute TRACK simulation using existing deck files in an input directory (e.g. examples/lebt).
+
+        Args:
+            input_dir: Directory containing track.dat, sclinac.dat, and scratch distribution files.
+            steerer_kicks: Optional mapping of steerer name -> (kick_x_mrad, kick_y_mrad).
+                           Supported names: STM_1..STM_5 (or !0 stM 1..5 lines).
+            timeout_seconds: Maximum execution time in seconds.
+
+        Returns:
+            List of parsed TrajectoryPoint telemetry across the lattice.
+        """
+        input_path = Path(input_dir).resolve()
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input directory {input_path} does not exist.")
+
+        self.work_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy all input assets into execution workspace
+        for item in input_path.glob("*"):
+            if item.is_file():
+                shutil.copy(item, self.work_dir / item.name)
+
+        # Copy supporting DLLs if running via Wine from track directory
+        if self.track_exe.parent.exists():
+            for dll in self.track_exe.parent.glob("*.dll"):
+                shutil.copy(dll, self.work_dir / dll.name)
+
+        # Inject steerer setpoints if provided
+        sclinac_file = self.work_dir / "sclinac.dat"
+        if steerer_kicks and sclinac_file.exists():
+            lines = sclinac_file.read_text(encoding="utf-8").splitlines()
+            new_lines = []
+            for line in lines:
+                matched = False
+                for stm_key, (kx, ky) in steerer_kicks.items():
+                    # Support keys like STM_1 or 1
+                    idx_str = stm_key.replace("STM_", "").strip()
+                    pattern = f"stM      {idx_str}"
+                    if pattern in line or f"corr" in line and f"STM_{idx_str}" in line:
+                        # Replace commented or uncommented stM line with active corr element (no trailing comments!)
+                        new_lines.append(f"0    corr     0.0   0.0   0.0   6.0   0   {kx:.4f}   {ky:.4f}")
+                        matched = True
+                        break
+                if not matched:
+                    new_lines.append(line)
+            sclinac_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+        cmd = [self.wine_bin, str(self.track_exe.resolve())] if self.track_exe.suffix.lower() == ".exe" else [str(self.track_exe.resolve())]
+
+        res = subprocess.run(
+            cmd,
+            cwd=self.work_dir,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
+            timeout=timeout_seconds,
+        )
+
+        beam_file = self.work_dir / "beam.out"
+        if beam_file.exists():
+            return self._parse_beam_file(beam_file)
+        env_file = self.work_dir / "envelop.out"
+        if env_file.exists():
+            return self._parse_envelope_file(env_file)
+
+        raise RuntimeError(f"TRACK run failed in {self.work_dir} with code {res.returncode}: {res.stderr.decode('utf-8', errors='replace')}")
+
+    def _parse_envelope_file(self, env_path: Path, lattice: Optional[Lattice] = None) -> List[TrajectoryPoint]:
         """Parse TRACK envelop.out file."""
         points: List[TrajectoryPoint] = []
         with open(env_path, "r", encoding="utf-8") as f:
@@ -249,7 +366,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                         ))
                     except ValueError:
                         continue
-        return points or self.analytic_fallback.run_simulation(lattice)
+        return points or (self.analytic_fallback.run_simulation(lattice) if lattice else [])
 
     def estimate_losses(
         self,
