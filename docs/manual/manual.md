@@ -73,10 +73,72 @@ This automatically sets:
 - `TRACK_EXE_PATH`: Path to TRACK executable binary (`TRACKv39C.exe`).
 - Prepends `bin/` and simulation directories to `PATH` and `PYTHONPATH`.
 
-### 2.3 External Simulators & Tooling
-- **ANL TRACK (Heavy Ion Ray Tracing)**: Run on Linux via Wine 64-bit (`wine64 /path/to/track.exe`). Simulates ray tracing, multi-charge state beams, and realistic magnetic 3D field maps.
+### 2.3 Containerized Deployment (Docker & Docker Compose)
+
+HELIOS provides a production-ready, multi-stage `Dockerfile` and `docker-compose.yml` for isolated containerized operations in control rooms and cloud clusters without requiring local Python environment setup.
+
+#### 2.3.1 Building and Running with Docker
+The container includes Python 3.11, Wine 64-bit (for ANL TRACK simulation execution), build dependencies, and EPICS Channel Access networking:
+
+```bash
+# Build the production Docker image
+docker build -t helios-orchestrator:latest .
+
+# Run the container with the Web Operator Dashboard (default entrypoint)
+docker run -d \
+  --name helios-app \
+  -p 8000:8000 \
+  helios-orchestrator:latest
+
+# Access dashboard at http://localhost:8000
+```
+
+#### 2.3.2 Multi-Service Stack with Docker Compose
+HELIOS orchestrates distributed operations alongside a Redis message broker (`helios-redis`) for asynchronous multi-agent event dispatching:
+
+```bash
+# Start the full stack in background
+docker compose up -d
+
+# View live orchestrator logs
+docker compose logs -f helios-orchestrator
+
+# Stop the services
+docker compose down
+```
+
+#### 2.3.3 EPICS Host Networking & Volume Mounting
+When connecting to live facility hardware (e.g. RAON, FRIB) or local simulation decks, attach host networking for EPICS Channel Access broadcast discovery and mount model directories:
+
+```bash
+# Run with host networking and local deck volume mounts
+docker run -it --rm \
+  --net=host \
+  -v $(pwd)/examples:/app/examples \
+  -v $(pwd)/docs/exec-plans:/app/docs/exec-plans \
+  -e EPICS_CA_ADDR_LIST="10.0.0.255" \
+  -e EPICS_CA_AUTO_ADDR_LIST="NO" \
+  helios-orchestrator:latest \
+  helios tune-orbit --section MEBT --autonomy 2
+```
+
+#### 2.3.4 Executing CLI Commands and Interactive Shell in Container
+Run commands inside an already running container:
+
+```bash
+# Execute CLI commissioning commands
+docker exec -it helios-app helios tune-orbit --section MEBT
+docker exec -it helios-app helios chat
+docker exec -it helios-app helios report --facility "RAON SCL1"
+
+# Open an interactive bash shell in container
+docker exec -it helios-app bash
+```
+
+### 2.4 External Simulators & Tooling
+- **ANL TRACK (Heavy Ion Ray Tracing)**: Run on Linux via Wine 64-bit (`wine64 /path/to/track.exe`). Simulates ray tracing, multi-charge state beams, and realistic magnetic 3D field maps. Pre-installed in the Docker image.
 - **LBNL IMPACT-Z (3D Space Charge)**: Packaged and managed via `lume-impact`. Used for Particle-in-Cell (PIC) tracking across space-charge dominated low-energy regimes (RFQ, MEBT).
-- **EPICS Base**: Required for live Channel Access and pvAccess communication (`p4p`, `pyepics`).
+- **EPICS Base**: Required for live Channel Access and pvAccess communication (`p4p`, `pyepics`). Included in Docker with ports `5064`/`5065` exposed.
 
 ---
 

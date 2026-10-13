@@ -142,11 +142,63 @@ source setup.sh
 \end{lstlisting}
 This exports \texttt{PROJECT\_ROOT}, \texttt{HELIOS\_ROOT}, \texttt{TRACK\_ROOT}, and \texttt{TRACK\_EXE\_PATH}, ensuring seamless execution of physics solvers across all subsystems.
 
+\section{Containerized Deployment (Docker \& Docker Compose)}
+HELIOS provides a production-ready, multi-stage \texttt{Dockerfile} and \texttt{docker-compose.yml} for isolated containerized execution in control rooms and cluster environments without manual local dependency installation.
+
+\subsection{Building and Running with Docker}
+The container packages Python 3.11, Wine 64-bit (for ANL TRACK ray-tracing simulation), build toolchains, and EPICS networking:
+\begin{lstlisting}[language=bash]
+# Build the production Docker image
+docker build -t helios-orchestrator:latest .
+
+# Run the container launching the Web Dashboard
+docker run -d --name helios-app -p 8000:8000 helios-orchestrator:latest
+\end{lstlisting}
+The web operator dashboard is then accessible at \url{http://localhost:8000}.
+
+\subsection{Distributed Deployment with Docker Compose}
+HELIOS employs an asynchronous Redis message broker (\texttt{helios-redis}) on port 6379 to coordinate multi-agent operations:
+\begin{lstlisting}[language=bash]
+# Launch full orchestrator and Redis stack in background
+docker compose up -d
+
+# Inspect live orchestrator logs
+docker compose logs -f helios-orchestrator
+
+# Shutdown services
+docker compose down
+\end{lstlisting}
+
+\subsection{EPICS Host Networking and Volume Mounting}
+When connecting to live facility hardware (e.g. RAON, FRIB) or local simulation decks, attach host networking for Channel Access broadcast discovery and mount model directories:
+\begin{lstlisting}[language=bash]
+# Run with host networking and local deck mounts
+docker run -it --rm --net=host \
+  -v $(pwd)/examples:/app/examples \
+  -v $(pwd)/docs/exec-plans:/app/docs/exec-plans \
+  -e EPICS_CA_ADDR_LIST="10.0.0.255" \
+  -e EPICS_CA_AUTO_ADDR_LIST="NO" \
+  helios-orchestrator:latest \
+  helios tune-orbit --section MEBT --autonomy 2
+\end{lstlisting}
+
+\subsection{Executing Commands within Running Containers}
+Commissioning routines and interactive shells can be invoked inside an active container:
+\begin{lstlisting}[language=bash]
+# Execute CLI commissioning commands
+docker exec -it helios-app helios tune-orbit --section MEBT
+docker exec -it helios-app helios chat
+docker exec -it helios-app helios report --facility "RAON SCL1"
+
+# Access interactive container shell
+docker exec -it helios-app bash
+\end{lstlisting}
+
 \section{External Simulators and Control Tools}
 \begin{itemize}
-    \item \textbf{ANL TRACK}: Heavy-ion ray-tracing and multi-charge state tracking code executed via Wine 64-bit (\texttt{wine64 track.exe}).
+    \item \textbf{ANL TRACK}: Heavy-ion ray-tracing and multi-charge state tracking code executed via Wine 64-bit (\texttt{wine64 track.exe}). Pre-installed in the Docker container image.
     \item \textbf{LBNL IMPACT-Z}: 3D space-charge Particle-in-Cell (PIC) simulation managed through \texttt{lume-impact}.
-    \item \textbf{EPICS Base}: Channel Access and pvAccess tools (\texttt{p4p}, \texttt{pyepics}) for live communication with accelerator IOCs.
+    \item \textbf{EPICS Base}: Channel Access and pvAccess tools (\texttt{p4p}, \texttt{pyepics}) for live communication with accelerator IOCs. Included with ports 5064 and 5065 exposed.
 \end{itemize}
 
 \chapter{Operator Interfaces and CLI Usage}
