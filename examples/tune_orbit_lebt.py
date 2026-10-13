@@ -189,6 +189,25 @@ def run_tune_orbit_example(
         "corrected_rms_x_mm": rms_x_corr,
         "improvement_pct": improvement_x_pct,
         "elapsed_time_s": elapsed_time_s,
+        "steerers": [
+            {
+                "name": stm,
+                "kick_x_mrad": round(optimal_kicks_quantized[stm][0], 4),
+                "current_x_a": round(optimal_currents[stm][0], 4),
+                "kick_y_mrad": round(optimal_kicks_quantized[stm][1], 4),
+                "current_y_a": round(optimal_currents[stm][1], 4),
+            }
+            for stm in STEERERS
+        ],
+        "monitors": [
+            {
+                "name": name,
+                "z_m": round(z_pos, 4),
+                "x_init_mm": round(float(x_init[i]), 4),
+                "x_corr_mm": round(float(x_corr[i]), 4),
+            }
+            for i, (name, z_pos) in enumerate(LEBT_DIAGNOSTICS.items())
+        ],
     }
 
 

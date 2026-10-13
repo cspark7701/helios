@@ -111,3 +111,25 @@ def test_plot_generation_functions():
     blm = generate_blm_heatmap_data(blm_data, trip_threshold_w=1.0)
     assert blm["max_loss_w"] == 0.45
     assert blm["hotspot_location_m"] == 2.1
+
+
+def test_dashboard_orbit_tuning_endpoint(client):
+    """Verify orbit tuning API endpoint executes and returns steerer currents and monitors."""
+    resp = client.post("/api/tune/orbit", json={
+        "section": "LEBT",
+        "engine": "analytic",
+        "conversion_factor": 0.168,
+        "current_increment": 0.05,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["section"] == "LEBT"
+    assert "initial_rms_x_mm" in data
+    assert "corrected_rms_x_mm" in data
+    assert "steerers" in data
+    assert len(data["steerers"]) == 5
+    assert "current_x_a" in data["steerers"][0]
+    assert "monitors" in data
+    assert len(data["monitors"]) == 6
+    assert "elapsed_time_s" in data
+
