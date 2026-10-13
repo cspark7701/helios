@@ -111,6 +111,53 @@ class Steerer(Element):
     """Dipole steering corrector (horizontal and vertical kicks)."""
     kick_x_mrad: float = Field(0.0, description="Horizontal kick angle in mrad")
     kick_y_mrad: float = Field(0.0, description="Vertical kick angle in mrad")
+    current_x_a: float = Field(0.0, description="Horizontal power supply current in Amperes")
+    current_y_a: float = Field(0.0, description="Vertical power supply current in Amperes")
+    conversion_factor_a_per_mrad: float = Field(0.168, description="Transfer factor converting kick angle (mrad) to current (A)")
+    current_increment_a: float = Field(0.05, description="Power supply minimum current step / quantization resolution in Amperes")
+
+    @classmethod
+    def kick_to_current(
+        cls,
+        kick_mrad: float,
+        conversion_factor_a_per_mrad: float = 0.168,
+        increment_a: float = 0.05,
+    ) -> float:
+        """Convert angular deflection kick (mrad) to power supply current (A) with DAC quantization."""
+        raw_current = kick_mrad * conversion_factor_a_per_mrad
+        if increment_a > 0.0:
+            return round(round(raw_current / increment_a) * increment_a, 6)
+        return raw_current
+
+    @classmethod
+    def current_to_kick(
+        cls,
+        current_a: float,
+        conversion_factor_a_per_mrad: float = 0.168,
+    ) -> float:
+        """Convert power supply current (A) back to effective deflection kick (mrad)."""
+        if abs(conversion_factor_a_per_mrad) < 1e-9:
+            return 0.0
+        return current_a / conversion_factor_a_per_mrad
+
+    def set_currents(self, current_x: float, current_y: float) -> None:
+        """Set steerer currents and update effective kick angles according to conversion calibration."""
+        if self.current_increment_a > 0.0:
+            self.current_x_a = round(round(current_x / self.current_increment_a) * self.current_increment_a, 6)
+            self.current_y_a = round(round(current_y / self.current_increment_a) * self.current_increment_a, 6)
+        else:
+            self.current_x_a = current_x
+            self.current_y_a = current_y
+
+        self.kick_x_mrad = self.current_to_kick(self.current_x_a, self.conversion_factor_a_per_mrad)
+        self.kick_y_mrad = self.current_to_kick(self.current_y_a, self.conversion_factor_a_per_mrad)
+
+    def set_kicks(self, kick_x_mrad: float, kick_y_mrad: float) -> None:
+        """Set kicks, quantizing them to achievable power supply current DAC setpoints."""
+        self.current_x_a = self.kick_to_current(kick_x_mrad, self.conversion_factor_a_per_mrad, self.current_increment_a)
+        self.current_y_a = self.kick_to_current(kick_y_mrad, self.conversion_factor_a_per_mrad, self.current_increment_a)
+        self.kick_x_mrad = self.current_to_kick(self.current_x_a, self.conversion_factor_a_per_mrad)
+        self.kick_y_mrad = self.current_to_kick(self.current_y_a, self.conversion_factor_a_per_mrad)
 
     def transfer_matrix_6x6(self, kinetic_energy_mev_u: float = 0.5, mass_amu: float = 1.0, charge_q: int = 1) -> np.ndarray:
         R = np.eye(6)

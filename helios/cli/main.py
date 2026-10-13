@@ -104,8 +104,13 @@ def tune_orbit(
     autonomy: int = typer.Option(3, help="Autonomy level (0 to 4)"),
     model_dir: Optional[Path] = typer.Option(None, "--model-dir", "-m", help="Path to physics simulation model directory (e.g. examples/lebt)"),
     use_track: bool = typer.Option(True, "--track/--analytic", help="Use ANL TRACK beam dynamics code if available"),
+    conversion_factor: float = typer.Option(0.168, "--conversion-factor", "-c", help="Steerer current conversion factor in A/mrad"),
+    current_increment: float = typer.Option(0.05, "--current-increment", "-i", help="Power supply current step / increment limit in Amperes"),
 ):
     """Execute a closed-loop trajectory correction sequence."""
+    import time
+    start_time = time.perf_counter()
+
     # Check if a model directory was passed or LEBT section was requested with examples/lebt
     resolved_model = model_dir
     if resolved_model is None and section.upper() == "LEBT" and Path("examples/lebt").exists():
@@ -113,10 +118,17 @@ def tune_orbit(
 
     if resolved_model is not None and resolved_model.exists():
         console.print(f"[bold green]Starting HELIOS closed-loop orbit correction on {section} using TRACK model in {resolved_model}...[/bold green]")
+        console.print(f"  Transfer factor: [cyan]{conversion_factor:.3f} A/mrad[/cyan] | Current resolution: [cyan]{current_increment:.2f} A[/cyan]")
         from examples.tune_orbit_lebt import run_tune_orbit_example
-        res = run_tune_orbit_example(resolved_model)
+        res = run_tune_orbit_example(
+            resolved_model,
+            conversion_factor_a_per_mrad=conversion_factor,
+            current_increment_a=current_increment,
+        )
+        elapsed_s = res.get("elapsed_time_s", time.perf_counter() - start_time)
         console.print(f"[bold green]✔ Closed-Loop Orbit Correction Completed![/bold green]")
-        console.print(f"  Horizontal RMS Improvement: [bold cyan]{res['improvement_pct']:+.1f}%[/bold cyan] ({res['initial_rms_x_mm']:.4f} mm -> {res['corrected_rms_x_mm']:.4f} mm)")
+        console.print(f"  Horizontal RMS Improvement : [bold cyan]{res['improvement_pct']:+.1f}%[/bold cyan] ({res['initial_rms_x_mm']:.4f} mm -> {res['corrected_rms_x_mm']:.4f} mm)")
+        console.print(f"  Orbit Correction Execution Time: [bold yellow]{elapsed_s:.2f} seconds[/bold yellow]")
         return
 
     console.print(f"[bold green]Starting autonomous orbit correction on {section}...[/bold green]")
@@ -135,11 +147,13 @@ def tune_orbit(
         autonomy_level=level,
         operator_confirmed=True,
     )
+    elapsed_s = time.perf_counter() - start_time
 
     console.print(f"[bold green]Plan Status:[/bold green] {plan.state.value}")
     console.print(f"[bold cyan]Steps Executed:[/bold cyan] {len(plan.steps)}")
     for s in plan.steps:
         console.print(f" - Step `{s.name}`: [{s.status.value}]")
+    console.print(f"  Orbit Correction Execution Time: [bold yellow]{elapsed_s:.2f} seconds[/bold yellow]")
 
 
 @app.command()

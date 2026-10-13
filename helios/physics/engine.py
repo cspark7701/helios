@@ -271,6 +271,9 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
         self,
         input_dir: Path,
         steerer_kicks: Optional[Dict[str, Tuple[float, float]]] = None,
+        steerer_currents: Optional[Dict[str, Tuple[float, float]]] = None,
+        conversion_factor_a_per_mrad: float = 0.168,
+        current_increment_a: float = 0.05,
         timeout_seconds: float = 40.0,
     ) -> List[TrajectoryPoint]:
         """Execute TRACK simulation using existing deck files in an input directory (e.g. examples/lebt).
@@ -278,7 +281,10 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
         Args:
             input_dir: Directory containing track.dat, sclinac.dat, and scratch distribution files.
             steerer_kicks: Optional mapping of steerer name -> (kick_x_mrad, kick_y_mrad).
-                           Supported names: STM_1..STM_5 (or !0 stM 1..5 lines).
+            steerer_currents: Optional mapping of steerer name -> (current_x_a, current_y_a) in Amperes.
+                              If provided, currents are converted to kicks using conversion_factor_a_per_mrad.
+            conversion_factor_a_per_mrad: Transfer factor (default: 0.168 A/mrad for LEBT).
+            current_increment_a: Power supply current step resolution in Amperes (default: 0.05 A).
             timeout_seconds: Maximum execution time in seconds.
 
         Returns:
@@ -300,14 +306,28 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
             for dll in self.track_exe.parent.glob("*.dll"):
                 shutil.copy(dll, self.work_dir / dll.name)
 
+        # Resolve kicks: if steerer_currents provided, convert to quantized kicks
+        effective_kicks = dict(steerer_kicks or {})
+        if steerer_currents:
+            for s_name, (ix, iy) in steerer_currents.items():
+                # Quantize current to increments
+                if current_increment_a > 0.0:
+                    ix_q = round(ix / current_increment_a) * current_increment_a
+                    iy_q = round(iy / current_increment_a) * current_increment_a
+                else:
+                    ix_q, iy_q = ix, iy
+                kx = ix_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
+                ky = iy_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
+                effective_kicks[s_name] = (kx, ky)
+
         # Inject steerer setpoints if provided
         sclinac_file = self.work_dir / "sclinac.dat"
-        if steerer_kicks and sclinac_file.exists():
+        if effective_kicks and sclinac_file.exists():
             lines = sclinac_file.read_text(encoding="utf-8").splitlines()
             new_lines = []
             for line in lines:
                 matched = False
-                for stm_key, (kx, ky) in steerer_kicks.items():
+                for stm_key, (kx, ky) in effective_kicks.items():
                     # Support keys like STM_1 or 1
                     idx_str = stm_key.replace("STM_", "").strip()
                     pattern = f"stM      {idx_str}"

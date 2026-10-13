@@ -1,18 +1,10 @@
-"""HELIOS Example: LEBT Orbit Tuning with ANL TRACK and SVD Correction.
-
-Demonstrates:
-1. Loading and executing the realistic LEBT model from examples/lebt/ using TrackSimulator.
-2. Interrogating virtual diagnostic stations (WS_1, Allison, WS_2, WS_3, WS_4, Exit BPM).
-3. Measuring the empirical Orbit Response Matrices (Rx, Ry) across horizontal and vertical steerers (STM_1..STM_5).
-4. Performing SVD orbit inversion with singular value truncation and Tikhonov damping.
-5. Closed-loop verification in TRACK demonstrating >70% RMS orbit flattening.
-"""
-
+import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from helios.physics.engine import TrackSimulator
+from helios.physics.elements import Steerer
 from helios.optimization.algorithms import SVDOrbitCorrection
 
 
@@ -27,6 +19,10 @@ LEBT_DIAGNOSTICS: Dict[str, float] = {
 }
 
 STEERERS: List[str] = ["STM_1", "STM_2", "STM_3", "STM_4", "STM_5"]
+
+# Default hardware power supply conversion calibration for LEBT
+DEFAULT_CONVERSION_FACTOR_A_PER_MRAD: float = 0.168
+DEFAULT_CURRENT_INCREMENT_A: float = 0.05
 
 
 def extract_diagnostic_orbit(trajectory, diagnostics: Dict[str, float] = LEBT_DIAGNOSTICS) -> Tuple[np.ndarray, np.ndarray]:
@@ -44,11 +40,18 @@ def compute_lebt_response_matrices(
     simulator: TrackSimulator,
     model_dir: Path,
     delta_kick_mrad: float = 1.0,
+    conversion_factor_a_per_mrad: float = DEFAULT_CONVERSION_FACTOR_A_PER_MRAD,
+    current_increment_a: float = DEFAULT_CURRENT_INCREMENT_A,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Measure empirical Orbit Response Matrix (ORM) using perturbation tracking in TRACK."""
     print(f"\n[1/4] Running unsteered baseline simulation in {model_dir.name}...")
-    base_kicks = {s: (0.0, 0.0) for s in STEERERS}
-    traj_base = simulator.run_from_directory(model_dir, steerer_kicks=base_kicks)
+    base_currents = {s: (0.0, 0.0) for s in STEERERS}
+    traj_base = simulator.run_from_directory(
+        model_dir,
+        steerer_currents=base_currents,
+        conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
+        current_increment_a=current_increment_a,
+    )
     x0, y0 = extract_diagnostic_orbit(traj_base)
 
     m = len(LEBT_DIAGNOSTICS)
@@ -58,35 +61,61 @@ def compute_lebt_response_matrices(
 
     print(f"[2/4] Measuring Orbit Response Matrix across {n} steerers (+{delta_kick_mrad:.1f} mrad perturbation)...")
     for j, stm in enumerate(STEERERS):
-        # Horizontal response
-        kicks_x = {s: (0.0, 0.0) for s in STEERERS}
-        kicks_x[stm] = (delta_kick_mrad, 0.0)
-        traj_x = simulator.run_from_directory(model_dir, steerer_kicks=kicks_x)
+        # Horizontal response (apply perturbation via steerer current)
+        delta_i = Steerer.kick_to_current(delta_kick_mrad, conversion_factor_a_per_mrad, current_increment_a)
+        effective_dk = Steerer.current_to_kick(delta_i, conversion_factor_a_per_mrad)
+
+        currents_x = {s: (0.0, 0.0) for s in STEERERS}
+        currents_x[stm] = (delta_i, 0.0)
+        traj_x = simulator.run_from_directory(
+            model_dir,
+            steerer_currents=currents_x,
+            conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
+            current_increment_a=current_increment_a,
+        )
         xk, _ = extract_diagnostic_orbit(traj_x)
-        Rx[:, j] = (xk - x0) / delta_kick_mrad
+        Rx[:, j] = (xk - x0) / effective_dk
 
         # Vertical response
-        kicks_y = {s: (0.0, 0.0) for s in STEERERS}
-        kicks_y[stm] = (0.0, delta_kick_mrad)
-        traj_y = simulator.run_from_directory(model_dir, steerer_kicks=kicks_y)
+        currents_y = {s: (0.0, 0.0) for s in STEERERS}
+        currents_y[stm] = (0.0, delta_i)
+        traj_y = simulator.run_from_directory(
+            model_dir,
+            steerer_currents=currents_y,
+            conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
+            current_increment_a=current_increment_a,
+        )
         _, yk = extract_diagnostic_orbit(traj_y)
-        Ry[:, j] = (yk - y0) / delta_kick_mrad
-        print(f"      - {stm}: dX/dtheta={Rx[-1, j]:+.3f} mm/mrad, dY/dtheta={Ry[-1, j]:+.3f} mm/mrad at exit")
+        Ry[:, j] = (yk - y0) / effective_dk
+        print(f"      - {stm}: dX/dI={Rx[-1, j] / conversion_factor_a_per_mrad:+.3f} mm/A ({Rx[-1, j]:+.3f} mm/mrad), dY/dI={Ry[-1, j] / conversion_factor_a_per_mrad:+.3f} mm/A at exit")
 
     return Rx, Ry, x0, y0
 
 
-def run_tune_orbit_example(model_dir: Path = Path("examples/lebt")) -> Dict[str, float]:
-    """Execute complete LEBT orbit correction sequence with HELIOS."""
+def run_tune_orbit_example(
+    model_dir: Path = Path("examples/lebt"),
+    conversion_factor_a_per_mrad: float = DEFAULT_CONVERSION_FACTOR_A_PER_MRAD,
+    current_increment_a: float = DEFAULT_CURRENT_INCREMENT_A,
+) -> Dict[str, float]:
+    """Execute complete LEBT orbit correction sequence with HELIOS using power supply current actuation."""
+    start_time = time.perf_counter()
+
     print("=" * 78)
-    print(" HELIOS HEAVY ION LINAC: LEBT ORBIT TUNING & SVD CORRECTION EXAMPLE")
+    print(" HELIOS HEAVY ION LINAC: LEBT ORBIT TUNING & CURRENT ACTUATION EXAMPLE")
     print("=" * 78)
+    print(f"  Steerer Transfer Factor : {conversion_factor_a_per_mrad:.3f} A/mrad")
+    print(f"  Power Supply Step Limit : {current_increment_a:.2f} A increment")
 
     simulator = TrackSimulator(work_dir=Path("/tmp/helios_tune_orbit_lebt"))
     if not simulator.is_available():
         raise RuntimeError(f"TRACK simulator binary or Wine not accessible: {simulator.track_exe}")
 
-    Rx, Ry, x_init, y_init = compute_lebt_response_matrices(simulator, model_dir)
+    Rx, Ry, x_init, y_init = compute_lebt_response_matrices(
+        simulator,
+        model_dir,
+        conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
+        current_increment_a=current_increment_a,
+    )
 
     rms_x_init = float(np.sqrt(np.mean(x_init**2)))
     rms_y_init = float(np.sqrt(np.mean(y_init**2)))
@@ -108,25 +137,46 @@ def run_tune_orbit_example(model_dir: Path = Path("examples/lebt")) -> Dict[str,
         tikhonov_regularization=1e-4,
     )
 
-    print("\n[4/4] Applying SVD Optimal Corrector Kicks:")
-    optimal_kicks: Dict[str, Tuple[float, float]] = {}
-    for idx, stm in enumerate(STEERERS):
-        optimal_kicks[stm] = (float(kicks_x[idx]), float(kicks_y[idx]))
-        print(f"      - {stm:6s}: Delta_Theta_X = {kicks_x[idx]:+.4f} mrad | Delta_Theta_Y = {kicks_y[idx]:+.4f} mrad")
+    print("\n[4/4] Converting Corrector Deflections to Power Supply Currents (A):")
+    optimal_currents: Dict[str, Tuple[float, float]] = {}
+    optimal_kicks_quantized: Dict[str, Tuple[float, float]] = {}
 
-    # Closed-loop verification with TRACK
-    traj_corrected = simulator.run_from_directory(model_dir, steerer_kicks=optimal_kicks)
+    for idx, stm in enumerate(STEERERS):
+        # Convert continuous mrad kicks to discrete quantized currents
+        curr_x = Steerer.kick_to_current(float(kicks_x[idx]), conversion_factor_a_per_mrad, current_increment_a)
+        curr_y = Steerer.kick_to_current(float(kicks_y[idx]), conversion_factor_a_per_mrad, current_increment_a)
+        optimal_currents[stm] = (curr_x, curr_y)
+
+        eff_kx = Steerer.current_to_kick(curr_x, conversion_factor_a_per_mrad)
+        eff_ky = Steerer.current_to_kick(curr_y, conversion_factor_a_per_mrad)
+        optimal_kicks_quantized[stm] = (eff_kx, eff_ky)
+
+        print(
+            f"      - {stm:6s}: I_x = {curr_x:+6.2f} A (kick {eff_kx:+7.4f} mrad) | "
+            f"I_y = {curr_y:+6.2f} A (kick {eff_ky:+7.4f} mrad)"
+        )
+
+    # Closed-loop verification with TRACK using quantized power supply currents
+    traj_corrected = simulator.run_from_directory(
+        model_dir,
+        steerer_currents=optimal_currents,
+        conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
+        current_increment_a=current_increment_a,
+    )
     x_corr, y_corr = extract_diagnostic_orbit(traj_corrected)
 
     rms_x_corr = float(np.sqrt(np.mean(x_corr**2)))
     rms_y_corr = float(np.sqrt(np.mean(y_corr**2)))
     improvement_x_pct = ((rms_x_init - rms_x_corr) / max(1e-6, rms_x_init)) * 100.0
 
+    elapsed_time_s = time.perf_counter() - start_time
+
     print("\n" + "=" * 78)
     print(" VERIFICATION & AUDIT RESULTS")
     print("=" * 78)
     print(f"  Horizontal Orbit RMS : {rms_x_init:.4f} mm  -->  {rms_x_corr:.4f} mm  ({improvement_x_pct:+.1f}%)")
     print(f"  Vertical Orbit RMS   : {rms_y_init:.4f} mm  -->  {rms_y_corr:.4f} mm")
+    print(f"  Orbit Correction Time: {elapsed_time_s:.2f} seconds")
     print("  Diagnostic Station Summary:")
     print("  {:<12} {:>10} {:>10} {:>12}".format("Monitor", "z (m)", "X_init(mm)", "X_corr(mm)"))
     print("  " + "-" * 48)
@@ -138,8 +188,10 @@ def run_tune_orbit_example(model_dir: Path = Path("examples/lebt")) -> Dict[str,
         "initial_rms_x_mm": rms_x_init,
         "corrected_rms_x_mm": rms_x_corr,
         "improvement_pct": improvement_x_pct,
+        "elapsed_time_s": elapsed_time_s,
     }
 
 
 if __name__ == "__main__":
     run_tune_orbit_example()
+

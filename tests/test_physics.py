@@ -145,3 +145,35 @@ def test_track_run_from_directory_and_lebt_orbit_tuning(tmp_path):
     xk, _ = extract_diagnostic_orbit(traj_kicked)
     assert not np.allclose(x0, xk)
 
+
+def test_steerer_current_conversion_and_quantization():
+    """Verify Steerer kick <-> current conversion calibration and 0.05A DAC quantization."""
+    from helios.physics.elements import Steerer
+
+    conversion_factor = 0.168  # A / mrad
+    increment = 0.05  # A
+
+    # 1. Test 1 mrad kick -> raw 0.168 A -> quantized to nearest 0.05 A (0.15 A)
+    current_1 = Steerer.kick_to_current(1.0, conversion_factor, increment)
+    assert current_1 == 0.15
+    kick_1_eff = Steerer.current_to_kick(current_1, conversion_factor)
+    assert round(kick_1_eff, 4) == round(0.15 / 0.168, 4)
+
+    # 2. Test 2 mrad kick -> raw 0.336 A -> quantized to 0.35 A
+    current_2 = Steerer.kick_to_current(2.0, conversion_factor, increment)
+    assert current_2 == 0.35
+
+    # 3. Test steerer model setting currents directly
+    st = Steerer(
+        name="LEBT:STR01",
+        length=0.1,
+        conversion_factor_a_per_mrad=conversion_factor,
+        current_increment_a=increment,
+    )
+    st.set_currents(0.19, -0.34)
+    assert st.current_x_a == 0.20  # quantized from 0.19 to 0.20
+    assert st.current_y_a == -0.35  # quantized from -0.34 to -0.35
+    assert st.kick_x_mrad == 0.20 / 0.168
+    assert st.kick_y_mrad == -0.35 / 0.168
+
+
