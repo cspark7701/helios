@@ -3,6 +3,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[margin=1in]{geometry}
 \usepackage{booktabs}
+\usepackage{tabularx}
 \usepackage{hyperref}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
@@ -64,14 +65,24 @@
 
 Aligned directly with the \textbf{Plan-First} paradigm established by the Lawrence Berkeley National Laboratory (LBNL) Osprey architecture, HELIOS enforces strict separation of concerns between optimization heuristics, digital twin simulation validations, deterministic safety gatekeepers, and hardware control layers.
 
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\textwidth]{architecture.png}
+\caption{HELIOS System Architecture: Layered Plan-First multi-agent framework inspired by LBNL Osprey, showing progressive flow from operator interfaces down to physical accelerator hardware through deterministic safety gatekeepers and EPICS connectors.}
+\label{fig:architecture}
+\end{figure}
+
 \section{Core Architectural Principles}
 \begin{enumerate}
     \item \textbf{Pre-Flight Simulation Verification}: No setpoint is ever delivered to live hardware without prior validation through high-fidelity codes (ANL TRACK via Wine, LBNL IMPACT-Z via \texttt{lume-impact}) or sub-millisecond neural surrogates.
     \item \textbf{Deterministic Safety-First Actuation}: Optimization algorithms do not talk directly to EPICS. All actuations pass through rate-of-change limiters, slew rate clamps, discrete DAC current steps, and the \texttt{SafetyAgent} rollback stack.
     \item \textbf{Plan-First Execution Lifecycle}: High-level natural language goals are first compiled into structured, reproducible execution plans:
-    \[
-    \text{DRAFT} \longrightarrow \text{SIMULATION\_VERIFIED} \longrightarrow \text{SAFETY\_APPROVED} \longrightarrow \text{EXECUTING} \longrightarrow \text{COMPLETED}
-    \]
+    \begin{equation*}
+    \begin{aligned}
+    \text{DRAFT} &\longrightarrow \text{SIMULATION\_VERIFIED} \longrightarrow \text{SAFETY\_APPROVED} \\
+    &\longrightarrow \text{EXECUTING} \longrightarrow \text{COMPLETED}
+    \end{aligned}
+    \end{equation*}
     \item \textbf{Dynamic Capability Classification (Osprey Pattern)}: Instead of injecting hundreds of tools into the LLM context, HELIOS dynamically filters capabilities based on the operator's intent and domain keywords, keeping prompt sizes compact and execution deterministic.
     \item \textbf{Graduated Autonomy}: Enforces clear human-in-the-loop sign-offs graduated from Advisory (Level 0) to Fully Autonomous (Level 4).
 \end{enumerate}
@@ -89,9 +100,9 @@ The framework partitions operational responsibilities among specialized autonomo
 
 \section{Graduated Autonomy Levels}
 HELIOS implements five graduated operational autonomy levels for human-in-the-loop gating:
-\begin{table}[h]
+\begin{table}[h!]
 \centering
-\begin{tabular}{ccll}
+\begin{tabularx}{\textwidth}{ccp{6.5cm}X}
 \toprule
 \textbf{Level} & \textbf{Name} & \textbf{Description} & \textbf{Operator Role} \\
 \midrule
@@ -101,7 +112,7 @@ HELIOS implements five graduated operational autonomy levels for human-in-the-lo
 3 & Bounded Auto & Closed-loop optimization within boundaries & Passive monitoring \\
 4 & Fully Auto & Self-driving linac domain commissioning & Goal-setting oversight only \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \caption{Operational Autonomy Levels in HELIOS.}
 \end{table}
 
@@ -159,7 +170,7 @@ helios tune-orbit --section LEBT --model-dir examples/lebt --track \
 Key parameters:
 \begin{itemize}
     \item \texttt{--section}: Accelerator beamline section (\texttt{LEBT}, \texttt{MEBT}, etc.).
-    \item \texttt{--model-dir}, \texttt{-m}: Directory containing simulation decks (e.g. \texttt{examples/lebt} with \texttt{track.dat}).
+    \item \texttt{--model-dir}, \texttt{-m}: Directory containing simulation decks (e.g., \texttt{examples/lebt} with input file \texttt{track.dat}).
     \item \texttt{--track / --analytic}: Toggle between real ANL TRACK simulation or analytical model.
     \item \texttt{--conversion-factor}, \texttt{-c}: Steerer current conversion factor ($0.168\text{ A/mrad}$).
     \item \texttt{--current-increment}, \texttt{-i}: Power supply DAC discrete step limit ($0.05\text{ A}$).
@@ -276,7 +287,7 @@ is compensated via normalized Filtered-X Least Mean Squares (FxLMS) piezo feedfo
 The \texttt{helios.rf.cryoplant} module evaluates BCS surface resistance $R_{\text{BCS}} \propto \frac{f^2}{T} \exp(-\Delta/k_B T)$ and dynamic dissipation $P_{\text{loss}} \propto V_{\text{acc}}^2 / R_s$, optimizing cavity field distributions within 2.0 K cryogenic capacity.
 
 \section{RF Multipactoring and Dark Current Field Emission}
-Simulates resonant electron multipactoring in coaxial couplers/cavities and Fowler-Nordheim dark current field emission with bremsstrahlung radiation accumulation (\texttt{helios.rf.multipactor}).
+The module \texttt{helios.rf.multipactor} models electron multipactoring resonances in coaxial couplers and cavities, alongside Fowler-Nordheim dark current field emission with bremsstrahlung radiation accumulation.
 
 \section{Progressive RF Conditioning Sequencer}
 The \texttt{AutonomousRFConditioner} automates forward power ramping with vacuum back-off interlocks ($P_{\text{vac}} < 10^{-7}\text{ mbar}$) and $+25\%$ power jump breakthroughs across multipacting zones.
@@ -290,7 +301,7 @@ The \texttt{helios.safety.fast\_mps} module monitors ACCT differential beam loss
 Prior to any hardware setpoint write, the \texttt{SafetyAgent} pushes current valid states to a rollback stack. Sensor threshold trips immediately trigger atomic parameter rollbacks.
 
 \section{Radiological Activation and RPO Clearance}
-Evaluates multi-isotope Bateman decay cooling equations ($^{56}\text{Mn}, ^{58}\text{Co}, ^{54}\text{Mn}, ^{60}\text{Co}$) along linac structures, enforcing cooldown wait times and cryptographic clearance tokens (\texttt{helios.safety.activation}).
+The module \texttt{helios.safety.activation} models multi-isotope Bateman decay equations across induced radioisotopes ($^{56}\text{Mn}$, $^{58}\text{Co}$, $^{54}\text{Mn}$, $^{60}\text{Co}$), enforcing mandatory tunnel cooldown wait times and RPO cryptographic clearance tokens.
 
 \chapter{Optimization, Machine Learning and Co-Simulation}
 
@@ -302,7 +313,7 @@ Evaluates multi-isotope Bateman decay cooling equations ($^{56}\text{Mn}, ^{58}\
 \end{itemize}
 
 \section{Multi-Physics Co-Simulation Bridge}
-The \texttt{ZeroCopyCoSimBridge} (\texttt{helios.sim.cosim}) provides high-speed in-memory IPC ring buffers sharing 6D bunch arrays $(N, 6)$ and 3D loss distributions synchronized with live linac repetition rates (1 to 100 Hz).
+The IPC module \texttt{helios.sim.cosim} implements \texttt{ZeroCopyCoSimBridge}, providing high-speed shared memory ring buffers for 6D bunch arrays $(N, 6)$ and 3D loss distributions synchronized with live linac repetition rates (1 to 100 Hz).
 
 \chapter{Testing and Continuous Integration}
 

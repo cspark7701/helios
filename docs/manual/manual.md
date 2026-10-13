@@ -26,6 +26,8 @@ flowchart TD
     Control --> Hardware["Accelerator Hardware\n(Magnets, SRF Cavities, Interlocks)"]
 ```
 
+![HELIOS System Architecture](architecture.png)
+
 ### 1.1 Core Architectural Principles
 1. **Pre-flight Simulation Verification**: No setpoint is ever delivered to live hardware without prior validation through high-fidelity codes (ANL TRACK via Wine, LBNL IMPACT-Z via `lume-impact`) or sub-millisecond neural surrogates.
 2. **Deterministic Safety-First Actuation**: Optimization agents cannot directly write to EPICS. All actuations pass through rate-of-change limiters, slew rate clamps, hardware current DAC steps, and the `SafetyAgent` rollback stack.
