@@ -389,4 +389,38 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["audit", "hash chain", "integrity", "tamper", "compliance", "sha256", "log"],
     ))
 
+    # Advanced Beam & RF Control Capabilities (Phases 19 - 21)
+    registry.register(Capability(
+        name="run_beam_based_alignment",
+        description="Execute quadrupole modulation (Delta K1) to resolve beam offset relative to magnetic center",
+        domain=CapabilityDomain.ORBIT,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["bba", "beam-based alignment", "quadrupole center", "modulation", "k1", "offset"],
+    ))
+    registry.register(Capability(
+        name="run_dispersion_free_steering",
+        description="Simultaneously minimize trajectory distortion and spurious dispersion using weighted SVD",
+        domain=CapabilityDomain.ORBIT,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["dfs", "dispersion-free steering", "spurious dispersion", "orbit", "svd"],
+    ))
+    registry.register(Capability(
+        name="reconstruct_phase_space_ment",
+        description="Reconstruct 2D transverse phase-space distribution from profile monitor projections using Maximum Entropy",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["ment", "tomography", "phase space", "maximum entropy", "emittance", "projection"],
+    ))
+    registry.register(Capability(
+        name="sequence_rf_conditioning",
+        description="Autonomous progressive RF power and pulse-width ramp sequencer with vacuum and multipacting interlocks",
+        domain=CapabilityDomain.RF,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.MEDIUM,
+        keywords=["rf conditioning", "multipacting", "pulse width", "vacuum interlock", "cavity processing"],
+    ))
+
     return registry

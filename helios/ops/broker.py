@@ -8,6 +8,7 @@ across multi-host control room environments.
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from enum import Enum
 import json
 import logging
 from typing import Any, Callable, Dict, List, Optional, Set
@@ -36,12 +37,21 @@ class EventMessage:
         return json.dumps(data)
 
 
+class BrokerBackendType(str, Enum):
+    IN_PROCESS = "IN_PROCESS"
+    REDIS = "REDIS"
+    MQTT = "MQTT"
+
+
 class DistributedEventBus:
     """Asynchronous and synchronous in-process / network event broker."""
 
-    def __init__(self):
+    def __init__(self, backend: BrokerBackendType = BrokerBackendType.IN_PROCESS, redis_url: Optional[str] = None):
+        self.backend = backend
+        self.redis_url = redis_url
         self._subscribers: Dict[str, List[Callable[[EventMessage], None]]] = {}
         self._history: List[EventMessage] = []
+        self._rpc_handlers: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {}
 
     def subscribe(self, topic_pattern: str, handler: Callable[[EventMessage], None]) -> None:
         """Register a handler callback for messages matching topic pattern."""
@@ -91,3 +101,14 @@ class DistributedEventBus:
         if not topic_prefix:
             return list(self._history)
         return [m for m in self._history if m.topic.startswith(topic_prefix)]
+
+    def register_rpc_service(self, service_name: str, handler: Callable[[Dict[str, Any]], Dict[str, Any]]) -> None:
+        """Register a remote callable procedure for distributed agent dispatch."""
+        self._rpc_handlers[service_name] = handler
+        logger.debug(f"Registered RPC service '{service_name}'")
+
+    def call_rpc(self, service_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Synchronously execute a registered remote agent RPC handler."""
+        if service_name not in self._rpc_handlers:
+            raise KeyError(f"RPC service '{service_name}' is not registered on the event bus")
+        return self._rpc_handlers[service_name](params)
