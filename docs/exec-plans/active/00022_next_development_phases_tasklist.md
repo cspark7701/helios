@@ -68,14 +68,14 @@ flowchart TD
 
 ## Phase 17: Multi-Facility Digital Twin Adapters & Benchmark Lattice Decks
 
-- [ ] **17.1 Pre-Configured Facility Lattice Digital Twins**
-  - [ ] RAON (Rare isotope Accelerator complex for ON-line experiment) SCL1/SCL2 lattice models.
-  - [ ] FRIB (Facility for Rare Isotope Beams) Linac Segments 1 & 2 decks.
-  - [ ] GSI / FAIR heavy-ion linac baseline lattice decks.
-- [ ] **17.2 Cross-Format Lattice Converters**
-  - [ ] Bi-directional converters between HELIOS lattice definitions and MAD-X, Elegant, and Bmad formats.
-- [ ] **17.3 Automated Physics Benchmark Suite**
-  - [ ] Multi-code benchmark runner comparing ANL TRACK vs LBNL IMPACT-Z vs Analytic Digital Twin transfer matrices.
+- [x] **17.1 Pre-Configured Facility Lattice Digital Twins**
+  - [x] RAON (Rare isotope Accelerator complex for ON-line experiment) SCL1/SCL2 lattice models.
+  - [x] FRIB (Facility for Rare Isotope Beams) Linac Segments 1 & 2 decks.
+  - [x] GSI / FAIR heavy-ion linac baseline lattice decks.
+- [x] **17.2 Cross-Format Lattice Converters**
+  - [x] Bi-directional converters between HELIOS lattice definitions and MAD-X, Elegant, and Bmad formats.
+- [x] **17.3 Automated Physics Benchmark Suite**
+  - [x] Multi-code benchmark runner comparing ANL TRACK vs LBNL IMPACT-Z vs Analytic Digital Twin transfer matrices.
 
 ---
 

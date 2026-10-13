@@ -38,12 +38,22 @@ class TrajectoryPoint:
 class Lattice:
     """Represents an accelerator lattice composed of sequential beamline elements."""
 
-    def __init__(self, name: str, kinetic_energy_mev_u: float = 0.5, mass_amu: float = 1.0, charge_q: int = 1):
+    def __init__(
+        self,
+        name: str,
+        kinetic_energy_mev_u: float = 0.5,
+        mass_amu: float = 1.0,
+        charge_q: float = 1.0,
+        elements: Optional[List[Element]] = None,
+    ):
         self.name = name
         self.kinetic_energy_mev_u = kinetic_energy_mev_u
         self.mass_amu = mass_amu
         self.charge_q = charge_q
         self.elements: List[Element] = []
+        if elements:
+            for elem in elements:
+                self.add_element(elem)
 
     def add_element(self, element: Element) -> None:
         """Append an element and update its longitudinal s position."""

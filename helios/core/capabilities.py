@@ -222,6 +222,30 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["css", "charge separator", "slit", "chicane", "purity", "transmission"],
     ))
     registry.register(Capability(
+        name="load_facility_lattice",
+        description="Load verified pre-configured heavy-ion linac lattices for RAON, FRIB, or GSI/FAIR",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["facility", "raon", "frib", "gsi", "fair", "scl1", "ls1", "lattice"],
+    ))
+    registry.register(Capability(
+        name="export_lattice_format",
+        description="Export or import accelerator lattices between HELIOS, CERN MAD-X, and APS Elegant LTE",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["madx", "mad-x", "elegant", "lte", "convert", "export lattice"],
+    ))
+    registry.register(Capability(
+        name="run_cross_code_benchmarks",
+        description="Run comparative cross-code benchmarks evaluating TRACK, IMPACT-Z, and digital twin consistency",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["benchmark", "cross-code", "comparison", "validation", "discrepancy"],
+    ))
+    registry.register(Capability(
         name="predict_virtual_profile",
         description="Non-interceptive virtual wire scanner reconstructing transverse beam sizes and emittance",
         domain=CapabilityDomain.DIAGNOSTICS,
