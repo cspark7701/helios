@@ -99,19 +99,34 @@ def tools(query: Optional[str] = typer.Option(None, help="Optional intent query 
 
 @app.command()
 def tune_orbit(
-    section: str = typer.Option("MEBT", help="Linac section to tune"),
+    section: str = typer.Option("MEBT", help="Linac section to tune (e.g. MEBT, LEBT)"),
     plan_id: str = typer.Option("00099", help="Execution plan ID"),
     autonomy: int = typer.Option(3, help="Autonomy level (0 to 4)"),
+    model_dir: Optional[Path] = typer.Option(None, "--model-dir", "-m", help="Path to physics simulation model directory (e.g. examples/lebt)"),
+    use_track: bool = typer.Option(True, "--track/--analytic", help="Use ANL TRACK beam dynamics code if available"),
 ):
     """Execute a closed-loop trajectory correction sequence."""
+    # Check if a model directory was passed or LEBT section was requested with examples/lebt
+    resolved_model = model_dir
+    if resolved_model is None and section.upper() == "LEBT" and Path("examples/lebt").exists():
+        resolved_model = Path("examples/lebt")
+
+    if resolved_model is not None and resolved_model.exists():
+        console.print(f"[bold green]Starting HELIOS closed-loop orbit correction on {section} using TRACK model in {resolved_model}...[/bold green]")
+        from examples.tune_orbit_lebt import run_tune_orbit_example
+        res = run_tune_orbit_example(resolved_model)
+        console.print(f"[bold green]✔ Closed-Loop Orbit Correction Completed![/bold green]")
+        console.print(f"  Horizontal RMS Improvement: [bold cyan]{res['improvement_pct']:+.1f}%[/bold cyan] ({res['initial_rms_x_mm']:.4f} mm -> {res['corrected_rms_x_mm']:.4f} mm)")
+        return
+
     console.print(f"[bold green]Starting autonomous orbit correction on {section}...[/bold green]")
     orch = HeliosOrchestrator()
 
     # Seed mock BPM offsets
-    orch.control.put("MEBT:DIAG:BPM01:X_POS", 0.75)
-    orch.control.put("MEBT:DIAG:BPM02:X_POS", 1.10)
-    orch.control.put("MEBT:PSC:CH01:CurrentSet", 0.0)
-    orch.control.put("MEBT:PSC:CH01:CurrentAct", 0.0)
+    orch.control.put(f"{section}:DIAG:BPM01:X_POS", 0.75)
+    orch.control.put(f"{section}:DIAG:BPM02:X_POS", 1.10)
+    orch.control.put(f"{section}:PSC:CH01:CurrentSet", 0.0)
+    orch.control.put(f"{section}:PSC:CH01:CurrentAct", 0.0)
 
     level = AutonomyLevel(autonomy)
     plan = orch.run_orbit_correction_loop(

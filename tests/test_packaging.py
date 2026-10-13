@@ -27,3 +27,12 @@ def test_cli_info():
     assert result.exit_code == 0
     assert "LBNL Osprey" in result.stdout
     assert "Heavy Ion" in result.stdout
+
+
+def test_cli_tune_orbit_mebt_mock():
+    """Verify CLI tune-orbit command works on baseline section."""
+    result = runner.invoke(app, ["tune-orbit", "--section", "MEBT", "--autonomy", "3"])
+    assert result.exit_code == 0
+    assert "Plan Status" in result.stdout
+    assert "Steps Executed" in result.stdout
+
