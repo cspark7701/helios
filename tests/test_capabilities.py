@@ -57,8 +57,13 @@ def test_dynamic_capability_classification_simulation():
     """Test intent classification for digital twin simulation."""
     registry = get_default_registry()
 
-    prompt = "Run TraceWin digital twin simulation to check beam envelope losses"
+    prompt = "Run TRACK ray tracing simulation to check heavy ion beam envelope losses"
     selected = registry.classify_intent(prompt, max_tools=4)
     selected_names = [c.name for c in selected]
 
-    assert "run_tracewin_simulation" in selected_names
+    assert "run_track_simulation" in selected_names
+
+    prompt_impact = "Run IMPACT-Z 3D space charge simulation"
+    selected_impact = registry.classify_intent(prompt_impact, max_tools=4)
+    selected_impact_names = [c.name for c in selected_impact]
+    assert "run_impactz_simulation" in selected_impact_names

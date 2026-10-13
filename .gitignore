@@ -53,6 +53,7 @@ venv.bak/
 partran*
 dst_*.dat
 trace.log
+tmp_track_run/
 
 # Epics / Archiver dumps
 *.caput

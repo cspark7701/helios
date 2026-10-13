@@ -67,3 +67,46 @@ def test_fast_physics_surrogate_preflight():
     extreme_setpoints = {"MEBT_QD01": 50.0, "MEBT_QF02": 50.0}
     res_bad = surrogate.validate_plan_setpoints(extreme_setpoints)
     assert not res_bad.is_valid or res_bad.projected_beam_loss > 0.0
+
+
+def test_track_simulator_deck_generation(tmp_path):
+    """Verify TrackSimulator deck generation (track.dat and sclinac.dat)."""
+    from helios.physics.engine import TrackSimulator
+
+    sim = TrackSimulator(work_dir=tmp_path)
+    lat = create_baseline_mebt_lattice()
+
+    track_dat = tmp_path / "track.dat"
+    sclinac_dat = tmp_path / "sclinac.dat"
+
+    sim.generate_track_dat(lat, track_dat)
+    sim.generate_sclinac_dat(lat, sclinac_dat)
+
+    assert track_dat.exists()
+    assert sclinac_dat.exists()
+
+    track_content = track_dat.read_text(encoding="utf-8")
+    assert "&tran" in track_content
+    assert "Win" in track_content
+
+    sclinac_content = sclinac_dat.read_text(encoding="utf-8")
+    assert "QUAD" in sclinac_content
+    assert "DRIFT" in sclinac_content
+    assert "END" in sclinac_content
+
+
+def test_track_and_impact_simulation_run():
+    """Verify TrackSimulator and ImpactZSimulator run and return TrajectoryPoints."""
+    from helios.physics.engine import ImpactZSimulator, TrackSimulator
+
+    lat = create_baseline_mebt_lattice()
+
+    track_sim = TrackSimulator()
+    traj_track = track_sim.run_simulation(lat)
+    assert len(traj_track) > 0
+    assert traj_track[-1].s_m > 0.0
+
+    impact_sim = ImpactZSimulator()
+    traj_impact = impact_sim.run_simulation(lat)
+    assert len(traj_impact) > 0
+    assert traj_impact[-1].s_m > 0.0

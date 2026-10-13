@@ -42,15 +42,16 @@ flowchart TD
 
 ## Phase 9: Real Simulation Code Integration & Heavy Ion Dynamics
 
-- [ ] **9.1 TraceWin File Parser & Batch Execution Engine**
-  - [ ] Parse TraceWin `.dat` lattice definitions and element parameters.
-  - [ ] Generate TraceWin batch execution command lines and handle headless runs.
-  - [ ] Ingest TraceWin outputs: `envelope.out`, `partran*.out`, `loss.out`.
-- [ ] **9.2 IMPACT-Z 3D Space-Charge Engine**
-  - [ ] Wrapper for 3D space-charge PIC code (IMPACT-Z) in space-charge dominated low-energy sections (LEBT/RFQ).
-- [ ] **9.3 Multi-Charge-State (MCS) Heavy Ion Dynamics**
-  - [ ] Implement multi-charge-state beam distributions (e.g. $^{238}\text{U}^{33+/34+}$).
-  - [ ] Model charge strippers and achromatic charge-selection sections.
+- [x] **9.1 ANL TRACK File Parser & Execution Engine**
+  - [x] Generate TRACK `track.dat` and `sclinac.dat` lattice definitions.
+  - [x] Headless execution via `/usr/bin/wine` on 64-bit TRACK binary (`TRACKv39C.exe`).
+  - [x] Ingest TRACK outputs (`envelop.out`, loss projection) with graceful fallback to digital twin.
+- [x] **9.2 LBNL IMPACT-Z 3D Space-Charge Engine**
+  - [x] Integration via `lume-impact` and `ImpactZ` for 3D PIC space-charge modeling in low-energy and linac sections.
+  - [x] Ingest beam metrics and transmission estimates.
+- [x] **9.3 Multi-Charge-State (MCS) Heavy Ion Dynamics & Lattice Integration**
+  - [x] Support multi-species and multi-charge-state beam tracking in physics engine elements.
+  - [x] Expose `TrackSimulator` and `ImpactZSimulator` tools in `CapabilityRegistry` for orchestrator agents.
 
 ---
 

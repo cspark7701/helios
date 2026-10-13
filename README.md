@@ -15,7 +15,7 @@ Modern heavy ion linear accelerators (linacs) present unique operational challen
 HELIOS provides an autonomous, multi-agent AI framework designed to orchestrate accelerator operations ranging from digital twin simulation to live control via EPICS. By decomposing control and optimization problems into specialized, collaborative AI agents, HELIOS enables:
 
 - **Autonomous Beam Commissioning & Tuning**: Multi-objective trajectory correction, transverse matching, RF cavity phase/amplitude scanning, and longitudinal tune-ups.
-- **Physics-Informed Decision Making**: Seamless coupling of deep neural surrogate models with benchmarked beam dynamics simulation codes (e.g., TraceWin, IMPACT-Z, Elegant).
+- **Physics-Informed Decision Making**: Seamless coupling of deep neural surrogate models with benchmarked beam dynamics simulation codes (e.g., ANL TRACK, LBNL IMPACT-Z, Elegant).
 - **Proactive Anomaly Detection & Machine Protection**: Real-time telemetry monitoring, RF trip prediction, beam loss localization, and safe fallback procedures.
 - **Safe Human-in-the-Loop (HITL) Operations**: Tiered permission policies, action verification, explainable action plans, and automated reporting.
 
@@ -108,7 +108,7 @@ HELIOS draws architectural principles and foundational design patterns from Lawr
 ### Prerequisites
 - Python 3.10+
 - EPICS base libraries (optional for simulation-only mode)
-- Beam dynamics simulation binaries (e.g., TraceWin, IMPACT-Z) configured in path or container
+- Beam dynamics simulation binaries (e.g., ANL TRACK via Wine, LBNL IMPACT-Z via lume-impact) configured in path or container
 
 ### Installation
 

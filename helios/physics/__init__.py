@@ -11,7 +11,9 @@ from helios.physics.elements import (
 from helios.physics.engine import (
     AnalyticDigitalTwinEngine,
     BeamDynamicsEngine,
+    ImpactZSimulator,
     TraceWinSimulator,
+    TrackSimulator,
 )
 from helios.physics.lattice import (
     Lattice,
@@ -29,11 +31,13 @@ __all__ = [
     "Drift",
     "Element",
     "FastPhysicsSurrogate",
+    "ImpactZSimulator",
     "Lattice",
     "Quadrupole",
     "RFCavity",
     "Steerer",
     "TraceWinSimulator",
+    "TrackSimulator",
     "TrajectoryPoint",
     "create_baseline_mebt_lattice",
 ]

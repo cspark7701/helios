@@ -174,12 +174,20 @@ def get_default_registry() -> CapabilityRegistry:
 
     # Physics Agent Capabilities
     registry.register(Capability(
-        name="run_tracewin_simulation",
-        description="Run TraceWin digital twin simulation to calculate beam envelopes and space-charge losses",
+        name="run_track_simulation",
+        description="Run ANL TRACK heavy ion beam dynamics code via Wine to calculate ray tracing, multi-charge state beams, and envelopes",
         domain=CapabilityDomain.SIMULATION,
         target_agent="HELIOS-Physics",
         risk_level=RiskLevel.READ_ONLY,
-        keywords=["tracewin", "simulate", "envelope", "digital twin", "particles", "loss"],
+        keywords=["track", "simulate", "envelope", "digital twin", "particles", "loss", "anl", "heavy ion"],
+    ))
+    registry.register(Capability(
+        name="run_impactz_simulation",
+        description="Run LBNL IMPACT-Z 3D space-charge particle-in-cell simulation via lume-impact",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["impact", "impactz", "space charge", "pic", "lbnl", "lume-impact"],
     ))
     registry.register(Capability(
         name="run_surrogate_envelope",

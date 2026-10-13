@@ -73,7 +73,7 @@ classDiagram
 ### 2.2 Physics & Simulation Agent (`HELIOS-Physics`)
 - **Role**: Accelerator digital twin custodian and physics modeling engine.
 - **Responsibilities**:
-  - Manages accelerator lattice models and beam dynamics codes (e.g., TraceWin, IMPACT-Z, Elegant, Bmad).
+  - Manages accelerator lattice models and beam dynamics codes (e.g., TRACK, IMPACT-Z, Elegant, Bmad).
   - Executes rapid pre-flight validations using neural network surrogate models.
   - Performs sensitivity analysis, phase advance verification, and beam loss projections.
   - Calibrates simulation parameters to match real-time machine readouts.
@@ -164,7 +164,7 @@ HELIOS defines five levels of operational autonomy:
 ## 5. Agent Communication Protocols
 
 - **Structured Messaging**: Agents communicate via strongly-typed Pydantic schemas over asynchronous message queues (or in-process event buses).
-- **Tool Protocol**: Specialized capabilities (running TraceWin, calling EPICS, computing SVD) are encapsulated as typed tools conforming to OpenAPI/function calling standards.
+- **Tool Protocol**: Specialized capabilities (running TRACK, IMPACT-Z, calling EPICS, computing SVD) are encapsulated as typed tools conforming to OpenAPI/function calling standards.
 - **State Store**: Global machine state, lattice files, and active policies reside in a version-controlled shared state store.
 - **Rollback Invariant**: Prior to any hardware setpoint write, the `ControlAgent` registers the previous known valid setpoints to the `SafetyAgent` rollback stack.
 
