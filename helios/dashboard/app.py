@@ -2,7 +2,7 @@
 
 Provides REST and WebSocket endpoints for real-time accelerator telemetry,
 interactive physics visualizations, orbit tuning, Human-in-the-Loop plan approval,
-and an interactive side panel Natural Language Prompt Window for control room physicists.
+and an interactive side panel Natural Language Prompt Window with selectable Language Models.
 Features a clean, high-contrast white background with color fonts.
 """
 
@@ -24,6 +24,7 @@ except ImportError:
     HAVE_FASTAPI = False
 
 from helios.core.schemas import AutonomyLevel, PlanState
+from helios.core.llm import create_llm_client
 from helios.dashboard.plots import (
     generate_blm_heatmap_data,
     generate_envelope_plot_data,
@@ -221,7 +222,7 @@ def create_dashboard_app(
 
     @app.get("/", response_class=HTMLResponse)
     async def get_dashboard_html() -> str:
-        """Serve single-page operator console UI with side panel prompt window."""
+        """Serve single-page operator console UI with side panel prompt window and model selector."""
         return """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -300,7 +301,7 @@ def create_dashboard_app(
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
         }
         .badge {
             display: inline-flex;
@@ -349,13 +350,13 @@ def create_dashboard_app(
         /* Two-Column Layout with Side Panel */
         .layout-grid {
             display: grid;
-            grid-template-columns: 1fr 390px;
+            grid-template-columns: 1fr 410px;
             gap: 22px;
-            max-width: 1680px;
+            max-width: 1720px;
             margin: 0 auto;
             padding: 22px 28px;
         }
-        @media (max-width: 1180px) {
+        @media (max-width: 1200px) {
             .layout-grid {
                 grid-template-columns: 1fr;
             }
@@ -576,7 +577,7 @@ def create_dashboard_app(
             top: 86px;
         }
         .prompt-header {
-            padding: 14px 18px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             justify-content: space-between;
@@ -593,6 +594,65 @@ def create_dashboard_app(
             align-items: center;
             gap: 8px;
         }
+
+        /* Model Selector Strip */
+        .model-selector-box {
+            padding: 10px 14px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .model-selector-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .model-select-control {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-heading);
+            background: #ffffff;
+            outline: none;
+            cursor: pointer;
+        }
+        .model-select-control:focus {
+            border-color: var(--primary-blue);
+        }
+        .btn-gear {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+        .btn-gear:hover {
+            color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+        .model-config-drawer {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 4px;
+            font-size: 11px;
+        }
+        .model-config-drawer.open {
+            display: flex;
+        }
+
         .prompt-messages {
             flex: 1;
             overflow-y: auto;
@@ -727,7 +787,7 @@ def create_dashboard_app(
         </div>
         <div class="nav-actions">
             <span class="badge badge-green"><span class="pulse-dot"></span> System Online</span>
-            <span class="badge badge-purple" id="badge-autonomy">Autonomy: Assisted</span>
+            <span class="badge badge-purple" id="badge-llm">LLM: mock-helios-planner</span>
             <span class="badge badge-blue" id="badge-section">Section: LEBT</span>
             <button class="btn-panic" onclick="triggerPanic()">EMERGENCY PANIC</button>
         </div>
@@ -985,14 +1045,55 @@ def create_dashboard_app(
 
         </main>
 
-        <!-- RIGHT COLUMN: SIDE PANEL PROMPT WINDOW -->
+        <!-- RIGHT COLUMN: SIDE PANEL PROMPT WINDOW WITH MODEL SELECTOR -->
         <aside class="side-col">
             <div class="prompt-panel">
                 <div class="prompt-header">
                     <div class="prompt-title">
                         <span>💬 AI Assistant Prompt</span>
                     </div>
-                    <span class="badge badge-purple" style="font-size: 10px;">HELIOS-LLM</span>
+                    <span class="badge badge-purple" id="panel-model-badge">mock-helios-planner</span>
+                </div>
+
+                <!-- Model Selection Bar -->
+                <div class="model-selector-box">
+                    <div class="model-selector-row">
+                        <select class="model-select-control" id="llm-model-select" onchange="onModelChange()">
+                            <optgroup label="Offline / Deterministic (No Network)">
+                                <option value="mock|mock-helios-planner" selected>🤖 Offline (mock-helios-planner)</option>
+                            </optgroup>
+                            <optgroup label="Local GPU (Ollama / On-Premise)">
+                                <option value="ollama|llama3">🦙 Ollama: Llama 3 (Local)</option>
+                                <option value="ollama|mistral">⚡ Ollama: Mistral (Local)</option>
+                                <option value="ollama|deepseek-r1">🧠 Ollama: DeepSeek-R1 (Local)</option>
+                                <option value="ollama|qwen2.5">🌐 Ollama: Qwen 2.5 (Local)</option>
+                            </optgroup>
+                            <optgroup label="Cloud API (OpenAI / External)">
+                                <option value="openai|gpt-4o-mini">🌐 OpenAI: GPT-4o Mini</option>
+                                <option value="openai|gpt-4o">🌐 OpenAI: GPT-4o</option>
+                            </optgroup>
+                            <optgroup label="Custom Endpoint">
+                                <option value="custom|custom">⚙️ Custom Endpoint (vLLM / LocalAI)...</option>
+                            </optgroup>
+                        </select>
+                        <button class="btn-gear" onclick="toggleModelConfig()" title="Configure Custom Endpoint or API Key">⚙️</button>
+                    </div>
+
+                    <!-- Collapsible Model Config Drawer -->
+                    <div class="model-config-drawer" id="model-config-drawer">
+                        <div>
+                            <label style="font-weight: 700; color: var(--text-heading);">Base URL:</label>
+                            <input type="text" class="form-control" id="custom-base-url" placeholder="http://localhost:11434/v1" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div>
+                            <label style="font-weight: 700; color: var(--text-heading);">Model Name:</label>
+                            <input type="text" class="form-control" id="custom-model-name" placeholder="llama3 or gpt-4o" style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                        <div>
+                            <label style="font-weight: 700; color: var(--text-heading);">API Key (Optional):</label>
+                            <input type="password" class="form-control" id="custom-api-key" placeholder="Bearer token / sk-..." style="font-size: 11px; padding: 4px 8px;">
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Chat Messages Scroll Area -->
@@ -1039,6 +1140,30 @@ def create_dashboard_app(
             if (tabId === 'tab-diagnostics') {
                 loadDiagnosticPlots();
             }
+        }
+
+        // Language Model Selector Logic
+        function onModelChange() {
+            const val = document.getElementById('llm-model-select').value;
+            const [provider, model] = val.split('|');
+            const drawer = document.getElementById('model-config-drawer');
+            const badgeTop = document.getElementById('badge-llm');
+            const badgeSide = document.getElementById('panel-model-badge');
+
+            if (provider === 'custom') {
+                drawer.classList.add('open');
+                badgeTop.textContent = 'LLM: Custom';
+                badgeSide.textContent = 'Custom';
+            } else {
+                drawer.classList.remove('open');
+                badgeTop.textContent = `LLM: ${model}`;
+                badgeSide.textContent = model;
+            }
+        }
+
+        function toggleModelConfig() {
+            const drawer = document.getElementById('model-config-drawer');
+            drawer.classList.toggle('open');
         }
 
         function renderOrbitChart(monitors, tolerance) {
@@ -1258,7 +1383,6 @@ def create_dashboard_app(
             }
         }
 
-        // SIDE PANEL PROMPT WINDOW LOGIC
         function handlePromptKey(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -1279,6 +1403,21 @@ def create_dashboard_app(
             const msgsBox = document.getElementById('prompt-messages');
             const btn = document.getElementById('btn-send-prompt');
 
+            // Determine selected provider and model
+            const modelVal = document.getElementById('llm-model-select').value;
+            let [provider, model] = modelVal.split('|');
+            let baseUrl = null;
+            let apiKey = null;
+
+            if (provider === 'custom') {
+                baseUrl = document.getElementById('custom-base-url').value.trim() || 'http://localhost:11434/v1';
+                model = document.getElementById('custom-model-name').value.trim() || 'llama3';
+                apiKey = document.getElementById('custom-api-key').value.trim() || null;
+                provider = 'local';
+            } else if (provider === 'ollama') {
+                baseUrl = 'http://localhost:11434/v1';
+            }
+
             // Append User message
             const userBubble = document.createElement('div');
             userBubble.className = 'chat-bubble bubble-user';
@@ -1292,12 +1431,12 @@ def create_dashboard_app(
 
             btn.disabled = true;
 
-            // Append Thinking placeholder
+            // Append Assistant placeholder
             const assistBubble = document.createElement('div');
             assistBubble.className = 'chat-bubble bubble-assistant';
             assistBubble.innerHTML = `
-                <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator</span></div>
-                <div style="color: var(--text-muted); font-style: italic;">Formulating execution plan & physics verification...</div>
+                <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator (${model})</span></div>
+                <div style="color: var(--text-muted); font-style: italic;">Querying ${model} & formulating execution plan...</div>
             `;
             msgsBox.appendChild(assistBubble);
             msgsBox.scrollTop = msgsBox.scrollHeight;
@@ -1306,8 +1445,20 @@ def create_dashboard_app(
                 const res = await fetch('/api/prompt', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt: promptText})
+                    body: JSON.stringify({
+                        prompt: promptText,
+                        provider: provider,
+                        model: model,
+                        base_url: baseUrl,
+                        api_key: apiKey
+                    })
                 });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.detail || `Server returned ${res.status}`);
+                }
+
                 const data = await res.json();
 
                 let stepsHtml = '';
@@ -1329,14 +1480,15 @@ def create_dashboard_app(
                 }
 
                 assistBubble.innerHTML = `
-                    <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator</span></div>
+                    <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator (${data.model || model})</span></div>
                     <div style="color: var(--text-body);">${data.explanation}</div>
                     ${stepsHtml}
                 `;
             } catch (err) {
                 assistBubble.innerHTML = `
-                    <div class="bubble-assistant-label"><span style="color:var(--accent-red)">⚠️ Error</span></div>
-                    <div style="color: var(--accent-red);">Failed to process directive: ${err.message}</div>
+                    <div class="bubble-assistant-label"><span style="color:var(--accent-red)">⚠️ Model Error (${model})</span></div>
+                    <div style="color: var(--accent-red); margin-bottom: 6px;">Failed to generate plan: ${err.message}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Tip: If local Ollama or cloud API is unreachable, switch to <strong>Offline (mock-helios-planner)</strong> in the dropdown above.</div>
                 `;
             } finally {
                 btn.disabled = false;
@@ -1355,7 +1507,6 @@ def create_dashboard_app(
             msgsBox.appendChild(note);
             msgsBox.scrollTop = msgsBox.scrollHeight;
 
-            // Trigger orbit correction
             const result = await executeOrbitCorrection();
             if (result) {
                 note.innerHTML = `
@@ -1374,7 +1525,6 @@ def create_dashboard_app(
             msgsBox.scrollTop = msgsBox.scrollHeight;
         }
 
-        // Live WebSocket Telemetry Stream
         function initWebSocket() {
             const loc = window.location;
             const wsUri = (loc.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + loc.host + '/ws/telemetry';
@@ -1533,16 +1683,92 @@ def create_dashboard_app(
             current_increment_a=step,
         )
 
+    @app.get("/api/llm/models")
+    async def get_llm_models_endpoint() -> List[Dict[str, Any]]:
+        """List selectable LLM models and local/cloud providers."""
+        return [
+            {
+                "id": "mock-helios-planner",
+                "name": "Offline Deterministic (mock-helios-planner)",
+                "provider": "mock",
+                "type": "Offline / Air-Gapped",
+                "description": "Deterministic rule-based physics planner for air-gapped linac control.",
+            },
+            {
+                "id": "llama3",
+                "name": "Ollama: Llama 3",
+                "provider": "ollama",
+                "base_url": "http://localhost:11434/v1",
+                "type": "Local GPU (Private)",
+                "description": "On-premise LLM served via Ollama.",
+            },
+            {
+                "id": "mistral",
+                "name": "Ollama: Mistral",
+                "provider": "ollama",
+                "base_url": "http://localhost:11434/v1",
+                "type": "Local GPU (Private)",
+                "description": "Fast lightweight local model via Ollama.",
+            },
+            {
+                "id": "deepseek-r1",
+                "name": "Ollama: DeepSeek-R1",
+                "provider": "ollama",
+                "base_url": "http://localhost:11434/v1",
+                "type": "Local GPU (Private)",
+                "description": "Reasoning model running locally via Ollama.",
+            },
+            {
+                "id": "gpt-4o-mini",
+                "name": "OpenAI: GPT-4o Mini",
+                "provider": "openai",
+                "base_url": "https://api.openai.com/v1",
+                "type": "Cloud API",
+                "description": "Fast cloud LLM with structured tool calling.",
+            },
+            {
+                "id": "gpt-4o",
+                "name": "OpenAI: GPT-4o",
+                "provider": "openai",
+                "base_url": "https://api.openai.com/v1",
+                "type": "Cloud API",
+                "description": "Advanced reasoning cloud LLM.",
+            },
+        ]
+
     @app.post("/api/prompt")
     async def process_prompt_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Process conversational natural language directive from side panel prompt window."""
+        """Process conversational directive with user-selected Language Model."""
         prompt = payload.get("prompt", "").strip()
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
-        from helios.agents.planner import NaturalLanguagePlanner
-        planner = NaturalLanguagePlanner()
-        plan, explanation = planner.formulate_plan_from_prompt(prompt)
+        provider = str(payload.get("provider", "mock")).lower()
+        model_name = str(payload.get("model", "mock-helios-planner"))
+        base_url = payload.get("base_url")
+        api_key = payload.get("api_key")
+
+        llm_kwargs: Dict[str, Any] = {}
+        if model_name:
+            llm_kwargs["model"] = model_name
+        if base_url:
+            llm_kwargs["base_url"] = base_url
+        elif provider == "ollama":
+            llm_kwargs["base_url"] = "http://localhost:11434/v1"
+        if api_key:
+            llm_kwargs["api_key"] = api_key
+
+        try:
+            llm_client = create_llm_client(provider=provider, **llm_kwargs)
+            from helios.agents.planner import NaturalLanguagePlanner
+            planner = NaturalLanguagePlanner(llm_client=llm_client)
+            plan, explanation = planner.formulate_plan_from_prompt(prompt)
+        except Exception as e:
+            logger.error(f"Error querying model {model_name} via {provider}: {e}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Error querying model '{model_name}' via provider '{provider}': {str(e)}",
+            )
 
         plans_store[plan.plan_id] = {
             "plan_id": plan.plan_id,
@@ -1563,6 +1789,8 @@ def create_dashboard_app(
 
         return {
             "explanation": explanation,
+            "model": model_name,
+            "provider": provider,
             "plan": {
                 "plan_id": plan.plan_id,
                 "title": plan.title,

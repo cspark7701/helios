@@ -60,8 +60,8 @@ class MockLLMClient(BaseLLMClient):
     appropriate structured tool calls or plan generation responses.
     """
 
-    def __init__(self, model_name: str = "mock-helios-planner"):
-        self.model_name = model_name
+    def __init__(self, model_name: Optional[str] = None, model: Optional[str] = None, **kwargs):
+        self.model_name = model or model_name or "mock-helios-planner"
 
     def generate(
         self,

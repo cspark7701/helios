@@ -152,3 +152,27 @@ def test_dashboard_prompt_window_endpoint(client):
     assert resp_empty.status_code == 400
 
 
+def test_dashboard_llm_model_selection(client):
+    """Verify listing available models and querying with selected model configuration."""
+    resp_models = client.get("/api/llm/models")
+    assert resp_models.status_code == 200
+    models = resp_models.json()
+    assert len(models) >= 4
+    model_ids = [m["id"] for m in models]
+    assert "mock-helios-planner" in model_ids
+    assert "llama3" in model_ids
+
+    # Query with explicit model selection
+    resp_prompt = client.post("/api/prompt", json={
+        "prompt": "Scan buncher cavity phase in MEBT",
+        "provider": "mock",
+        "model": "mock-helios-planner"
+    })
+    assert resp_prompt.status_code == 200
+    data = resp_prompt.json()
+    assert data["model"] == "mock-helios-planner"
+    assert data["provider"] == "mock"
+    assert data["success"] is True
+
+
+
