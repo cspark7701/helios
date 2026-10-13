@@ -1,0 +1,9 @@
+{
+  "python_versions": ["3.10", "3.11", "3.12"],
+  "extras": ["core", "dev", "dashboard", "epics", "ml", "ontology", "all"],
+  "checks": [
+    {"name": "CI contract and workflow validity", "args": ["scripts/ci_contract.py", "validate"]},
+    {"name": "HELIOS core import boundary", "args": ["-c", "import helios; print(f'HELIOS core v{helios.__version__} verified')"]},
+    {"name": "HELIOS CLI entrypoint check", "args": ["-m", "helios.cli.main", "--help"]}
+  ]
+}
