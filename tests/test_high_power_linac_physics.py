@@ -43,3 +43,41 @@ def test_beam_dump_thermo_mechanics_and_chf_abort():
     assert res_over.abort_interlock_tripped
     assert res_over.status == "ABORT_REQUIRED"
     assert res_over.stress_safety_factor < 1.0 or res_over.chf_margin < 1.25
+
+
+def test_cavity_multipactoring_and_field_emission():
+    """Verify SEY resonant barriers and Fowler-Nordheim dark current scaling."""
+    from helios.rf.multipactor import SurfaceMaterial, CavityMultipactorEngine
+
+    engine = CavityMultipactorEngine()
+
+    # 1. Niobium coaxial coupler at 162.5 MHz with 15 mm gap
+    # Evaluate at resonance level
+    res_mp = engine.evaluate_multipactoring(
+        material=SurfaceMaterial.NIOBIUM,
+        frequency_MHz=162.5,
+        gap_distance_mm=15.0,
+        operating_voltage_kV=1.2  # close to resonance
+    )
+    assert res_mp.resonant_order_1_voltage_kV > 0.0
+    assert len(res_mp.barrier_voltage_bands_kV) == 2
+    assert res_mp.secondary_emission_yield > 0.0
+
+    # 2. TiN coating suppresses SEY (delta_max < 1.0) -> SAFE
+    res_tin = engine.evaluate_multipactoring(
+        material=SurfaceMaterial.TITANIUM_NITRIDE_COATED,
+        frequency_MHz=162.5,
+        gap_distance_mm=15.0,
+        operating_voltage_kV=1.2
+    )
+    assert res_tin.risk_level == "SAFE"
+
+    # 3. Fowler-Nordheim field emission at low vs high electric field
+    fe_low = engine.evaluate_field_emission(peak_E_MV_m=12.0, field_enhancement_beta=50.0)
+    assert fe_low.sensor_radiation_status == "NOMINAL"
+    assert fe_low.radiation_dose_rate_mGy_per_hr < 1.0
+
+    fe_high = engine.evaluate_field_emission(peak_E_MV_m=35.0, field_enhancement_beta=85.0)
+    assert fe_high.total_dark_current_uA > 0.1
+    assert fe_high.sensor_radiation_status in ["ELEVATED", "CRITICAL_QUENCH_RISK"]
+

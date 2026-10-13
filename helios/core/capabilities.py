@@ -596,6 +596,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.READ_ONLY,
         keywords=["beam dump", "bragg peak", "thermal stress", "gruneisen", "chf", "hydrodynamic shock", "target"],
     ))
+    registry.register(Capability(
+        name="evaluate_cavity_multipactor_and_dark_current",
+        description="Model RF coaxial coupler multipactoring breakdown bands and Fowler-Nordheim dark current radiation",
+        domain=CapabilityDomain.RF,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["multipactor", "sey", "dark current", "fowler-nordheim", "field emission", "bremsstrahlung", "coupler"],
+    ))
 
     return registry
 
