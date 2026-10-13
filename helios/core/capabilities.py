@@ -604,6 +604,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.READ_ONLY,
         keywords=["multipactor", "sey", "dark current", "fowler-nordheim", "field emission", "bremsstrahlung", "coupler"],
     ))
+    registry.register(Capability(
+        name="evaluate_hofmann_stability_and_rematch",
+        description="Map linac phase advances onto Hofmann stability charts and calculate resonance-free lattice rematching",
+        domain=CapabilityDomain.OPTICS,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["hofmann", "equipartitioning", "space charge", "tune depression", "emittance exchange", "phase advance"],
+    ))
 
     return registry
 

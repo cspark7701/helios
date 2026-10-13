@@ -81,3 +81,46 @@ def test_cavity_multipactoring_and_field_emission():
     assert fe_high.total_dark_current_uA > 0.1
     assert fe_high.sensor_radiation_status in ["ELEVATED", "CRITICAL_QUENCH_RISK"]
 
+
+def test_hofmann_stability_charts_and_rematching():
+    """Verify Hofmann space-charge stability mapping and resonance rematching."""
+    from helios.physics.equipartition import (
+        LinacPhaseAdvance,
+        HofmannResonanceType,
+        HofmannEquipartitionEngine,
+    )
+
+    engine = HofmannEquipartitionEngine()
+
+    # 1. Unstable operating point near 2*sigma_t - sigma_l = 0 resonance
+    # sigma_t = 30 deg, sigma_l = 60 deg -> 2*30 - 60 = 0!
+    unstable_linac = LinacPhaseAdvance(
+        section_id="SCL1_PERIOD_04",
+        sigma_0t_deg=65.0,
+        sigma_0l_deg=75.0,
+        sigma_t_deg=30.0,
+        sigma_l_deg=60.0,
+        emit_norm_t_mm_mrad=0.35,
+        emit_norm_l_deg_MeV=2.5
+    )
+    res_unst = engine.evaluate_stability(unstable_linac)
+    assert res_unst.active_resonance == HofmannResonanceType.SECOND_ORDER_DIFFERENCE
+    assert res_unst.stability_status == "UNSTABLE_EMITTANCE_EXCHANGE"
+    assert res_unst.recommended_sigma_t_deg > res_unst.tune_depression_t * 65.0
+
+    # 2. Stable operating point well separated from stopbands
+    # sigma_t = 55 deg, sigma_l = 45 deg -> 2*55 - 45 = 65 deg away!
+    stable_linac = LinacPhaseAdvance(
+        section_id="SCL1_PERIOD_08",
+        sigma_0t_deg=70.0,
+        sigma_0l_deg=60.0,
+        sigma_t_deg=55.0,
+        sigma_l_deg=45.0,
+        emit_norm_t_mm_mrad=0.30,
+        emit_norm_l_deg_MeV=3.0
+    )
+    res_st = engine.evaluate_stability(stable_linac)
+    assert res_st.active_resonance == HofmannResonanceType.NONE
+    assert res_st.stability_status == "STABLE"
+
+
