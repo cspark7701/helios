@@ -80,7 +80,7 @@ include = ["helios*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --import-mode=importlib"
+addopts = "-ra --import-mode=importlib"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = [
