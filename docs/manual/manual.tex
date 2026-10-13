@@ -1,0 +1,194 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!10},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    showstringspaces=false
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textbf{HELIOS Reference Manual}}
+\lhead{Heavy Ion Linac Intelligent Orchestration}
+\rfoot{Page \thepage}
+
+\title{
+    \vspace{2cm}
+    \Huge \textbf{HELIOS Framework} \\
+    \Large \textbf{User \& Developer Reference Manual} \\
+    \vspace{0.5cm}
+    \large Heavy Ion Linac Intelligent Orchestration \\
+    \normalsize \textit{Autonomous, Safety-First Accelerator Control \& Commissioning Platform}
+    \vspace{2cm}
+}
+\author{\textbf{HELIOS Collaboration} \\ Chong Shik Park (\texttt{cspark7701@gmail.com})}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\chapter{System Overview and Architecture}
+
+\section{Introduction}
+\textbf{HELIOS} (\textbf{HE}avy ion \textbf{L}inac \textbf{I}ntelligent \textbf{O}rchestration) is a distributed multi-agent artificial intelligence framework engineered for commissioning, operating, and optimizing heavy-ion linear accelerators (LEBT, RFQ, MEBT, SCL, and HEBT).
+
+Aligned directly with the \textbf{Plan-First} paradigm established by the Lawrence Berkeley National Laboratory (LBNL) Osprey architecture, HELIOS enforces strict separation of concerns between optimization heuristics, digital twin simulation validations, deterministic safety gatekeepers, and hardware control layers.
+
+\section{Agent Taxonomy and Roles}
+The framework partitions operational responsibilities among specialized autonomous agents:
+\begin{enumerate}
+    \item \textbf{Master Orchestrator Agent (\texttt{HELIOS-Orchestrator})}: Decomposes high-level physicist directives into formal execution plans, manages multi-agent coordination, and interfaces with human operators.
+    \item \textbf{Physics and Simulation Agent (\texttt{HELIOS-Physics})}: Manages the digital twin model, executes ANL TRACK and LBNL IMPACT-Z simulations, and evaluates deep neural surrogate models.
+    \item \textbf{Diagnostics and Telemetry Agent (\texttt{HELIOS-Diagnostics})}: Ingests real-time signals from Beam Position Monitors (BPMs), Beam Loss Monitors (BLMs), and wire scanners; evaluates beam transmission and detects operational anomalies.
+    \item \textbf{Tuning and Optimization Agent (\texttt{HELIOS-Tuner})}: Executes algorithmic optimization including response-matrix SVD orbit correction, multi-objective Bayesian Optimization, and Reinforcement Learning continuous control.
+    \item \textbf{Safety and Verification Agent (\texttt{HELIOS-Safety})}: Serves as a deterministic gatekeeper enforcing hard software limits, slew-rate constraints, cryo-quench margins, and instant rollback stacks.
+    \item \textbf{Control and Hardware Interface Agent (\texttt{HELIOS-Control})}: Interfaces with the live control system via EPICS Channel Access (CA) and pvAccess (PVA) with atomic readback verification.
+\end{enumerate}
+
+\section{Graduated Autonomy Levels}
+HELIOS implements five graduated operational autonomy levels for human-in-the-loop gating:
+\begin{table}[h]
+\centering
+\begin{tabular}{ccll}
+\toprule
+\textbf{Level} & \textbf{Name} & \textbf{Description} & \textbf{Operator Role} \\
+\midrule
+0 & Advisory & Passive telemetry monitoring \& anomaly alerts & Manual action only \\
+1 & Assisted & Pre-flight verified plans generated & Mandatory approval per setpoint \\
+2 & Supervised & Automated tuning within tight envelopes & Supervisory abort authority \\
+3 & Bounded Auto & Closed-loop optimization within boundaries & Passive monitoring \\
+4 & Fully Auto & Self-driving linac domain commissioning & Goal-setting oversight only \\
+\bottomrule
+\end{tabular}
+\caption{Operational Autonomy Levels in HELIOS.}
+\end{table}
+
+\newpage
+\chapter{Installation and Environment Setup}
+
+\section{Prerequisites}
+HELIOS requires Python 3.10 or higher (recommended: Python 3.11 in Conda).
+\begin{lstlisting}[language=bash]
+# Clone repository
+git clone https://github.com/cspark/helios.git
+cd helios
+
+# Create and activate conda environment
+conda create -n helios python=3.11 -y
+conda activate helios
+
+# Install dependencies in editable mode
+pip install -e ".[dev,ml,dashboard,ontology]"
+\end{lstlisting}
+
+\section{External Simulators and Control Tools}
+\begin{itemize}
+    \item \textbf{ANL TRACK}: Heavy-ion ray-tracing and multi-charge state tracking code executed via Wine 64-bit (\texttt{wine64 track.exe}).
+    \item \textbf{LBNL IMPACT-Z}: 3D space-charge Particle-in-Cell (PIC) simulation managed through \texttt{lume-impact}.
+    \item \textbf{EPICS Base}: Channel Access and pvAccess tools (\texttt{p4p}, \texttt{pyepics}) for live communication with accelerator IOCs.
+\end{itemize}
+
+\chapter{Operator Interfaces and CLI}
+
+HELIOS provides an ergonomic command-line interface implemented via Typer and Rich.
+
+\section{Interactive Operator Console}
+Launch the conversational operator assistant:
+\begin{lstlisting}[language=bash]
+helios chat
+\end{lstlisting}
+The console accepts natural language goals (e.g. \textit{``Correct horizontal orbit in MEBT and verify quench margins on SCL1 cavity 02''}), decomposing them into formal Osprey execution plans.
+
+\section{Real-Time Web Dashboard}
+Start the FastAPI and WebSocket visualization dashboard:
+\begin{lstlisting}[language=bash]
+helios dashboard --host 0.0.0.0 --port 8000
+\end{lstlisting}
+Open \texttt{http://localhost:8000} to inspect live BPM orbits, cavity resonance states, radiation loss heatmaps, and approve human-in-the-loop plans.
+
+\section{Commissioning Shift Reporting}
+Compile electronic logbook reports:
+\begin{lstlisting}[language=bash]
+helios report --facility "RAON SCL1" --output shift_report.md
+\end{lstlisting}
+
+\section{Tamper-Evident Audit Verification}
+Verify SHA-256 cryptographic hash chaining across all recorded Process Variable writes:
+\begin{lstlisting}[language=bash]
+helios audit --verify
+\end{lstlisting}
+
+\newpage
+\chapter{Accelerator Physics and Beam Dynamics}
+
+\section{Multi-Species and Multi-Charge-State (MCS) Dynamics}
+Heavy-ion linacs frequently accelerate multi-charge state beams simultaneously (e.g., $^{238}\text{U}^{33+}$ and $^{238}\text{U}^{34+}$). The magnetic rigidity $B\rho$ is given by:
+\begin{equation}
+    B\rho = \frac{p}{q} = \frac{\gamma m_0 \beta c}{q}
+\end{equation}
+The module \texttt{helios.physics.species} models isotopic distributions and composite beam envelopes across charge fractions.
+
+\section{Beam-Based Alignment (BBA) and Dispersion-Free Steering (DFS)}
+Beam offsets relative to quadrupole magnetic centers are computed via strength modulation $\Delta K_1$:
+\begin{equation}
+    \Delta x_{\text{BPM}} = R_{12} \cdot (\Delta K_1 L) \cdot (x_{\text{beam}} - x_{\text{quad}})
+\end{equation}
+Dispersion-Free Steering (DFS) solves the stacked linear system via weighted SVD:
+\begin{equation}
+    \min_{\Delta \theta} \left( \| R_{\text{orbit}} \Delta \theta + x_0 \|^2 + w^2 \| R_{\text{disp}} \Delta \theta + \eta_0 \|^2 \right)
+\end{equation}
+
+\section{Maximum Entropy (MENT) Phase Space Tomography}
+The \texttt{helios.physics.halo} module implements iterative Maximum Entropy (MENT) reconstruction of 2D transverse phase-space $(x, x')$ distributions from 1D profile projections. The Wangler-Crump halo parameter $H$ is evaluated as:
+\begin{equation}
+    H = \frac{\langle r^4 \rangle}{2 \langle r^2 \rangle^2} - 1.0
+\end{equation}
+providing automatic warnings when beam halo risks cryomodule chamber scraping.
+
+\chapter{LinkML Ontology and Knowledge Graph}
+
+HELIOS formally defines its accelerator domain using the \textbf{LinkML} standard (\texttt{helios/ontology/helios\_schema.yaml}):
+\begin{itemize}
+    \item \textbf{Schema Classes}: Defines \texttt{BeamlineElement}, \texttt{MagneticElement}, \texttt{Quadrupole}, \texttt{RFCavityElement}, \texttt{BeamPositionMonitor}, and \texttt{LinacLatticeModel}.
+    \item \textbf{W3C RDF / Turtle OWL Exporter}: Serializes digital twins into Linked Open Data knowledge graphs with upstream and downstream connection topology.
+    \item \textbf{Topology Navigator}: The \texttt{BeamlineKnowledgeGraph} enables spatial and causal queries along the beamline (e.g., locating nearest upstream correctors).
+\end{itemize}
+
+\chapter{Verification and Test Suite}
+
+HELIOS includes an automated test suite verifying all 29 development phases:
+\begin{lstlisting}[language=bash]
+pytest
+\end{lstlisting}
+The suite validates 98 tests covering lattice physics, neural surrogates, EPICS communication, RL environments, fault recovery, LinkML schemas, and end-to-end commissioning harnesses with 100\% passing status.
+
+\end{document}

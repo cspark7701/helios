@@ -58,3 +58,7 @@ tmp_track_run/
 # Epics / Archiver dumps
 *.caput
 *.pva_dump
+manual.aux
+manual.log
+manual.out
+manual.toc
