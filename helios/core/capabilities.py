@@ -620,6 +620,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.READ_ONLY,
         keywords=["co-simulation", "zero-copy", "streaming", "ipc", "rep-rate", "macro-pulse", "shared memory"],
     ))
+    registry.register(Capability(
+        name="calculate_radiological_activation_and_cooling",
+        description="Compute residual isotope inventory, Bateman decay cooling curves, and tunnel access interlock tokens",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["radiological", "activation", "decay", "cooling", "bateman", "gamma dose", "rpo clearance"],
+    ))
 
     return registry
 

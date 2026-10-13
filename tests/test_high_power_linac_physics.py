@@ -159,4 +159,38 @@ def test_zero_copy_cosimulation_bridge():
     assert abs(drift_ms) < 10.0  # 1 tick at 10 Hz in 0.1s -> 0 ms drift!
 
 
+def test_radiological_activation_and_cooling_interlock():
+    """Verify Bateman decay cooling curve, tunnel access interlock, and RPO clearance token."""
+    from helios.safety.activation import RadiologicalActivationEngine
+
+    engine = RadiologicalActivationEngine(personnel_access_threshold_uSv_hr=25.0)
+
+    # 1. High-loss hot spot immediately after shutdown (0.5 hour cool-down) -> ACCESS DENIED
+    res_hot = engine.evaluate_cooling(
+        location_id="MEBT_COLLIMATOR_01",
+        beam_loss_power_W=50.0,
+        irradiation_hours=100.0,
+        cooling_elapsed_hours=0.5
+    )
+    assert res_hot.prompt_dose_rate_uSv_hr > 500.0
+    assert not res_hot.access_granted
+    assert res_hot.required_additional_cooling_hours > 0.0
+    assert res_hot.clearance_token_sha256 is None
+    assert "Mn-56" in res_hot.dominant_isotopes
+
+    # 2. Low-loss section or long cool-down (e.g. 1 W loss after 24 hours cooling) -> ACCESS GRANTED
+    res_cool = engine.evaluate_cooling(
+        location_id="SCL1_BEAMPIPE_02",
+        beam_loss_power_W=1.0,
+        irradiation_hours=100.0,
+        cooling_elapsed_hours=24.0
+    )
+    assert res_cool.current_residual_dose_rate_uSv_hr < 25.0
+    assert res_cool.access_granted
+    assert res_cool.required_additional_cooling_hours == 0.0
+    assert res_cool.clearance_token_sha256 is not None
+    assert len(res_cool.clearance_token_sha256) == 64
+
+
+
 
