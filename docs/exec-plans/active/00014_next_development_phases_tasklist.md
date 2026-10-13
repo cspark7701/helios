@@ -57,14 +57,14 @@ flowchart TD
 
 ## Phase 10: Advanced EPICS pvAccess & Archiver Appliance Bridge
 
-- [ ] **10.1 EPICS pvAccess (PVA) Support**
-  - [ ] Integrate `p4p` / pvAccess for high-performance structured normative types (`NTTable`, `NTNDArray`).
-  - [ ] Support high-rate beam profile camera acquisition and multi-BPM vector readouts.
-- [ ] **10.2 Production EPICS Archiver Appliance Client**
-  - [ ] Implement REST API client to query facility PB-based Archiver Appliances (SLAC/FRIB/ALS/RAON).
-  - [ ] Provide automated baseline extraction: pull historical golden setpoints based on date/shift.
-- [ ] **10.3 Control System Security & Access Enforcement**
-  - [ ] Implement Channel Access Security (CAS) permission checks before issuing write requests.
+- [x] **10.1 EPICS pvAccess (PVA) Support**
+  - [x] Integrate `p4p` / pvAccess for high-performance structured normative types (`NTTable`, `NTNDArray`, `NTScalar`).
+  - [x] Support high-rate beam profile camera acquisition and multi-BPM vector readouts.
+- [x] **10.2 Production EPICS Archiver Appliance Client**
+  - [x] Implement REST API client to query facility PB-based Archiver Appliances (SLAC/FRIB/ALS/RAON).
+  - [x] Provide automated baseline extraction: pull historical golden setpoints based on date/shift.
+- [x] **10.3 Control System Security & Access Enforcement**
+  - [x] Implement Channel Access Security (CAS) permission checks before issuing write requests.
 
 ---
 

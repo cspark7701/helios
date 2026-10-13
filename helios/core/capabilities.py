@@ -216,7 +216,7 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["rollback", "abort", "restore", "trip", "emergency"],
     ))
 
-    # Control Agent Capabilities
+    # Control & Data Agent Capabilities
     registry.register(Capability(
         name="epics_caput_batch",
         description="Execute atomic batch EPICS caput with readback verification",
@@ -224,6 +224,22 @@ def get_default_registry() -> CapabilityRegistry:
         target_agent="HELIOS-Control",
         risk_level=RiskLevel.HIGH,
         keywords=["epics", "caput", "write", "actuate", "hardware", "pv"],
+    ))
+    registry.register(Capability(
+        name="query_archiver_data",
+        description="Query EPICS Archiver Appliance for historical PV time series and golden setpoints",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["archiver", "history", "golden", "baseline", "time-series", "drift"],
+    ))
+    registry.register(Capability(
+        name="pva_get_table",
+        description="Read structured pvAccess NTTable (e.g. multi-BPM orbit table or profile data)",
+        domain=CapabilityDomain.EPICS,
+        target_agent="HELIOS-Control",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["pva", "pvaccess", "nttable", "orbit table", "vector", "waveform"],
     ))
 
     return registry

@@ -17,17 +17,37 @@ from helios.interfaces.epics import (
     EPICSInterface,
     MockControlInterface,
 )
+from helios.interfaces.pva import (
+    PVAccessInterface,
+)
+from helios.interfaces.archiver import (
+    ArchiverApplianceClient,
+    ArchiverError,
+)
+from helios.interfaces.security import (
+    ControlSecurityManager,
+    ControlSecurityPolicy,
+    SecurityViolationError,
+    UserRole,
+)
 
 __all__ = [
+    "ArchiverApplianceClient",
+    "ArchiverError",
     "BaseControlInterface",
     "ChannelLimits",
     "ChannelManager",
     "ControlInterfaceError",
+    "ControlSecurityManager",
+    "ControlSecurityPolicy",
     "DeviceType",
     "EPICSInterface",
     "LinacDevice",
     "MockControlInterface",
+    "PVAccessInterface",
     "ReadbackTimeoutError",
+    "SecurityViolationError",
     "SlewRateLimiter",
+    "UserRole",
     "create_baseline_mebt_channel_manager",
 ]
