@@ -42,6 +42,8 @@ def test_ci_contract_json_validity():
     data = json.loads(CONTRACT_FILE.read_text(encoding="utf-8"))
     assert "python_versions" in data
     assert "3.11" in data["python_versions"]
+    assert "3.13" in data["python_versions"]
+    assert "3.14" in data["python_versions"]
     assert "extras" in data
     assert "checks" in data
     assert len(data["checks"]) >= 2
