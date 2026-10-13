@@ -32,6 +32,7 @@
     showstringspaces=false
 }
 
+\setlength{\headheight}{14pt}
 \pagestyle{fancy}
 \fancyhf{}
 \rhead{\textbf{HELIOS Reference Manual}}
@@ -63,6 +64,18 @@
 
 Aligned directly with the \textbf{Plan-First} paradigm established by the Lawrence Berkeley National Laboratory (LBNL) Osprey architecture, HELIOS enforces strict separation of concerns between optimization heuristics, digital twin simulation validations, deterministic safety gatekeepers, and hardware control layers.
 
+\section{Core Architectural Principles}
+\begin{enumerate}
+    \item \textbf{Pre-Flight Simulation Verification}: No setpoint is ever delivered to live hardware without prior validation through high-fidelity codes (ANL TRACK via Wine, LBNL IMPACT-Z via \texttt{lume-impact}) or sub-millisecond neural surrogates.
+    \item \textbf{Deterministic Safety-First Actuation}: Optimization algorithms do not talk directly to EPICS. All actuations pass through rate-of-change limiters, slew rate clamps, and the \texttt{SafetyAgent} rollback stack.
+    \item \textbf{Plan-First Execution Lifecycle}: High-level natural language goals are first compiled into structured, reproducible execution plans:
+    \[
+    \text{DRAFT} \longrightarrow \text{SIMULATION\_VERIFIED} \longrightarrow \text{SAFETY\_APPROVED} \longrightarrow \text{EXECUTING} \longrightarrow \text{COMPLETED / ROLLED\_BACK}
+    \]
+    \item \textbf{Dynamic Capability Classification (Osprey Pattern)}: Instead of injecting hundreds of tools into the LLM context, HELIOS dynamically filters capabilities based on the operator's intent and domain keywords, keeping prompt sizes compact and execution deterministic.
+    \item \textbf{Graduated Autonomy}: Enforces clear human-in-the-loop sign-offs graduated from Advisory (Level 0) to Fully Autonomous (Level 4).
+\end{enumerate}
+
 \section{Agent Taxonomy and Roles}
 The framework partitions operational responsibilities among specialized autonomous agents:
 \begin{enumerate}
@@ -92,7 +105,6 @@ HELIOS implements five graduated operational autonomy levels for human-in-the-lo
 \caption{Operational Autonomy Levels in HELIOS.}
 \end{table}
 
-\newpage
 \chapter{Installation and Environment Setup}
 
 \section{Prerequisites}
@@ -121,33 +133,32 @@ pip install -e ".[dev,ml,dashboard,ontology]"
 
 HELIOS provides an ergonomic command-line interface implemented via Typer and Rich.
 
-\section{Interactive Operator Console}
+\section{Interactive Operator Console (\texttt{helios chat})}
 Launch the conversational operator assistant:
 \begin{lstlisting}[language=bash]
 helios chat
 \end{lstlisting}
 The console accepts natural language goals (e.g. \textit{``Correct horizontal orbit in MEBT and verify quench margins on SCL1 cavity 02''}), decomposing them into formal Osprey execution plans.
 
-\section{Real-Time Web Dashboard}
+\section{Real-Time Web Dashboard (\texttt{helios dashboard})}
 Start the FastAPI and WebSocket visualization dashboard:
 \begin{lstlisting}[language=bash]
 helios dashboard --host 0.0.0.0 --port 8000
 \end{lstlisting}
 Open \texttt{http://localhost:8000} to inspect live BPM orbits, cavity resonance states, radiation loss heatmaps, and approve human-in-the-loop plans.
 
-\section{Commissioning Shift Reporting}
+\section{Commissioning Shift Reporting (\texttt{helios report})}
 Compile electronic logbook reports:
 \begin{lstlisting}[language=bash]
 helios report --facility "RAON SCL1" --output shift_report.md
 \end{lstlisting}
 
-\section{Tamper-Evident Audit Verification}
+\section{Tamper-Evident Audit Verification (\texttt{helios audit})}
 Verify SHA-256 cryptographic hash chaining across all recorded Process Variable writes:
 \begin{lstlisting}[language=bash]
 helios audit --verify
 \end{lstlisting}
 
-\newpage
 \chapter{Accelerator Physics and Beam Dynamics}
 
 \section{Multi-Species and Multi-Charge-State (MCS) Dynamics}
@@ -156,6 +167,14 @@ Heavy-ion linacs frequently accelerate multi-charge state beams simultaneously (
     B\rho = \frac{p}{q} = \frac{\gamma m_0 \beta c}{q}
 \end{equation}
 The module \texttt{helios.physics.species} models isotopic distributions and composite beam envelopes across charge fractions.
+
+\section{Stripper Foil Degradation Modeling}
+The module \texttt{helios.physics.stripper} simulates carbon and liquid lithium stripper foils:
+\begin{itemize}
+    \item Mean energy loss $\Delta E$ and stopping power $dE/dx$.
+    \item Multiple Coulomb scattering angular distribution $\theta_{\text{rms}}$.
+    \item Thermal degradation and foil lifetime tracking with replacement warning triggers.
+\end{itemize}
 
 \section{Beam-Based Alignment (BBA) and Dispersion-Free Steering (DFS)}
 Beam offsets relative to quadrupole magnetic centers are computed via strength modulation $\Delta K_1$:
@@ -174,6 +193,47 @@ The \texttt{helios.physics.halo} module implements iterative Maximum Entropy (ME
 \end{equation}
 providing automatic warnings when beam halo risks cryomodule chamber scraping.
 
+\chapter{Autonomous RF Conditioning and Cavity Control}
+
+\section{Progressive RF Conditioning Sequencer}
+The \texttt{AutonomousRFConditioner} automates the processing of high-power RF cavities:
+\begin{itemize}
+    \item Progressive forward power and pulse width ramping with vacuum interlocks ($P_{\text{vac}} < 10^{-7}\text{ mbar}$).
+    \item Dynamic multipacting barrier breakthrough: delivers $+25\%$ power jumps upon detecting electron pickup spikes.
+\end{itemize}
+
+\section{Resonance Tracking and Detuning Compensation}
+The \texttt{CavityResonanceTracker} provides dual-actuator control under microphonics and helium bath pressure drift:
+\begin{enumerate}
+    \item \textbf{Fine Fast Control}: Piezoelectric actuators compensate high-frequency phase errors ($\pm 100\text{ Hz}$).
+    \item \textbf{Coarse Slow Control}: Stepper motor tuners absorb large thermal drifts and restore piezo voltage to center bias.
+\end{enumerate}
+
+\chapter{Optimization and Self-Driving Policies}
+
+\section{Reinforcement Learning Continuous Control}
+\begin{itemize}
+    \item \textbf{\texttt{LinacGymEnv}}: Standard Gymnasium environment wrapping digital twin simulations and live EPICS control.
+    \item \textbf{\texttt{LinacRLAgent}}: PyTorch Actor-Critic continuous policy trained for dynamic orbit correction under space charge.
+    \item \textbf{\texttt{NeuralMPCController}}: Receding-horizon model predictive controller utilizing neural surrogates.
+\end{itemize}
+
+\section{Multi-Objective Pareto Optics Optimization}
+The \texttt{MultiObjectiveParetoOptimizer} implements the NSGA-II non-dominated sorting genetic algorithm to simultaneously balance:
+\begin{enumerate}
+    \item Maximizing beam transmission ($>98\%$).
+    \item Minimizing transverse envelope scalloping.
+    \item Minimizing longitudinal energy spread ($\Delta p / p$).
+\end{enumerate}
+
+\chapter{Automated Fault Recovery and Self-Healing}
+
+\section{Autonomous RF Rematching}
+Upon cavity trip or phase unlock in superconducting cryomodules, \texttt{helios.healing.rf\_rematch} recalculates downstream cavity voltages and phases via normalized L-BFGS-B optimization to preserve target beam arrival time and final energy.
+
+\section{Magnet Power Supply Recovery}
+\texttt{helios.healing.magnet\_recovery} isolates tripped magnet power supplies and recalculates compensatory dipole kicks using remaining healthy steerers.
+
 \chapter{LinkML Ontology and Knowledge Graph}
 
 HELIOS formally defines its accelerator domain using the \textbf{LinkML} standard (\texttt{helios/ontology/helios\_schema.yaml}):
@@ -181,6 +241,18 @@ HELIOS formally defines its accelerator domain using the \textbf{LinkML} standar
     \item \textbf{Schema Classes}: Defines \texttt{BeamlineElement}, \texttt{MagneticElement}, \texttt{Quadrupole}, \texttt{RFCavityElement}, \texttt{BeamPositionMonitor}, and \texttt{LinacLatticeModel}.
     \item \textbf{W3C RDF / Turtle OWL Exporter}: Serializes digital twins into Linked Open Data knowledge graphs with upstream and downstream connection topology.
     \item \textbf{Topology Navigator}: The \texttt{BeamlineKnowledgeGraph} enables spatial and causal queries along the beamline (e.g., locating nearest upstream correctors).
+\end{itemize}
+
+\chapter{Digital Twin Synchronization and Security}
+
+\section{Ensemble Kalman State Estimation}
+\texttt{helios.physics.sync} implements a continuous Kalman filter assimilating live BPM telemetry to estimate unmeasured physical states, including beam energy spread and emittance.
+
+\section{Role-Based Access Control and Watchdogs}
+\begin{itemize}
+    \item \textbf{RBAC Security}: HMAC-signed tokens enforce permissions across \texttt{VIEWER}, \texttt{PHYSICIST}, \texttt{SAFETY\_OFFICER}, and \texttt{ADMIN}.
+    \item \textbf{MPS Heartbeat Watchdog}: Sub-second watchdog enforcing fail-safe fallback upon communication disruption.
+    \item \textbf{Cryptographic Audit Trail}: SHA-256 hash chaining guaranteeing tamper evidence and regulatory compliance.
 \end{itemize}
 
 \chapter{Verification and Test Suite}
