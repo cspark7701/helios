@@ -25,18 +25,18 @@ flowchart TD
 
 ## Phase 8: LLM Agent Core & Natural Language Operator Interface
 
-- [ ] **8.1 Multi-Provider LLM Integration Layer**
-  - [ ] Implement extensible LLM adapter (supporting local Ollama, Google Gemini, Anthropic, OpenAI).
-  - [ ] Support structured tool calling / JSON function schema binding.
-  - [ ] Provide prompt caching and context management.
-- [ ] **8.2 Natural Language Planner Agent (`HELIOS-Orchestrator`)**
-  - [ ] Build intent parser converting operator dialogue into structured `ExecutionPlan` drafts.
-  - [ ] Dynamic capability injection: bind classified tools from `CapabilityRegistry` into LLM system prompts.
-  - [ ] Implement chain-of-thought and explainability traces for physicist review.
-- [ ] **8.3 Interactive Operator Chat Console (TUI / CLI)**
-  - [ ] Rich/Prompt-Toolkit interactive terminal chat session.
-  - [ ] Visual plan review modal with interactive `[Approve] / [Reject] / [Modify]` buttons.
-  - [ ] Real-time execution streaming and step progress bars.
+- [x] **8.1 Multi-Provider LLM Integration Layer**
+  - [x] Implement extensible LLM adapter (supporting local Ollama, Google Gemini, Anthropic, OpenAI, and deterministic Mock).
+  - [x] Support structured tool calling / JSON function schema binding.
+  - [x] Provide prompt caching and context management.
+- [x] **8.2 Natural Language Planner Agent (`HELIOS-Orchestrator`)**
+  - [x] Build intent parser converting operator dialogue into structured `ExecutionPlan` drafts.
+  - [x] Dynamic capability injection: bind classified tools from `CapabilityRegistry` into LLM system prompts.
+  - [x] Implement chain-of-thought and explainability traces for physicist review.
+- [x] **8.3 Interactive Operator Chat Console (TUI / CLI)**
+  - [x] Rich/Prompt-Toolkit interactive terminal chat session (`helios chat`).
+  - [x] Visual plan review modal with interactive `[Approve] / [Reject] / [Modify]` buttons.
+  - [x] Real-time execution streaming and step progress bars.
 
 ---
 

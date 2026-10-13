@@ -4,6 +4,7 @@ Provides commands for plan inspection, closed-loop tuning, channel inspection,
 and capability dispatch for heavy ion linac operators and physicists.
 """
 
+import json
 from pathlib import Path
 from typing import Optional
 from rich.console import Console
@@ -144,6 +145,67 @@ def plans():
             table.add_row("COMPLETED", f.name)
 
     console.print(table)
+
+
+@app.command()
+def chat(
+    provider: str = typer.Option("mock", help="LLM provider ('mock', 'openai', 'ollama')"),
+    model: Optional[str] = typer.Option(None, help="LLM model name"),
+):
+    """Launch interactive conversational operator console."""
+    from helios.agents.planner import NaturalLanguagePlanner
+    from helios.core.llm import create_llm_client
+
+    console.print("[bold green]════════════════════════════════════════════════════════════[/bold green]")
+    console.print("[bold cyan]       HELIOS Autonomous Linac Assistant (Osprey TUI)       [/bold cyan]")
+    console.print(f"[bold white] Provider: {provider} | Type 'exit' or 'quit' to terminate [/bold white]")
+    console.print("[bold green]════════════════════════════════════════════════════════════[/bold green]\n")
+
+    client = create_llm_client(provider=provider, model=model or "mock-helios-planner")
+    planner = NaturalLanguagePlanner(llm_client=client)
+    orch = HeliosOrchestrator()
+
+    while True:
+        try:
+            prompt = console.input("[bold yellow]Physicist > [/bold yellow]").strip()
+            if not prompt:
+                continue
+            if prompt.lower() in ("exit", "quit", "q"):
+                console.print("[bold cyan]Session closed. Good day![/bold cyan]")
+                break
+
+            console.print("\n[dim]Analyzing directive and formulating execution plan...[/dim]")
+            plan, explanation = planner.formulate_plan_from_prompt(prompt)
+
+            console.print(f"[bold green]Assistant:[/bold green] {explanation}\n")
+
+            # Display formulated plan summary
+            table = Table(title=f"Proposed Plan: {plan.title} (ID: {plan.plan_id})")
+            table.add_column("Step", style="cyan", no_wrap=True)
+            table.add_column("Agent", style="magenta")
+            table.add_column("Action", style="green")
+            table.add_column("Parameters", style="white")
+
+            for s in plan.steps:
+                table.add_row(s.name, s.target_agent, s.action, json.dumps(s.parameters))
+            console.print(table)
+
+            # Operator Gating Prompt
+            choice = console.input("\n[bold magenta]Authorize Execution? [y(Yes) / n(No) / d(Dry-Run)]: [/bold magenta]").strip().lower()
+            if choice == "y":
+                console.print("[bold green]Executing validated plan...[/bold green]")
+                executed_plan = orch.run_orbit_correction_loop(
+                    plan_id=plan.plan_id,
+                    autonomy_level=AutonomyLevel.SUPERVISED,
+                    operator_confirmed=True,
+                )
+                console.print(f"[bold green]Result:[/bold green] Plan status is [{executed_plan.state.value}]. Archived to docs/exec-plans/completed/.\n")
+            else:
+                console.print("[bold yellow]Plan execution deferred.[/bold yellow]\n")
+
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[bold cyan]Terminating session.[/bold cyan]")
+            break
 
 
 if __name__ == "__main__":

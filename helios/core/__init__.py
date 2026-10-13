@@ -27,16 +27,30 @@ from helios.core.capabilities import (
     RiskLevel,
     get_default_registry,
 )
+from helios.core.llm import (
+    BaseLLMClient,
+    LLMMessage,
+    LLMResponse,
+    MockLLMClient,
+    OpenAICompatibleLLMClient,
+    ToolCall,
+    create_llm_client,
+)
 
 __all__ = [
     "AnomalyReport",
     "AnomalySeverity",
     "AutonomyLevel",
+    "BaseLLMClient",
     "Capability",
     "CapabilityDomain",
     "CapabilityRegistry",
     "ExecutionPlan",
+    "LLMMessage",
+    "LLMResponse",
     "MachineState",
+    "MockLLMClient",
+    "OpenAICompatibleLLMClient",
     "PlanArtifactStore",
     "PlanLifecycleManager",
     "PlanState",
@@ -47,7 +61,9 @@ __all__ = [
     "SetpointTarget",
     "StepStatus",
     "TelemetrySnapshot",
+    "ToolCall",
     "ValidationCheck",
     "ValidationResult",
+    "create_llm_client",
     "get_default_registry",
 ]
