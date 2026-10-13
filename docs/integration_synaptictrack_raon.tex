@@ -79,15 +79,15 @@ HELIOS is an agentic, Plan-First artificial intelligence framework engineered fo
 \begin{table}[h!]
 \centering
 \small
-\begin{tabularx}{\textwidth}{p{2.6cm}p{3.2cm}p{3.6cm}X}
+\begin{tabularx}{\textwidth}{p{2.8cm}p{3.7cm}p{3.0cm}X}
 \toprule
 \textbf{Repository} & \textbf{Filesystem Path} & \textbf{Scope \& Governance} & \textbf{Role in HELIOS Ecosystem} \\
 \midrule
-\textbf{\texttt{synapticTrack}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/simulation\_}\\\texttt{codes-working/}\\\texttt{synapticTrack}} & Machine-neutral Python library (Open / Public-ready) & \textbf{Core ML Engine}: Implements PyTorch regressors, physics losses, \texttt{NormalizationBundle}, Sobol samplers, and \texttt{FrozenSurrogateInterface}. \\
+\textbf{\texttt{synapticTrack}} & \texttt{\textasciitilde/Work/}\newline\texttt{simulation\_codes-}\newline\texttt{working/}\newline\texttt{synapticTrack} & Machine-neutral library (Open / Public-ready) & \textbf{Core ML Engine}: Implements PyTorch regressors, physics losses, \texttt{NormalizationBundle}, Sobol samplers, and \texttt{FrozenSurrogateInterface}. \\
 \addlinespace
-\textbf{\texttt{raon}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/projects/}\\\texttt{raon}} & Private facility workspace (Confidential / IRIS assets) & \textbf{Facility Digital Twin Assets}: Supplies RAON LEBT/MEBT lattice decks (\texttt{track.dat}), 50k trained surrogate checkpoints, and \texttt{LEBTSurrogateModel}. \\
+\textbf{\texttt{raon}} & \texttt{\textasciitilde/Work/projects/}\newline\texttt{raon} & Private workspace (Confidential IRIS assets) & \textbf{Facility Digital Twin Assets}: Supplies RAON LEBT/MEBT lattice decks (\texttt{track.dat}), 50k trained surrogate checkpoints, and \texttt{LEBTSurrogateModel}. \\
 \addlinespace
-\textbf{\texttt{helios}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/simulation\_}\\\texttt{codes-working/}\\\texttt{helios}} & Multi-agent operations platform (Plan-First) & \textbf{Operations \& Safety Platform}: Conducts sub-millisecond pre-flight checks, EPICS CA/PVA actuation, and RL trajectory optimization. \\
+\textbf{\texttt{helios}} & \texttt{\textasciitilde/Work/}\newline\texttt{simulation\_codes-}\newline\texttt{working/}\newline\texttt{helios} & Operations platform (Plan-First Orchestration) & \textbf{Operations \& Safety Platform}: Conducts sub-millisecond pre-flight checks, EPICS CA/PVA actuation, and RL trajectory optimization. \\
 \bottomrule
 \end{tabularx}
 \caption{Cross-Repository Roles and Governance Boundaries.}
@@ -104,9 +104,9 @@ The \texttt{raon} workspace already provides a fully converged surrogate model (
     \begin{equation}
         \vec{y}_{\text{pred}} = f_\theta(\vec{x}_{\text{beam}}, \vec{u}_{\text{machine}})
     \end{equation}
-    where $\vec{x}_{\text{beam}}$ denotes input distribution moments and $\vec{u}_{\text{machine}}$ represents steerer currents or cavity setpoints. HELIOS defines an evaluation interface in \texttt{helios/physics/surrogate.py}.
+    where $\vec{x}_{\text{beam}}$ denotes input distribution moments and $\vec{u}_{\text{machine}}$ represents steerer currents or cavity setpoints. HELIOS defines an evaluation interface in \newline \texttt{helios/physics/surrogate.py}.
     \item \textbf{Dynamic Checkpoint Resolution}:
-    HELIOS inspects known facility paths for \texttt{legacy\_50000/best\_model.pt}. When detected, it instantiates \texttt{LEBTSurrogateModel}, swapping analytical toy transfer matrices with neural network inferences evaluated in under $2\text{ ms}$.
+    HELIOS inspects known facility paths for the trained checkpoint file \newline \texttt{legacy\_50000/best\_model.pt}. When detected, it instantiates \texttt{LEBTSurrogateModel}, swapping analytical toy transfer matrices with neural network inferences evaluated in under $2\text{ ms}$.
     \item \textbf{Deterministic Pre-Flight Verification}:
     Prior to delivering candidate setpoint corrections $\Delta \vec{I}$ to hardware, the surrogate evaluates downstream centroid offsets $\Delta \vec{x}_{\text{BPM}}$ and beam loss fractions. The \texttt{HELIOS-Safety} gatekeeper verifies these against operational loss ceilings before granting EPICS authorization.
 \end{enumerate}
@@ -121,7 +121,7 @@ The \texttt{raon} workspace already provides a fully converged surrogate model (
     \begin{equation}
         \vec{u}^* = \arg\min_{\vec{u}} \left( \|\vec{x}_{\text{BPM}}(\vec{u}) - \vec{x}_{\text{target}}\|^2 + \lambda \|\vec{u} - \vec{u}_0\|^2 \right)
     \end{equation}
-    The \texttt{NeuralMPCController} executes multi-step gradient trajectory descent directly through network weights prior to live hardware actuation.
+    The \texttt{NeuralMPCController} executes multi-step gradient descent directly through surrogate network weights prior to live hardware actuation.
 \end{enumerate}
 
 \section{Strategic Architectural Evaluation: Digital Twin Location}
@@ -135,7 +135,7 @@ A foundational architectural question is whether the Digital Twin should be deve
     \item \textbf{Concept}: Ingest RAON lattice decks, TRACK input decks, dataset generators, and training scripts directly into the \texttt{helios} repository.
     \item \textbf{Critical Drawbacks}:
     \begin{enumerate}
-        \item \textit{Confidentiality Violation}: The governance document \texttt{raon/AGENTS.md} explicitly mandates that RAON lattice geometries and experimental calibration data remain private. HELIOS is architected as an open, publishable multi-agent system (modeled after LBNL Osprey). Incorporating proprietary RAON files would prevent open-source publication or external collaboration.
+        \item \textit{Confidentiality Requirements}: The governance document \texttt{raon/AGENTS.md} explicitly mandates that RAON lattice geometries and experimental calibration data remain private. HELIOS is architected as an open, publishable multi-agent system (modeled after LBNL Osprey). Incorporating proprietary RAON files would prevent open-source publication or external collaboration.
         \item \textit{Computational Domain Pollution}: Generating 50,000 multi-particle datasets via cluster batch scripts is an offline HPC simulation task. Placing heavy offline data-generation pipelines inside an online real-time control-room operations repository introduces architectural antipatterns.
         \item \textit{Repository Bloat}: Gigabytes of HDF5 tracking datasets and PyTorch checkpoints would degrade Git repository performance.
     \end{enumerate}
@@ -151,7 +151,7 @@ A foundational architectural question is whether the Digital Twin should be deve
 \begin{itemize}
     \item \textbf{Concept}:
     \begin{itemize}
-        \item \textbf{HELIOS} maintains the generic, open \textbf{Digital Twin Host Interface} (\texttt{helios.physics.twin}).
+        \item \textbf{HELIOS} maintains the generic, open \textbf{Digital Twin Host Interface} \newline (\texttt{helios.physics.twin}).
         \item \textbf{\texttt{synapticTrack}} provides machine-neutral ML and surrogate contracts.
         \item \textbf{\texttt{raon}} provides the facility-specific implementation and confidential assets (lattices, trained weights, PV bindings) as an optional in-process Python plugin.
     \end{itemize}
@@ -161,7 +161,7 @@ A foundational architectural question is whether the Digital Twin should be deve
 \section{Implementation Blueprint}
 
 \subsection{Step 1: Automated Environment Integration (\texttt{setup.sh})}
-Configure \texttt{setup.sh} in HELIOS to dynamically detect and export Python paths for \texttt{synapticTrack} and \texttt{raon} when present:
+Configure \texttt{setup.sh} to dynamically export Python search paths for \texttt{synapticTrack} and \texttt{raon} when present:
 \begin{lstlisting}[language=bash]
 # Link local simulation codes and facility assets if available
 if [[ -d "/home/cspark/Work/simulation_codes-working/synapticTrack/src" ]]; then
@@ -224,8 +224,8 @@ class LinacSurrogateEnv(gym.Env):
 \section{Summary of Recommendations}
 
 \begin{enumerate}
-    \item \textbf{Strict Repository Decoupling}:
-    Keep \texttt{synapticTrack} open and machine-neutral. Maintain \texttt{raon} as a private facility repository holding proprietary lattices and datasets. Maintain \texttt{helios} as an open, publishable multi-agent operations framework.
+    \item \textbf{Repository Decoupling}:
+    Maintain \texttt{synapticTrack} as open and machine-neutral. Retain \texttt{raon} as a private facility repository holding proprietary lattices and datasets. Maintain \texttt{helios} as an open multi-agent framework.
     \item \textbf{In-Process Plugin Linking}:
     Link repositories through local Python package imports rather than remote microservices, ensuring sub-millisecond execution latency essential for machine protection.
     \item \textbf{Surrogate Acceleration for RL}:
