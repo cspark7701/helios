@@ -78,10 +78,10 @@ def create_integration_diagram(output_path="docs/integration_synaptictrack_raon.
               title_color=c_st_text)
 
     st_boxes = [
-        ("PyTorch Regressor Engine", "MLPRegressor, LeakyReLU\nPhysics-regularized loss terms", 5.8, 74.2, 19.5),
-        ("Normalization & Layouts", "NormalizationBundle, OutputLayout\nStrict unit & dimension contracts", 27.0, 74.2, 19.5),
-        ("Frozen Surrogate Contract", "FrozenSurrogateInterface\nDifferentiable ∇_u y_pred tensors", 5.8, 80.5, 19.5),
-        ("Sampling & TRACK Adapters", "30-bit Sobol / LHS samplers\nOwnedWorkspace TRACK runtimes", 27.0, 80.5, 19.5),
+        ("Surrogate Models & Normalizers", "MLPRegressor, PhysicsRegularizedMLP\nNormalizationBundle (unit contracts)", 5.8, 74.2, 19.5),
+        ("MAP Beam-State Inference", "refine_beam_state_map, MAPObjective\nDeepSets beam-state encoder", 27.0, 74.2, 19.5),
+        ("Frozen Surrogate Contract", "FrozenSurrogateInterface\nTorchFrozenSurrogate (∇_u y)", 5.8, 80.5, 19.5),
+        ("Sampling & TRACK Runtime", "Sobol / LHS samplers\nWorkspace-isolated TRACK runs", 27.0, 80.5, 19.5),
     ]
     for b_title, b_desc, bx, by, bw in st_boxes:
         box_p = FancyBboxPatch((bx, by), bw, 4.6, boxstyle="round,pad=0.2,rounding_size=0.6",
@@ -99,10 +99,10 @@ def create_integration_diagram(output_path="docs/integration_synaptictrack_raon.
               title_color=c_raon_text)
 
     raon_boxes = [
-        ("Lattice Decks (LEBT / MEBT)", "track.dat, 3D field maps\nIRIS accelerator geometries", 53.3, 74.2, 19.5),
-        ("Trained Surrogate Checkpoint", "50k-sample best_model.pt\nartifact_manifest.json (SHA-256)", 74.5, 74.2, 19.5),
-        ("LEBTSurrogateModel Adapter", "raon_adapters.lebt.ml.surrogate\nReal-time normalized & physical APIs", 53.3, 80.5, 19.5),
-        ("Production PV Bindings", "Channel Access PV manifests\nEmpirical calibration datasets", 74.5, 80.5, 19.5),
+        ("Legacy LEBT Surrogate", "13 controls → 12 centroids (50k LHS)\nlegacy.sm_model loader", 53.3, 74.2, 19.5),
+        ("Hardware & RL Adapters", "SteeringActuatorAdapter (mrad ↔ A)\nSurrogateLEBTEnv (Gymnasium)", 74.5, 74.2, 19.5),
+        ("Lattice Decks (LEBT / MEBT)", "track.dat, fi_in.dat, sclinac.dat\nLattice & control manifests", 53.3, 80.5, 19.5),
+        ("Schema-Bound Surrogates", "LEBTSurrogateModel (19 → 44)\n100k Sobol config (not yet trained)", 74.5, 80.5, 19.5),
     ]
     for b_title, b_desc, bx, by, bw in raon_boxes:
         box_p = FancyBboxPatch((bx, by), bw, 4.6, boxstyle="round,pad=0.2,rounding_size=0.6",
@@ -115,15 +115,15 @@ def create_integration_diagram(output_path="docs/integration_synaptictrack_raon.
 
     # Section Middle: THE DIGITAL TWIN HOST INTERFACE & SURROGATE LAYER (y=47.5 to 66.5)
     draw_card(4, 48.0, 92, 18.5, c_twin_bg, c_twin_border,
-              "HELIOS DIGITAL TWIN & SURROGATE INFERENCE LAYER (helios.physics.surrogate)",
-              subtitle="Hybrid In-Process Plugin Provider • High-Speed Pre-Flight Verification (<2 ms) • RL Simulation Dynamics",
+              "HELIOS DIGITAL TWIN HOST (proposed helios.twin, facility-agnostic)",
+              subtitle="In-Process Facility Plugin • Measured 0.16 ms Surrogate Inference • 0.48 ms per Gymnasium Step",
               title_color=c_twin_text)
 
     twin_subboxes = [
-        ("RaonFacilityPlugin", "Dynamic loader in helios\nAuto-detects raon models\nLoads best_model.pt directly", 6.5, 49.5, 20.0),
-        ("Sub-Millisecond Pre-Flight", "Candidate setpoints (ΔI, Δθ)\nEvaluates beam loss & BPM orbit\nEnforces safety envelope checks", 28.5, 49.5, 21.0),
-        ("Gymnasium RL Environment", "LinacSurrogateEnv (<1 ms / step)\nAccelerates Actor-Critic training\nby >1,000x vs TRACK ray-tracing", 51.5, 49.5, 21.0),
-        ("Differentiable Neural MPC", "Computes analytical ∇_u y_pred\nDirect gradient trajectory descent\nMulti-step receding horizon planning", 74.5, 49.5, 19.5),
+        ("Facility Plugin Registry", "Entry point: helios.facilities\nRaonPlugin wraps raon loaders\nFallback: analytic twin", 6.5, 49.5, 20.0),
+        ("Pre-Flight Verifier", "Orbit prediction at WS1–END\nOut-of-domain rejection\nLoss: aperture model (no NN yet)", 28.5, 49.5, 21.0),
+        ("Gymnasium RL Environment", "Adapts SurrogateLEBTEnv\n10⁵ steps ≈ 48 s (CPU)\nDomain randomization", 51.5, 49.5, 21.0),
+        ("Neural MPC & State Sync", "∇_u through frozen surrogate\nMAP beam-state estimation\nfrom wire-scanner data", 74.5, 49.5, 19.5),
     ]
     for tb_title, tb_desc, tbx, tby, tbw in twin_subboxes:
         tbox = FancyBboxPatch((tbx, tby), tbw, 10.5, boxstyle="round,pad=0.2,rounding_size=0.6",
@@ -164,7 +164,7 @@ def create_integration_diagram(output_path="docs/integration_synaptictrack_raon.
     ops_subboxes = [
         ("Web GUI Dashboard", "FastAPI / WebSocket\nSide-panel prompt window\nInteractive model selector", 6.5, 4.0, 20.0),
         ("HELIOS-Control", "EPICS Channel Access & PVA\nAtomic caput with readback\nTimeout and quench guards", 28.5, 4.0, 21.0),
-        ("RAON Hardware (LEBT/MEBT)", "ECR Ion Source, Solenoids\nElectrostatic Chopper (<2.8 µs)\nKicker power supplies (0.168 A/mrad)", 51.5, 4.0, 21.0),
+        ("RAON LEBT Hardware", "Steerers SM0–SM4 (H/V), 0.168 A/mrad\nElectrostatic quads (3 families)\nWire scanners WS1–WS4, Allison AS", 51.5, 4.0, 21.0),
         ("RAON SCL Cryomodules", "QWR / HWR Superconducting RF\nPiezo microphonics tuners\n2.0 K cryogenic plant balancing", 74.5, 4.0, 19.5),
     ]
     for ob_title, ob_desc, obx, oby, obw in ops_subboxes:
@@ -180,19 +180,19 @@ def create_integration_diagram(output_path="docs/integration_synaptictrack_raon.
     # 1. synapticTrack -> Digital Twin (ML definitions & normalization)
     ax.annotate("", xy=(26.25, 66.5), xytext=(26.25, 73.0),
                 arrowprops=dict(facecolor=c_st_border, edgecolor="none", width=2.4, headwidth=8, headlength=7, zorder=10))
-    ax.text(26.25, 69.8, "PyTorch ML Contracts & Normalizers", ha="center", va="center",
+    ax.text(26.25, 69.8, "Surrogate & Inference Contracts (pip dependency)", ha="center", va="center",
             fontsize=8.5, fontweight="bold", color=c_st_text, bbox=dict(boxstyle="round,pad=0.2", facecolor="#ffffff", edgecolor=c_st_border, linewidth=0.8, zorder=11))
 
-    # 2. raon -> Digital Twin (Trained Checkpoints & LEBTSurrogateModel)
+    # 2. raon -> Digital Twin (facility plugin)
     ax.annotate("", xy=(73.75, 66.5), xytext=(73.75, 73.0),
                 arrowprops=dict(facecolor=c_raon_border, edgecolor="none", width=2.4, headwidth=8, headlength=7, zorder=10))
-    ax.text(73.75, 69.8, "Trained Weights & Lattice Assets", ha="center", va="center",
+    ax.text(73.75, 69.8, "Optional Plugin: Checkpoints, Schemas, Calibrations", ha="center", va="center",
             fontsize=8.5, fontweight="bold", color=c_raon_text, bbox=dict(boxstyle="round,pad=0.2", facecolor="#ffffff", edgecolor=c_raon_border, linewidth=0.8, zorder=11))
 
     # 3. Digital Twin -> HELIOS Multi-Agent (Fast Validation & RL gym steps)
     ax.annotate("", xy=(50, 41.5), xytext=(50, 48.0),
                 arrowprops=dict(facecolor=c_twin_border, edgecolor="none", width=2.6, headwidth=8, headlength=7, zorder=10))
-    ax.text(50, 44.8, "Sub-Millisecond Pre-Flight Validation (<2 ms) & RL Transitions", ha="center", va="center",
+    ax.text(50, 44.8, "Predictions + Out-of-Domain Flags, RL Transitions (in-process)", ha="center", va="center",
             fontsize=8.8, fontweight="bold", color=c_twin_text, bbox=dict(boxstyle="round,pad=0.2", facecolor="#ffffff", edgecolor=c_twin_border, linewidth=0.8, zorder=11))
 
     # 4. HELIOS Multi-Agent -> Control / Operations (Verified Safe Setpoints)
