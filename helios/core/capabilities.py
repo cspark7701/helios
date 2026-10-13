@@ -629,5 +629,15 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["radiological", "activation", "decay", "cooling", "bateman", "gamma dose", "rpo clearance"],
     ))
 
+    # Real-Time Controls, Fast MPS, Chicane Compression & Vacuum Capabilities (Phases 50 - 54)
+    registry.register(Capability(
+        name="compensate_srf_microphonics_piezo",
+        description="Compensate SRF Lorentz Force Detuning and cryomodule microphonics using adaptive FxLMS piezo feedforward",
+        domain=CapabilityDomain.RF,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["microphonics", "lfd", "lorentz force", "piezo", "fxlms", "feedforward", "srf detuning", "cavity vibration"],
+    ))
+
     return registry
 
