@@ -197,6 +197,30 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.READ_ONLY,
         keywords=["surrogate", "neural", "fast", "preflight", "prediction"],
     ))
+    registry.register(Capability(
+        name="predict_virtual_profile",
+        description="Non-interceptive virtual wire scanner reconstructing transverse beam sizes and emittance",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["virtual wire scanner", "profile", "emittance", "non-interceptive", "beam size"],
+    ))
+    registry.register(Capability(
+        name="predict_virtual_loss_map",
+        description="Predict radiation and halo beam scraping losses along vacuum chamber before beam injection",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["virtual blm", "halo", "scraping", "loss map", "radiation hotspot"],
+    ))
+    registry.register(Capability(
+        name="calibrate_model_parameters",
+        description="Calibrate surrogate and digital twin parameters against measured BPM orbit and beam sizes",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["calibrate", "fit", "quadrupole calibration", "online calibration", "twiss fit"],
+    ))
 
     # Safety Agent Capabilities
     registry.register(Capability(

@@ -70,14 +70,14 @@ flowchart TD
 
 ## Phase 11: Deep Neural Surrogates & Virtual Diagnostics
 
-- [ ] **11.1 PyTorch Linac Surrogate Architecture**
-  - [ ] Multi-layer Perceptron / ResNet surrogate trained on TraceWin/IMPACT-Z latin hypercube samples.
-  - [ ] Instantaneous prediction of 6D beam phase space and transverse envelope along full linac.
-- [ ] **11.2 Virtual Diagnostic Inference**
-  - [ ] Virtual Wire Scanner / Virtual Profile Monitor: non-interceptive beam size prediction.
-  - [ ] Virtual Beam Loss Monitor: predict loss locations before beam turns on.
-- [ ] **11.3 Online Model Calibration**
-  - [ ] Bayesian parameter estimation to calibrate virtual model parameters against real BPM readings.
+- [x] **11.1 PyTorch Linac Surrogate Architecture**
+  - [x] Multi-layer Perceptron / ResNet surrogate trained on simulation samples.
+  - [x] Instantaneous prediction of 6D beam phase space and transverse envelope along full linac.
+- [x] **11.2 Virtual Diagnostic Inference**
+  - [x] Virtual Wire Scanner: non-interceptive transverse beam size and emittance prediction.
+  - [x] Virtual Beam Loss Monitor: predict halo scraping and loss locations before beam turns on.
+- [x] **11.3 Online Model Calibration**
+  - [x] Parameter estimation calibrating surrogate and digital twin parameters against real BPM readings.
 
 ---
 
