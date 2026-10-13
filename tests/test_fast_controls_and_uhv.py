@@ -157,4 +157,83 @@ def test_linac_uhv_pressure_and_gas_stripping_losses():
     assert res_scl.fractional_beam_loss_percent < 0.01
 
 
+def test_shift_handover_and_trip_forensics():
+    """Verify electronic shift handover report compilation and 50 ms pre-trip root-cause forensics."""
+    from helios.ops.logbook import (
+        LinacLogbookForensicsEngine,
+        CircularBufferSample,
+        TripRootCause,
+    )
+
+    engine = LinacLogbookForensicsEngine()
+
+    # 1. Test Shift Handover synthesis
+    report = engine.generate_shift_handover(
+        shift_id="OWL_SHIFT_20261013",
+        beam_species="U238",
+        target_energy_MeV_u=18.5,
+        shift_hours=8.0,
+        operating_hours=7.4,
+        trips_count=2,
+        beam_current_uA=15.0,
+        golden_cert_id="CERT-GOLDEN-LINAC-2026-0042",
+        rpo_cleared=True,
+    )
+
+    assert report.shift_id == "OWL_SHIFT_20261013"
+    assert report.beam_species == "U238"
+    assert report.beam_uptime_percent == 92.5
+    assert report.integrated_charge_uA_hr == 111.0
+    assert report.mean_time_between_failures_min == 222.0
+    assert report.rpo_clearance_active is True
+
+    # 2. Test 50 ms Pre-Trip Circular Buffer Forensics (SRF Cavity Quench Arc)
+    # Simulate 50 ms buffer from -50.0 ms to 0.0 ms in 1 ms steps
+    samples = []
+    for t in range(-50, 1):
+        t_ms = float(t)
+        # Normal baseline
+        bpm_err = 0.05
+        blm_dose = 0.001
+        rf_refl = 0.1
+        piezo_v = 45.0
+        vac_p = 5.0e-9
+
+        # RF arc begins at t = -30.0 ms
+        if t_ms >= -30.0:
+            rf_refl = 3.5
+
+        # Orbit kick and beam loss occur downstream at t = -15.0 ms
+        if t_ms >= -15.0:
+            bpm_err = 1.8
+            blm_dose = 0.12
+
+        samples.append(
+            CircularBufferSample(
+                time_offset_ms=t_ms,
+                bpm_rms_error_mm=bpm_err,
+                blm_total_dose_rate_Gy_s=blm_dose,
+                rf_reflected_power_kW=rf_refl,
+                piezo_voltage_V=piezo_v,
+                vacuum_pressure_mbar=vac_p,
+            )
+        )
+
+    forensics = engine.analyze_trip_circular_buffer(
+        trip_id="TRIP_SCL1_CAV4_20261013",
+        buffer_samples=samples,
+    )
+
+    assert forensics.trip_id == "TRIP_SCL1_CAV4_20261013"
+    assert forensics.root_cause == TripRootCause.SRF_CAVITY_QUENCH_ARC
+    assert forensics.primary_initiator_subsystem == "RF"
+    assert forensics.primary_event_offset_ms == -30.0
+    assert forensics.peak_rf_reflection_kW == 3.5
+    assert forensics.max_bpm_excursion_mm == 1.8
+    assert forensics.peak_blm_radiation_Gy_s == 0.12
+    assert len(forensics.sequence_of_events) >= 2
+    assert "piezo" in forensics.recommended_corrective_action.lower()
+
+
+
 

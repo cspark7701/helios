@@ -662,6 +662,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.READ_ONLY,
         keywords=["vacuum", "uhv", "pressure profile", "gas stripping", "charge exchange", "desorption", "cold-bore"],
     ))
+    registry.register(Capability(
+        name="generate_linac_shift_logbook_forensics",
+        description="Synthesize automated linac shift handover reports and analyze 50ms pre-trip circular buffer forensics",
+        domain=CapabilityDomain.OPS,
+        target_agent="HELIOS-Orchestrator",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["logbook", "e-log", "shift handover", "trip forensics", "circular buffer", "root cause", "uptime"],
+    ))
 
     return registry
 
