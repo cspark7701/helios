@@ -1,0 +1,235 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!10},
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{teal},
+    commentstyle=\color{gray}\itshape,
+    showstringspaces=false
+}
+
+\setlength{\headheight}{14pt}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textbf{HELIOS Integration Architecture}}
+\lhead{synapticTrack \& RAON Linking}
+\rfoot{Page \thepage}
+
+\title{
+    \vspace{1cm}
+    \Huge \textbf{Integration Architecture} \\
+    \Large \textbf{Linking synapticTrack and RAON into HELIOS} \\
+    \vspace{0.5cm}
+    \normalsize \textit{Surrogate Modeling, Reinforcement Learning, and Digital Twin Deployment Strategy} \\
+    \large Heavy Ion Linac Intelligent Orchestration
+    \vspace{1cm}
+}
+\author{\textbf{HELIOS Collaboration} \\ Chong Shik Park (\texttt{cspark7701@gmail.com})}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report details the architectural integration, surrogate model linking, reinforcement learning (RL) execution, and Digital Twin deployment strategy for connecting \textbf{synapticTrack} and \textbf{RAON} into the \textbf{HELIOS} (\textbf{HE}avy ion \textbf{L}inac \textbf{I}ntelligent \textbf{O}rchestration) framework. Addressing the Rare Isotope Science Project (RISP/IRIS) as the target facility, we provide an in-depth evaluation of whether the Digital Twin should be developed separately or included within HELIOS, and propose a high-performance in-process plugin architecture.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Executive Summary \& Repository Ecosystem}
+
+HELIOS is an agentic, Plan-First artificial intelligence framework engineered for commissioning and autonomous operations of heavy-ion linear accelerators, directly targeting the \textbf{RAON} accelerator complex (IRIS). Three complementary repositories form the computational ecosystem:
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=\textwidth]{integration_synaptictrack_raon.png}
+\caption{HELIOS Integration Architecture: Linking machine-neutral core ML algorithms from \texttt{synapticTrack} and confidential digital twin assets from \texttt{raon} into the HELIOS multi-agent orchestrator, pre-flight safety gatekeeper, and live EPICS control interface.}
+\label{fig:integration_architecture}
+\end{figure}
+
+\subsection{Repository Comparison and Operational Scope}
+
+\begin{table}[h!]
+\centering
+\small
+\begin{tabularx}{\textwidth}{p{2.6cm}p{3.2cm}p{3.6cm}X}
+\toprule
+\textbf{Repository} & \textbf{Filesystem Path} & \textbf{Scope \& Governance} & \textbf{Role in HELIOS Ecosystem} \\
+\midrule
+\textbf{\texttt{synapticTrack}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/simulation\_}\\\texttt{codes-working/}\\\texttt{synapticTrack}} & Machine-neutral Python library (Open / Public-ready) & \textbf{Core ML Engine}: Implements PyTorch regressors, physics losses, \texttt{NormalizationBundle}, Sobol samplers, and \texttt{FrozenSurrogateInterface}. \\
+\addlinespace
+\textbf{\texttt{raon}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/projects/}\\\texttt{raon}} & Private facility workspace (Confidential / IRIS assets) & \textbf{Facility Digital Twin Assets}: Supplies RAON LEBT/MEBT lattice decks (\texttt{track.dat}), 50k trained surrogate checkpoints, and \texttt{LEBTSurrogateModel}. \\
+\addlinespace
+\textbf{\texttt{helios}} & \parbox[t]{3.2cm}{\texttt{\textasciitilde/Work/simulation\_}\\\texttt{codes-working/}\\\texttt{helios}} & Multi-agent operations platform (Plan-First) & \textbf{Operations \& Safety Platform}: Conducts sub-millisecond pre-flight checks, EPICS CA/PVA actuation, and RL trajectory optimization. \\
+\bottomrule
+\end{tabularx}
+\caption{Cross-Repository Roles and Governance Boundaries.}
+\end{table}
+
+\section{Surrogate Models and Reinforcement Learning Integration}
+
+\subsection{Surrogate Model Integration}
+The \texttt{raon} workspace already provides a fully converged surrogate model (\texttt{LEBTSurrogateModel} in \texttt{raon\_adapters.lebt.ml.surrogate}) trained across 50,000 ANL TRACK multi-particle simulation runs, serialized with cryptographic checksums in \texttt{artifact\_manifest.json} and normalized via \texttt{NormalizationBundle}.
+
+\begin{enumerate}
+    \item \textbf{Protocol Alignment}:
+    \texttt{synapticTrack} defines \texttt{FrozenSurrogateInterface}, enforcing differentiable predictions:
+    \begin{equation}
+        \vec{y}_{\text{pred}} = f_\theta(\vec{x}_{\text{beam}}, \vec{u}_{\text{machine}})
+    \end{equation}
+    where $\vec{x}_{\text{beam}}$ denotes input distribution moments and $\vec{u}_{\text{machine}}$ represents steerer currents or cavity setpoints. HELIOS defines an evaluation interface in \texttt{helios/physics/surrogate.py}.
+    \item \textbf{Dynamic Checkpoint Resolution}:
+    HELIOS inspects known facility paths for \texttt{legacy\_50000/best\_model.pt}. When detected, it instantiates \texttt{LEBTSurrogateModel}, swapping analytical toy transfer matrices with neural network inferences evaluated in under $2\text{ ms}$.
+    \item \textbf{Deterministic Pre-Flight Verification}:
+    Prior to delivering candidate setpoint corrections $\Delta \vec{I}$ to hardware, the surrogate evaluates downstream centroid offsets $\Delta \vec{x}_{\text{BPM}}$ and beam loss fractions. The \texttt{HELIOS-Safety} gatekeeper verifies these against operational loss ceilings before granting EPICS authorization.
+\end{enumerate}
+
+\subsection{Reinforcement Learning (RL) \& Neural MPC Acceleration}
+
+\begin{enumerate}
+    \item \textbf{Surrogate-Accelerated Gymnasium Environment (\texttt{LinacGymEnv})}:
+    Executing numerical ray-tracing (ANL TRACK via Wine 64-bit) during continuous RL policy training requires approximately $1\text{ s}$ per step. For $10^5$ training transitions, full simulation demands over $27\text{ hours}$. Wrapping \texttt{raon}'s trained neural surrogate within \texttt{LinacGymEnv} reduces step latency to $<0.3\text{ ms}$, executing $10^5$ steps in \textbf{under 30 seconds}.
+    \item \textbf{Differentiable Physics and Model Predictive Control (Neural MPC)}:
+    Because \texttt{synapticTrack} neural networks are differentiable PyTorch modules, analytical gradients $\nabla_{\vec{u}} \mathcal{L}(\vec{y}_{\text{pred}})$ are computed via backpropagation:
+    \begin{equation}
+        \vec{u}^* = \arg\min_{\vec{u}} \left( \|\vec{x}_{\text{BPM}}(\vec{u}) - \vec{x}_{\text{target}}\|^2 + \lambda \|\vec{u} - \vec{u}_0\|^2 \right)
+    \end{equation}
+    The \texttt{NeuralMPCController} executes multi-step gradient trajectory descent directly through network weights prior to live hardware actuation.
+\end{enumerate}
+
+\section{Strategic Architectural Evaluation: Digital Twin Location}
+
+A foundational architectural question is whether the Digital Twin should be developed \textbf{separately} from HELIOS or \textbf{included within} HELIOS.
+
+\subsection{Evaluation of Architectural Options}
+
+\subsubsection{Option A: Monolithic Repository (Twin Included Inside HELIOS)}
+\begin{itemize}
+    \item \textbf{Concept}: Ingest RAON lattice decks, TRACK input decks, dataset generators, and training scripts directly into the \texttt{helios} repository.
+    \item \textbf{Critical Drawbacks}:
+    \begin{enumerate}
+        \item \textit{Confidentiality Violation}: The governance document \texttt{raon/AGENTS.md} explicitly mandates that RAON lattice geometries and experimental calibration data remain private. HELIOS is architected as an open, publishable multi-agent system (modeled after LBNL Osprey). Incorporating proprietary RAON files would prevent open-source publication or external collaboration.
+        \item \textit{Computational Domain Pollution}: Generating 50,000 multi-particle datasets via cluster batch scripts is an offline HPC simulation task. Placing heavy offline data-generation pipelines inside an online real-time control-room operations repository introduces architectural antipatterns.
+        \item \textit{Repository Bloat}: Gigabytes of HDF5 tracking datasets and PyTorch checkpoints would degrade Git repository performance.
+    \end{enumerate}
+\end{itemize}
+
+\subsubsection{Option B: Fully Decoupled Microservice (Twin as a Remote Server)}
+\begin{itemize}
+    \item \textbf{Concept}: Host the Digital Twin on an independent server accessed via HTTP REST or gRPC APIs.
+    \item \textbf{Critical Drawbacks}: Introduces socket latency, serialization overhead, and network partition risks. HELIOS deterministic safety interlocks require sub-5 ms pre-flight responses, which remote network hops cannot guarantee.
+\end{itemize}
+
+\subsubsection{Option C: Hybrid Two-Tier Architecture (Plugin Provider Pattern) [Recommended]}
+\begin{itemize}
+    \item \textbf{Concept}:
+    \begin{itemize}
+        \item \textbf{HELIOS} maintains the generic, open \textbf{Digital Twin Host Interface} (\texttt{helios.physics.twin}).
+        \item \textbf{\texttt{synapticTrack}} provides machine-neutral ML and surrogate contracts.
+        \item \textbf{\texttt{raon}} provides the facility-specific implementation and confidential assets (lattices, trained weights, PV bindings) as an optional in-process Python plugin.
+    \end{itemize}
+    \item \textbf{Advantages}: Combines zero-latency in-process Python execution ($<1\text{ ms}$) with strict IP/confidentiality separation and clean dependency management.
+\end{itemize}
+
+\section{Implementation Blueprint}
+
+\subsection{Step 1: Automated Environment Integration (\texttt{setup.sh})}
+Configure \texttt{setup.sh} in HELIOS to dynamically detect and export Python paths for \texttt{synapticTrack} and \texttt{raon} when present:
+\begin{lstlisting}[language=bash]
+# Link local simulation codes and facility assets if available
+if [[ -d "/home/cspark/Work/simulation_codes-working/synapticTrack/src" ]]; then
+    export PYTHONPATH="/home/cspark/Work/simulation_codes-working/synapticTrack/src:${PYTHONPATH}"
+fi
+
+if [[ -d "/home/cspark/Work/projects/raon/src" ]]; then
+    export PYTHONPATH="/home/cspark/Work/projects/raon/src:${PYTHONPATH}"
+fi
+\end{lstlisting}
+
+\subsection{Step 2: Facility Plugin Loader in HELIOS}
+Implement the dynamic plugin loader in \texttt{helios/facilities/raon.py}:
+\begin{lstlisting}[language=python]
+from pathlib import Path
+from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+class RaonFacilityPlugin:
+    """Plugin loader for RAON-specific surrogate models and lattice digital twin."""
+
+    def __init__(self, models_root: Optional[Path] = None):
+        self.models_root = models_root or Path("/home/cspark/Work/projects/raon/models")
+        self._surrogate = None
+
+    def load_lebt_surrogate(self):
+        try:
+            from raon_adapters.lebt.ml.surrogate import LEBTSurrogateModel
+            ckpt = self.models_root / "lebt/orbit_corrections/legacy_50000/best_model.pt"
+            if ckpt.is_file():
+                self._surrogate = LEBTSurrogateModel.load(checkpoint_path=ckpt)
+                logger.info("Successfully loaded RAON LEBT 50k surrogate into HELIOS.")
+                return self._surrogate
+        except ImportError:
+            logger.warning("raon_adapters not found; using baseline analytical twin.")
+        return None
+\end{lstlisting}
+
+\subsection{Step 3: Surrogate-Driven RL Gymnasium Environment}
+Wire the surrogate into the continuous control environment:
+\begin{lstlisting}[language=python]
+import gymnasium as gym
+
+class LinacSurrogateEnv(gym.Env):
+    """Sub-millisecond gymnasium environment powered by RAON neural surrogate."""
+
+    def __init__(self, surrogate_model):
+        self.surrogate = surrogate_model
+
+    def step(self, action):
+        # Action represents delta steerer currents constrained to 0.05 A DAC steps
+        pred = self.surrogate.predict(action)
+        reward = -float(pred.physical[..., 0]**2 + pred.physical[..., 1]**2)
+        terminated = bool(pred.physical[..., -1] > 1.0)  # Loss check
+        return pred.physical, reward, terminated, False, {}
+\end{lstlisting}
+
+\section{Summary of Recommendations}
+
+\begin{enumerate}
+    \item \textbf{Strict Repository Decoupling}:
+    Keep \texttt{synapticTrack} open and machine-neutral. Maintain \texttt{raon} as a private facility repository holding proprietary lattices and datasets. Maintain \texttt{helios} as an open, publishable multi-agent operations framework.
+    \item \textbf{In-Process Plugin Linking}:
+    Link repositories through local Python package imports rather than remote microservices, ensuring sub-millisecond execution latency essential for machine protection.
+    \item \textbf{Surrogate Acceleration for RL}:
+    Leverage \texttt{raon}'s pre-trained 50,000-sample surrogate to accelerate RL policy training by over $1,000\times$ relative to live TRACK particle-tracking simulations.
+\end{enumerate}
+
+\end{document}
