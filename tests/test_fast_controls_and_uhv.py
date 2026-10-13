@@ -77,3 +77,42 @@ def test_fast_mps_differential_current_and_diamond_abort():
     assert "RFQ_FAST_RF_CUTOFF" in ev_trip.actuators_fired
     assert ev_trip.cryomodule_puncture_prevented
 
+
+def test_bunch_compressor_chicane_optics_and_optimization():
+    """Verify 4-dipole chicane R56, bunch length compression, and chirp voltage optimization."""
+    from helios.tuning.bunch_compressor import (
+        ChicaneParameters,
+        BunchCompressorChicaneOptimizer,
+    )
+
+    optimizer = BunchCompressorChicaneOptimizer()
+    params = ChicaneParameters(
+        dipole_bend_angle_deg=16.0,
+        dipole_length_m=0.45,
+        drift_12_m=1.2,
+        drift_23_m=0.8,
+        rf_chirp_voltage_MV=5.0,
+        rf_chirp_phase_deg=-90.0,
+        rf_frequency_MHz=162.5
+    )
+
+    res = optimizer.evaluate_chicane(
+        params=params,
+        beam_energy_MeV_u=17.5,
+        initial_bunch_length_ps=80.0,
+        initial_energy_spread_percent=0.20
+    )
+
+    # R56 must be negative for a standard 4-dipole C-chicane
+    assert res.R56_mm < 0.0
+    assert abs(res.R56_mm) > 10.0  # Typically -30 to -80 mm
+    assert res.T566_mm > 0.0       # T566 is positive (-1.5 * R56)
+    assert res.compression_factor > 1.2
+    assert res.compressed_bunch_length_ps < res.initial_bunch_length_ps
+    assert res.peak_current_enhancement > 1.2
+
+    # Test optimization for target compression factor 3.0
+    best_v = optimizer.optimize_chirp_voltage(params, target_compression_factor=3.0, beam_energy_MeV_u=17.5)
+    assert 0.5 < best_v < 8.0
+
+

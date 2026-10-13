@@ -646,6 +646,14 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.CRITICAL,
         keywords=["fast mps", "differential current", "acct", "diamond blm", "sub-microsecond abort", "chopper", "beam punch-through"],
     ))
+    registry.register(Capability(
+        name="optimize_bunch_compressor_chicane",
+        description="Calculate 4-dipole chicane R56 dispersion and optimize RF chirp voltage for heavy-ion bunch compression",
+        domain=CapabilityDomain.OPTICS,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["bunch compressor", "chicane", "r56", "t566", "chirp", "longitudinal dispersion", "peak current"],
+    ))
 
     return registry
 
