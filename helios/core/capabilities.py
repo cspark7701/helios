@@ -545,5 +545,47 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["mesh", "distributed", "broker", "event", "failover", "edge sync"],
     ))
 
+    # Advanced Heavy Ion Linac Systems Capabilities (Phases 40 - 44)
+    registry.register(Capability(
+        name="simulate_rfq_vane_modulation",
+        description="Simulate cell-by-cell RFQ vane modulation, 3D electric field harmonics, and heavy ion bunching",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["rfq", "vane modulation", "shaper", "gentle buncher", "bunching factor", "cell dynamics"],
+    ))
+    registry.register(Capability(
+        name="evaluate_liquid_metal_stripper",
+        description="Model high-power liquid lithium film and gas stripper hydrodynamics, thermal limits, and charge states",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["liquid lithium", "stripper", "weber number", "vaporization", "charge exchange", "foil lifetime"],
+    ))
+    registry.register(Capability(
+        name="balance_srf_cryoplant_heat",
+        description="Optimize superconducting cavity gradients against 2K cryoplant refrigeration capacity and thermal margins",
+        domain=CapabilityDomain.RF,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["cryoplant", "bcs resistance", "heat load", "refrigeration", "2k bath", "q0", "jt valve"],
+    ))
+    registry.register(Capability(
+        name="compress_bunch_tensor_network",
+        description="Perform low-rank Matrix Product State (MPS) / Tensor Train compression of 6D macroparticle density",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["tensor train", "mps", "tensor network", "svd", "macroparticle compression", "pic memory"],
+    ))
+    registry.register(Capability(
+        name="optimize_girder_laser_alignment",
+        description="Calculate motorized girder mechanical adjustments from laser tracker survey data to minimize steerer currents",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["laser tracker", "survey", "girder mover", "fiducial", "mechanical alignment", "cams"],
+    ))
+
     return registry
 
