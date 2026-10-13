@@ -208,5 +208,20 @@ def chat(
             break
 
 
+@app.command()
+def dashboard(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Bind host"),
+    port: int = typer.Option(8000, "--port", "-p", help="Bind port"),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload for dev"),
+):
+    """Launch the HELIOS real-time operator web dashboard."""
+    import uvicorn
+    from helios.dashboard.app import create_dashboard_app
+
+    console.print(f"[bold green]Starting HELIOS Operator Console at http://{host}:{port}[/bold green]")
+    web_app = create_dashboard_app()
+    uvicorn.run(web_app, host=host, port=port)
+
+
 if __name__ == "__main__":
     app()

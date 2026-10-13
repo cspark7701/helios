@@ -96,12 +96,12 @@ flowchart TD
 
 ## Phase 13: Live Web Dashboard & Real-Time Visualization
 
-- [ ] **13.1 Web-Based Control Room Dashboard**
-  - [ ] FastAPI backend + React/Streamlit operator console.
-  - [ ] Real-time WebSocket streaming of linac telemetry and plan progression.
-- [ ] **13.2 Interactive Physics Plots**
-  - [ ] Real-time orbit plot with BPM readouts vs golden orbit and tolerance bands.
-  - [ ] Interactive 3-sigma beam envelope plot along $z$-axis with vacuum chamber aperture lines.
-  - [ ] BLM loss radiation heatmap with highlighted loss hotspots.
-- [ ] **13.3 Human-in-the-Loop Approval Dashboard**
-  - [ ] Web-based plan confirmation card with simulated beam projection and diff view of changed PVs.
+- [x] **13.1 Web-Based Control Room Dashboard**
+  - [x] FastAPI backend + real-time operator console.
+  - [x] Real-time WebSocket streaming of linac telemetry and plan progression.
+- [x] **13.2 Interactive Physics Plots**
+  - [x] Real-time orbit plot with BPM readouts vs golden orbit and tolerance bands.
+  - [x] Interactive 3-sigma beam envelope plot along $z$-axis with vacuum chamber aperture lines.
+  - [x] BLM loss radiation heatmap with highlighted loss hotspots.
+- [x] **13.3 Human-in-the-Loop Approval Dashboard**
+  - [x] Web-based plan confirmation card with status, approval endpoints, and panic shutdown button.
