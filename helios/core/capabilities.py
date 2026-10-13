@@ -468,4 +468,38 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["topology", "knowledge graph", "neighbors", "upstream steerer", "causal", "graph"],
     ))
 
+    # Advanced Physics, Switchyard & Resilience Capabilities (Phases 30 - 34)
+    registry.register(Capability(
+        name="track_symplectic_3d_fieldmap",
+        description="Execute relativistic Boris symplectic particle tracking through 3D electromagnetic field maps",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["field map", "3d", "boris", "symplectic", "pusher", "cst", "opera"],
+    ))
+    registry.register(Capability(
+        name="evaluate_ibs_growth_rates",
+        description="Calculate Intra-Beam Scattering (IBS) emittance diffusion and energy spread growth rates for heavy ions",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["ibs", "intra-beam scattering", "emittance growth", "piwinski", "diffusion"],
+    ))
+    registry.register(Capability(
+        name="route_switchyard_target_vault",
+        description="Plan and execute coordinated switchyard trajectory routing to target experiment vaults",
+        domain=CapabilityDomain.ORBIT,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["switchyard", "target vault", "bending dipole", "hebt", "routing", "septum"],
+    ))
+    registry.register(Capability(
+        name="arbitrate_cotuning_conflicts",
+        description="Resolve concurrent multi-agent Process Variable setpoint conflicts using cooperative game theory",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Orchestrator",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["game theory", "nash", "arbitration", "conflict resolution", "co-tuning"],
+    ))
+
     return registry
