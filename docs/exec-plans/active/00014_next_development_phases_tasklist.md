@@ -1,0 +1,106 @@
+# HELIOS Next Phase Development Task List (Phases 8 - 13)
+
+- **Status**: Active
+- **Reference Architecture**: LBNL Osprey Framework
+- **Domain**: Heavy Ion Linear Accelerators (LEBT, RFQ, MEBT, SCL, HEBT)
+- **Last Updated**: 2026-10-13
+
+---
+
+## 🎯 Strategic Roadmap Overview
+
+Having completed the foundational architecture (Phases 1–7) with 44/44 passing tests and a dedicated conda environment, the next roadmap moves HELIOS from an algorithmic prototype toward a production-grade, deployment-ready accelerator AI assistant aligned with LBNL's Osprey framework.
+
+```mermaid
+flowchart TD
+    P8["Phase 8: LLM Agent Core & Operator Chat TUI"] --> P9["Phase 9: Production Simulators (TraceWin/IMPACT-Z)"]
+    P8 --> P10["Phase 10: EPICS pvAccess & Archiver Client"]
+    P9 --> P11["Phase 11: Deep ML Surrogates & Virtual Diag"]
+    P10 --> P12["Phase 12: Superconducting RF & Cryo Safety"]
+    P11 --> P13["Phase 13: Web Dashboard & Real-Time Plots"]
+    P12 --> P13
+```
+
+---
+
+## Phase 8: LLM Agent Core & Natural Language Operator Interface
+
+- [ ] **8.1 Multi-Provider LLM Integration Layer**
+  - [ ] Implement extensible LLM adapter (supporting local Ollama, Google Gemini, Anthropic, OpenAI).
+  - [ ] Support structured tool calling / JSON function schema binding.
+  - [ ] Provide prompt caching and context management.
+- [ ] **8.2 Natural Language Planner Agent (`HELIOS-Orchestrator`)**
+  - [ ] Build intent parser converting operator dialogue into structured `ExecutionPlan` drafts.
+  - [ ] Dynamic capability injection: bind classified tools from `CapabilityRegistry` into LLM system prompts.
+  - [ ] Implement chain-of-thought and explainability traces for physicist review.
+- [ ] **8.3 Interactive Operator Chat Console (TUI / CLI)**
+  - [ ] Rich/Prompt-Toolkit interactive terminal chat session.
+  - [ ] Visual plan review modal with interactive `[Approve] / [Reject] / [Modify]` buttons.
+  - [ ] Real-time execution streaming and step progress bars.
+
+---
+
+## Phase 9: Real Simulation Code Integration & Heavy Ion Dynamics
+
+- [ ] **9.1 TraceWin File Parser & Batch Execution Engine**
+  - [ ] Parse TraceWin `.dat` lattice definitions and element parameters.
+  - [ ] Generate TraceWin batch execution command lines and handle headless runs.
+  - [ ] Ingest TraceWin outputs: `envelope.out`, `partran*.out`, `loss.out`.
+- [ ] **9.2 IMPACT-Z 3D Space-Charge Engine**
+  - [ ] Wrapper for 3D space-charge PIC code (IMPACT-Z) in space-charge dominated low-energy sections (LEBT/RFQ).
+- [ ] **9.3 Multi-Charge-State (MCS) Heavy Ion Dynamics**
+  - [ ] Implement multi-charge-state beam distributions (e.g. $^{238}\text{U}^{33+/34+}$).
+  - [ ] Model charge strippers and achromatic charge-selection sections.
+
+---
+
+## Phase 10: Advanced EPICS pvAccess & Archiver Appliance Bridge
+
+- [ ] **10.1 EPICS pvAccess (PVA) Support**
+  - [ ] Integrate `p4p` / pvAccess for high-performance structured normative types (`NTTable`, `NTNDArray`).
+  - [ ] Support high-rate beam profile camera acquisition and multi-BPM vector readouts.
+- [ ] **10.2 Production EPICS Archiver Appliance Client**
+  - [ ] Implement REST API client to query facility PB-based Archiver Appliances (SLAC/FRIB/ALS/RAON).
+  - [ ] Provide automated baseline extraction: pull historical golden setpoints based on date/shift.
+- [ ] **10.3 Control System Security & Access Enforcement**
+  - [ ] Implement Channel Access Security (CAS) permission checks before issuing write requests.
+
+---
+
+## Phase 11: Deep Neural Surrogates & Virtual Diagnostics
+
+- [ ] **11.1 PyTorch Linac Surrogate Architecture**
+  - [ ] Multi-layer Perceptron / ResNet surrogate trained on TraceWin/IMPACT-Z latin hypercube samples.
+  - [ ] Instantaneous prediction of 6D beam phase space and transverse envelope along full linac.
+- [ ] **11.2 Virtual Diagnostic Inference**
+  - [ ] Virtual Wire Scanner / Virtual Profile Monitor: non-interceptive beam size prediction.
+  - [ ] Virtual Beam Loss Monitor: predict loss locations before beam turns on.
+- [ ] **11.3 Online Model Calibration**
+  - [ ] Bayesian parameter estimation to calibrate virtual model parameters against real BPM readings.
+
+---
+
+## Phase 12: Superconducting RF (SRF) & Advanced Linac Safety Guardrails
+
+- [ ] **12.1 SRF Cavity Quench & Thermal Protection**
+  - [ ] Cryogenic temperature monitor and liquid helium liquid level checks.
+  - [ ] Cavity gradient limits, forward/reflected power ratio trips, and multipacting protection.
+- [ ] **12.2 Persistent Rollback Stack & Crash Recovery**
+  - [ ] SQLite / disk-persisted rollback journal ensuring recovery survives power outages or process crashes.
+  - [ ] One-click emergency panic button: global machine shutdown setpoint triggers.
+- [ ] **12.3 Machine Protection System (MPS) Latency Modeling**
+  - [ ] Fast interlock verification with millisecond response constraints.
+
+---
+
+## Phase 13: Live Web Dashboard & Real-Time Visualization
+
+- [ ] **13.1 Web-Based Control Room Dashboard**
+  - [ ] FastAPI backend + React/Streamlit operator console.
+  - [ ] Real-time WebSocket streaming of linac telemetry and plan progression.
+- [ ] **13.2 Interactive Physics Plots**
+  - [ ] Real-time orbit plot with BPM readouts vs golden orbit and tolerance bands.
+  - [ ] Interactive 3-sigma beam envelope plot along $z$-axis with vacuum chamber aperture lines.
+  - [ ] BLM loss radiation heatmap with highlighted loss hotspots.
+- [ ] **13.3 Human-in-the-Loop Approval Dashboard**
+  - [ ] Web-based plan confirmation card with simulated beam projection and diff view of changed PVs.
