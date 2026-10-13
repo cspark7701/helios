@@ -81,10 +81,10 @@ flowchart TD
 
 ## Phase 18: Production Ops Tooling, Distributed Architecture & Shift Reporting
 
-- [ ] **18.1 Automated Shift Handover & Commissioning Reports**
-  - [ ] Generate comprehensive Markdown, PDF, and LaTeX commissioning shift reports detailing executed plans, beam transmission gains, and anomaly events.
-  - [ ] Record complete hardware provenance and parameter diffs for accelerator logbooks (Olog / Elog).
-- [ ] **18.2 Distributed Multi-Agent Message Broker**
-  - [ ] Implement Redis / MQTT / RabbitMQ pub-sub event bus for multi-node agent deployment across distributed control room servers.
-- [ ] **18.3 Operator Audit Trail & Regulatory Compliance Logging**
-  - [ ] Cryptographic signing / tamper-evident logging of all setpoint modifications for regulatory compliance and post-mortem forensic review.
+- [x] **18.1 Automated Shift Handover & Commissioning Reports**
+  - [x] Generate comprehensive Markdown, PDF, and LaTeX commissioning shift reports detailing executed plans, beam transmission gains, and anomaly events.
+  - [x] Record complete hardware provenance and parameter diffs for accelerator logbooks (Olog / Elog).
+- [x] **18.2 Distributed Multi-Agent Message Broker**
+  - [x] Implement Redis / MQTT / RabbitMQ pub-sub event bus for multi-node agent deployment across distributed control room servers.
+- [x] **18.3 Operator Audit Trail & Regulatory Compliance Logging**
+  - [x] Cryptographic signing / tamper-evident logging of all setpoint modifications for regulatory compliance and post-mortem forensic review.

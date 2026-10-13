@@ -30,6 +30,7 @@ class CapabilityDomain(str, Enum):
     SIMULATION = "SIMULATION"
     EPICS = "EPICS"
     OPTIMIZATION = "OPTIMIZATION"
+    OPS = "OPS"
 
 
 class Capability(BaseModel):
@@ -368,6 +369,24 @@ def get_default_registry() -> CapabilityRegistry:
         target_agent="HELIOS-Control",
         risk_level=RiskLevel.READ_ONLY,
         keywords=["pva", "pvaccess", "nttable", "orbit table", "vector", "waveform"],
+    ))
+
+    # Operations & Reporting Capabilities
+    registry.register(Capability(
+        name="generate_shift_report",
+        description="Compile and export linac commissioning shift logbook report in Markdown or LaTeX format",
+        domain=CapabilityDomain.OPS,
+        target_agent="HELIOS-Orchestrator",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["report", "shift", "logbook", "summary", "commissioning", "latex", "pdf", "export"],
+    ))
+    registry.register(Capability(
+        name="verify_audit_log_integrity",
+        description="Verify SHA-256 cryptographic hash-chain integrity of operational audit logs",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["audit", "hash chain", "integrity", "tamper", "compliance", "sha256", "log"],
     ))
 
     return registry
