@@ -32,6 +32,7 @@ class CapabilityDomain(str, Enum):
     OPTIMIZATION = "OPTIMIZATION"
     OPS = "OPS"
     ONTOLOGY = "ONTOLOGY"
+    CONTROL = "CONTROL"
 
 
 class Capability(BaseModel):
@@ -502,4 +503,47 @@ def get_default_registry() -> CapabilityRegistry:
         keywords=["game theory", "nash", "arbitration", "conflict resolution", "co-tuning"],
     ))
 
+    # Differentiable Dynamics, ECR Tuning, Halo & Agent Mesh Capabilities (Phases 35 - 39)
+    registry.register(Capability(
+        name="solve_inverse_differentiable_lattice",
+        description="Solve inverse lattice parameter reconstruction and calibration via PyTorch autograd backpropagation",
+        domain=CapabilityDomain.SIMULATION,
+        target_agent="HELIOS-Physics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["differentiable", "autodiff", "inverse solver", "gradient", "pytorch", "lattice calibration"],
+    ))
+    registry.register(Capability(
+        name="optimize_ecr_plasma_and_switch",
+        description="Optimize ECR ion source plasma parameters and calculate fast multi-species switching lattice scaling",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.LOW,
+        keywords=["ecr", "ion source", "plasma", "species switch", "charge state", "brho", "gas mixing"],
+    ))
+    registry.register(Capability(
+        name="evaluate_halo_and_optimize_collimation",
+        description="Compute Kurtosis and H-parameter beam halo metrics and set dynamic collimator jaw apertures",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["halo", "collimator", "kurtosis", "h-parameter", "jaw", "scraping", "transmission"],
+    ))
+    registry.register(Capability(
+        name="predict_cryomodule_quench_risk",
+        description="Forecast impending SRF cavity and magnet thermal quenches from high-speed cryomodule telemetry",
+        domain=CapabilityDomain.SAFETY,
+        target_agent="HELIOS-Safety",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["quench", "cryomodule", "srf", "temperature trend", "reflected power", "predictive mps"],
+    ))
+    registry.register(Capability(
+        name="publish_mesh_telemetry_event",
+        description="Publish and broadcast telemetry and control events across the distributed multi-node agent mesh",
+        domain=CapabilityDomain.CONTROL,
+        target_agent="HELIOS-Orchestrator",
+        risk_level=RiskLevel.READ_ONLY,
+        keywords=["mesh", "distributed", "broker", "event", "failover", "edge sync"],
+    ))
+
     return registry
+
