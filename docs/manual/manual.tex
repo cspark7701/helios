@@ -67,10 +67,10 @@ Aligned directly with the \textbf{Plan-First} paradigm established by the Lawren
 \section{Core Architectural Principles}
 \begin{enumerate}
     \item \textbf{Pre-Flight Simulation Verification}: No setpoint is ever delivered to live hardware without prior validation through high-fidelity codes (ANL TRACK via Wine, LBNL IMPACT-Z via \texttt{lume-impact}) or sub-millisecond neural surrogates.
-    \item \textbf{Deterministic Safety-First Actuation}: Optimization algorithms do not talk directly to EPICS. All actuations pass through rate-of-change limiters, slew rate clamps, and the \texttt{SafetyAgent} rollback stack.
+    \item \textbf{Deterministic Safety-First Actuation}: Optimization algorithms do not talk directly to EPICS. All actuations pass through rate-of-change limiters, slew rate clamps, discrete DAC current steps, and the \texttt{SafetyAgent} rollback stack.
     \item \textbf{Plan-First Execution Lifecycle}: High-level natural language goals are first compiled into structured, reproducible execution plans:
     \[
-    \text{DRAFT} \longrightarrow \text{SIMULATION\_VERIFIED} \longrightarrow \text{SAFETY\_APPROVED} \longrightarrow \text{EXECUTING} \longrightarrow \text{COMPLETED / ROLLED\_BACK}
+    \text{DRAFT} \longrightarrow \text{SIMULATION\_VERIFIED} \longrightarrow \text{SAFETY\_APPROVED} \longrightarrow \text{EXECUTING} \longrightarrow \text{COMPLETED}
     \]
     \item \textbf{Dynamic Capability Classification (Osprey Pattern)}: Instead of injecting hundreds of tools into the LLM context, HELIOS dynamically filters capabilities based on the operator's intent and domain keywords, keeping prompt sizes compact and execution deterministic.
     \item \textbf{Graduated Autonomy}: Enforces clear human-in-the-loop sign-offs graduated from Advisory (Level 0) to Fully Autonomous (Level 4).
@@ -107,8 +107,9 @@ HELIOS implements five graduated operational autonomy levels for human-in-the-lo
 
 \chapter{Installation and Environment Setup}
 
-\section{Prerequisites}
-HELIOS requires Python 3.10 or higher (recommended: Python 3.11 in Conda).
+\section{Prerequisites and Python Support}
+HELIOS is tested and verified across Python 3.10 through 3.14 (recommended: Python 3.11 in Conda/Miniforge).
+
 \begin{lstlisting}[language=bash]
 # Clone repository
 git clone https://github.com/cspark/helios.git
@@ -122,6 +123,14 @@ conda activate helios
 pip install -e ".[dev,ml,dashboard,ontology]"
 \end{lstlisting}
 
+\section{Automated Environment Loader (\texttt{setup.sh})}
+HELIOS provides an automated shell script \texttt{setup.sh} that automatically detects Conda/Miniforge or local virtual environments (\texttt{.venv}), exports project roots, and configures external accelerator simulation tool paths:
+\begin{lstlisting}[language=bash]
+# Source the environment configuration
+source setup.sh
+\end{lstlisting}
+This exports \texttt{PROJECT\_ROOT}, \texttt{HELIOS\_ROOT}, \texttt{TRACK\_ROOT}, and \texttt{TRACK\_EXE\_PATH}, ensuring seamless execution of physics solvers across all subsystems.
+
 \section{External Simulators and Control Tools}
 \begin{itemize}
     \item \textbf{ANL TRACK}: Heavy-ion ray-tracing and multi-charge state tracking code executed via Wine 64-bit (\texttt{wine64 track.exe}).
@@ -129,23 +138,53 @@ pip install -e ".[dev,ml,dashboard,ontology]"
     \item \textbf{EPICS Base}: Channel Access and pvAccess tools (\texttt{p4p}, \texttt{pyepics}) for live communication with accelerator IOCs.
 \end{itemize}
 
-\chapter{Operator Interfaces and CLI}
+\chapter{Operator Interfaces and CLI Usage}
 
-HELIOS provides an ergonomic command-line interface implemented via Typer and Rich.
+HELIOS provides an ergonomic command-line interface implemented via Typer and Rich:
+\begin{lstlisting}[language=bash]
+# Display CLI help and available commands
+helios --help
+\end{lstlisting}
+
+\section{Closed-Loop Orbit Correction (\texttt{helios tune-orbit})}
+Executes automated trajectory correction with Orbit Response Matrix (ORM) inversion and discrete power supply current quantization:
+\begin{lstlisting}[language=bash]
+# Tune MEBT section with default settings
+helios tune-orbit --section MEBT
+
+# Tune LEBT section using ANL TRACK simulation decks
+helios tune-orbit --section LEBT --model-dir examples/lebt --track \
+  --conversion-factor 0.168 --current-increment 0.05
+\end{lstlisting}
+Key parameters:
+\begin{itemize}
+    \item \texttt{--section}: Accelerator beamline section (\texttt{LEBT}, \texttt{MEBT}, etc.).
+    \item \texttt{--model-dir}, \texttt{-m}: Directory containing simulation decks (e.g. \texttt{examples/lebt} with \texttt{track.dat}).
+    \item \texttt{--track / --analytic}: Toggle between real ANL TRACK simulation or analytical model.
+    \item \texttt{--conversion-factor}, \texttt{-c}: Steerer current conversion factor ($0.168\text{ A/mrad}$).
+    \item \texttt{--current-increment}, \texttt{-i}: Power supply DAC discrete step limit ($0.05\text{ A}$).
+\end{itemize}
+
+\section{Real-Time Web Operator Dashboard (\texttt{helios dashboard})}
+Launch the modern, high-contrast operator GUI:
+\begin{lstlisting}[language=bash]
+helios dashboard --host 0.0.0.0 --port 8000
+\end{lstlisting}
+Navigate to \texttt{http://localhost:8000} to access:
+\begin{itemize}
+    \item \textbf{High-Contrast Control-Room Theme}: Pure white background (\texttt{\#ffffff}) with clear colored operational telemetry cards.
+    \item \textbf{Dynamic Real-Time SVG Trajectory Charts}: Horizontal and vertical beam trajectory along beam coordinate $z$, transmission envelopes, and BLM loss heatmaps.
+    \item \textbf{Side-Panel Copilot Prompt Window}: Natural language prompt input allowing operators to submit commands directly into the \texttt{NaturalLanguagePlanner}.
+    \item \textbf{Language Model Selector}: Selectable backend engines (Offline Deterministic Rules, Local Ollama, OpenAI GPT-4o, or Custom Lab Endpoints).
+    \item \textbf{One-Click Quick Actions}: Trajectory Correction, Envelope Rematching, RF Cavity Phase Scan, and Emergency Beam Abort.
+\end{itemize}
 
 \section{Interactive Operator Console (\texttt{helios chat})}
 Launch the conversational operator assistant:
 \begin{lstlisting}[language=bash]
 helios chat
 \end{lstlisting}
-The console accepts natural language goals (e.g. \textit{``Correct horizontal orbit in MEBT and verify quench margins on SCL1 cavity 02''}), decomposing them into formal Osprey execution plans.
-
-\section{Real-Time Web Dashboard (\texttt{helios dashboard})}
-Start the FastAPI and WebSocket visualization dashboard:
-\begin{lstlisting}[language=bash]
-helios dashboard --host 0.0.0.0 --port 8000
-\end{lstlisting}
-Open \texttt{http://localhost:8000} to inspect live BPM orbits, cavity resonance states, radiation loss heatmaps, and approve human-in-the-loop plans.
+Accepts natural language operational directives (e.g., \textit{``Correct horizontal orbit in MEBT and verify quench margins on SCL1 cavity 02''}), decomposing them into formal Osprey execution plans.
 
 \section{Commissioning Shift Reporting (\texttt{helios report})}
 Compile electronic logbook reports:
@@ -159,108 +198,133 @@ Verify SHA-256 cryptographic hash chaining across all recorded Process Variable 
 helios audit --verify
 \end{lstlisting}
 
-\chapter{Accelerator Physics and Beam Dynamics}
+\chapter{Accelerator Physics and Heavy Ion Dynamics}
 
 \section{Multi-Species and Multi-Charge-State (MCS) Dynamics}
 Heavy-ion linacs frequently accelerate multi-charge state beams simultaneously (e.g., $^{238}\text{U}^{33+}$ and $^{238}\text{U}^{34+}$). The magnetic rigidity $B\rho$ is given by:
 \begin{equation}
     B\rho = \frac{p}{q} = \frac{\gamma m_0 \beta c}{q}
 \end{equation}
-The module \texttt{helios.physics.species} models isotopic distributions and composite beam envelopes across charge fractions.
+The module \texttt{helios.physics.species} models isotopic distributions and composite beam centroids across charge fractions:
+\begin{equation}
+    \bar{x}(z) = \sum_{q} f_q \, x_q(z)
+\end{equation}
 
-\section{Stripper Foil Degradation Modeling}
-The module \texttt{helios.physics.stripper} simulates carbon and liquid lithium stripper foils:
+\section{Steerer Current Actuation and Quantization}
+Dipole correctors apply a magnetic kick deflection angle $\theta$:
+\begin{equation}
+    \theta = \frac{B_y L_{\text{eff}}}{B\rho}
+\end{equation}
+The power supply current $I$ is calibrated linearly via $I = k_{\text{conv}} \cdot \theta$ ($k_{\text{conv}} \approx 0.168\text{ A/mrad}$). Digital-to-analog converter (DAC) discretization is modeled by:
+\begin{equation}
+    I_{\text{quantized}} = \text{round}\left(\frac{I}{\Delta I}\right) \cdot \Delta I, \quad \Delta I = 0.05\text{ A}
+\end{equation}
+ensuring realistic simulation of power supply controller limits.
+
+\section{Orbit Response Matrix (ORM) Inversion}
+For $M$ BPMs and $N$ steerers, the trajectory response is $\Delta \vec{x} = \mathbf{R} \Delta \vec{\theta}$. Correction setpoints are computed via Singular Value Decomposition:
+\begin{equation}
+    \mathbf{R} = \mathbf{U} \mathbf{\Sigma} \mathbf{V}^T \implies \Delta \vec{\theta} = -\mathbf{V} \mathbf{\Sigma}^+ \mathbf{U}^T \vec{x}_0
+\end{equation}
+
+\section{RFQ 3D Vane Modulation and Cell Dynamics}
+The module \texttt{helios.physics.rfq} simulates cell-by-cell vane modulation ($m(z), a(z), l(z)=\beta\lambda/2$) across Radial Matching, Shaper, Gentle Buncher, and Accelerator sections with 3D field expansion:
+\begin{equation}
+    U(r, \psi, z) = \frac{V_0}{2} \left[ \left(\frac{r}{r_0}\right)^2 \cos(2\psi) + A_{10} I_0(k r) \cos(k z) \right]
+\end{equation}
+
+\section{Solid and Liquid Metal Stripper Targets}
 \begin{itemize}
-    \item Mean energy loss $\Delta E$ and stopping power $dE/dx$.
-    \item Multiple Coulomb scattering angular distribution $\theta_{\text{rms}}$.
-    \item Thermal degradation and foil lifetime tracking with replacement warning triggers.
+    \item \textbf{Solid Carbon Foils (\texttt{helios.physics.stripper})}: Energy loss $\Delta E$, multiple Coulomb scattering angular spread $\theta_{\text{rms}}$, and radiation damage lifetime.
+    \item \textbf{Liquid Lithium Strippers (\texttt{helios.physics.liquid\_stripper})}: Film hydrodynamics (Weber number $We$), multi-kW beam heating dissipation, and Langmuir evaporation rates.
 \end{itemize}
 
-\section{Beam-Based Alignment (BBA) and Dispersion-Free Steering (DFS)}
-Beam offsets relative to quadrupole magnetic centers are computed via strength modulation $\Delta K_1$:
+\section{Magnetic Bunch Compressor Chicane}
+The \texttt{helios.tuning.bunch\_compressor} module models 4-dipole C-type chicanes with momentum spread $\delta = \frac{1}{\beta^2} \frac{\Delta E}{E_{\text{tot}}}$:
 \begin{equation}
-    \Delta x_{\text{BPM}} = R_{12} \cdot (\Delta K_1 L) \cdot (x_{\text{beam}} - x_{\text{quad}})
+    R_{56} \approx -2 \theta_b^2 \left( L_d + \frac{2}{3} L_b \right), \quad z_f = z_i + R_{56} \delta + T_{566} \delta^2
 \end{equation}
-Dispersion-Free Steering (DFS) solves the stacked linear system via weighted SVD:
-\begin{equation}
-    \min_{\Delta \theta} \left( \| R_{\text{orbit}} \Delta \theta + x_0 \|^2 + w^2 \| R_{\text{disp}} \Delta \theta + \eta_0 \|^2 \right)
-\end{equation}
+computing optimal RF chirp $h = d\delta/dz$ for bunch compression factor $C > 1.0$.
 
-\section{Maximum Entropy (MENT) Phase Space Tomography}
-The \texttt{helios.physics.halo} module implements iterative Maximum Entropy (MENT) reconstruction of 2D transverse phase-space $(x, x')$ distributions from 1D profile projections. The Wangler-Crump halo parameter $H$ is evaluated as:
+\section{Linac Ultra-High Vacuum and Gas Stripping Losses}
+The \texttt{helios.physics.vacuum} module evaluates molecular conductance, cryo-pumping speeds at 2 K, and heavy-ion electron loss cross-sections $\sigma_{\text{strip}}$:
 \begin{equation}
-    H = \frac{\langle r^4 \rangle}{2 \langle r^2 \rangle^2} - 1.0
+    I(z) = I_0 \exp\left( -\int n_{\text{gas}}(z) \sigma_{\text{strip}} \, dz \right)
 \end{equation}
-providing automatic warnings when beam halo risks cryomodule chamber scraping.
+mitigating ion-induced desorption runaway.
 
-\chapter{Autonomous RF Conditioning and Cavity Control}
+\section{Space-Charge Equipartitioning and Hofmann Stability}
+The \texttt{helios.physics.equipartition} module calculates kinetic temperature anisotropy:
+\begin{equation}
+    \frac{T_\perp}{T_\parallel} = \frac{\varepsilon_{\perp n} \sigma_\perp}{\varepsilon_{\parallel n} \sigma_\parallel}
+\end{equation}
+and automatically rematches phase advances away from parametric resonance stopbands ($2\sigma_t - \sigma_l = 0$).
+
+\section{High-Power Beam Dumps and Thermo-Mechanical Shock}
+The \texttt{helios.physics.beam\_dump} module calculates heavy-ion Bragg peak energy deposition up to 400 kW, Grüneisen hydrodynamic shock pressure $P_{\text{shock}} = \Gamma \rho_0 e_{\text{dep}}$, von Mises thermal stresses, and Tong critical heat flux cooling margins.
+
+\chapter{Superconducting RF Dynamics and Conditioning}
+
+\section{Lorentz Force Detuning and Microphonics Feedforward}
+Dynamic Lorentz Force Detuning under accelerating gradient:
+\begin{equation}
+    \Delta f_{\text{LFD}} = -K_L E_{\text{acc}}^2
+\end{equation}
+is compensated via normalized Filtered-X Least Mean Squares (FxLMS) piezo feedforward cancellation (\texttt{helios.rf.microphonics}), yielding $>10\text{ dB}$ jitter reduction.
+
+\section{Cryoplant Heat Load Balancing}
+The \texttt{helios.rf.cryoplant} module evaluates BCS surface resistance $R_{\text{BCS}} \propto \frac{f^2}{T} \exp(-\Delta/k_B T)$ and dynamic dissipation $P_{\text{loss}} \propto V_{\text{acc}}^2 / R_s$, optimizing cavity field distributions within 2.0 K cryogenic capacity.
+
+\section{RF Multipactoring and Dark Current Field Emission}
+Simulates resonant electron multipactoring in coaxial couplers/cavities and Fowler-Nordheim dark current field emission with bremsstrahlung radiation accumulation (\texttt{helios.rf.multipactor}).
 
 \section{Progressive RF Conditioning Sequencer}
-The \texttt{AutonomousRFConditioner} automates the processing of high-power RF cavities:
-\begin{itemize}
-    \item Progressive forward power and pulse width ramping with vacuum interlocks ($P_{\text{vac}} < 10^{-7}\text{ mbar}$).
-    \item Dynamic multipacting barrier breakthrough: delivers $+25\%$ power jumps upon detecting electron pickup spikes.
-\end{itemize}
+The \texttt{AutonomousRFConditioner} automates forward power ramping with vacuum back-off interlocks ($P_{\text{vac}} < 10^{-7}\text{ mbar}$) and $+25\%$ power jump breakthroughs across multipacting zones.
 
-\section{Resonance Tracking and Detuning Compensation}
-The \texttt{CavityResonanceTracker} provides dual-actuator control under microphonics and helium bath pressure drift:
-\begin{enumerate}
-    \item \textbf{Fine Fast Control}: Piezoelectric actuators compensate high-frequency phase errors ($\pm 100\text{ Hz}$).
-    \item \textbf{Coarse Slow Control}: Stepper motor tuners absorb large thermal drifts and restore piezo voltage to center bias.
-\end{enumerate}
+\chapter{Deterministic Safety, Fast MPS and Rollback}
 
-\chapter{Optimization and Self-Driving Policies}
+\section{Sub-Microsecond Fast MPS and Differential Beam Abort}
+The \texttt{helios.safety.fast\_mps} module monitors ACCT differential beam loss ($\Delta I > \Delta I_{\text{threshold}}$) and fast diamond BLMs, initiating LEBT chopper deflection and RFQ shutdown in $<2.8\ \mu\text{s}$.
+
+\section{Rollback Stack Architecture}
+Prior to any hardware setpoint write, the \texttt{SafetyAgent} pushes current valid states to a rollback stack. Sensor threshold trips immediately trigger atomic parameter rollbacks.
+
+\section{Radiological Activation and RPO Clearance}
+Evaluates multi-isotope Bateman decay cooling equations ($^{56}\text{Mn}, ^{58}\text{Co}, ^{54}\text{Mn}, ^{60}\text{Co}$) along linac structures, enforcing cooldown wait times and cryptographic clearance tokens (\texttt{helios.safety.activation}).
+
+\chapter{Optimization, Machine Learning and Co-Simulation}
 
 \section{Reinforcement Learning Continuous Control}
 \begin{itemize}
-    \item \textbf{\texttt{LinacGymEnv}}: Standard Gymnasium environment wrapping digital twin simulations and live EPICS control.
-    \item \textbf{\texttt{LinacRLAgent}}: PyTorch Actor-Critic continuous policy trained for dynamic orbit correction under space charge.
-    \item \textbf{\texttt{NeuralMPCController}}: Receding-horizon model predictive controller utilizing neural surrogates.
+    \item \textbf{\texttt{LinacGymEnv}}: Gymnasium environment wrapping digital twin simulations and live EPICS control.
+    \item \textbf{\texttt{LinacRLAgent}}: PyTorch Actor-Critic continuous policy trained for trajectory control.
+    \item \textbf{\texttt{NeuralMPCController}}: Receding-horizon model predictive controller using neural surrogates.
 \end{itemize}
 
-\section{Multi-Objective Pareto Optics Optimization}
-The \texttt{MultiObjectiveParetoOptimizer} implements the NSGA-II non-dominated sorting genetic algorithm to simultaneously balance:
+\section{Multi-Physics Co-Simulation Bridge}
+The \texttt{ZeroCopyCoSimBridge} (\texttt{helios.sim.cosim}) provides high-speed in-memory IPC ring buffers sharing 6D bunch arrays $(N, 6)$ and 3D loss distributions synchronized with live linac repetition rates (1 to 100 Hz).
+
+\chapter{Testing and Continuous Integration}
+
+\section{Local Pre-Push Verification Script}
+Developers can test all GitHub Actions CI checks locally prior to pushing:
+\begin{lstlisting}[language=bash]
+# Run local pre-push checks
+./scripts/check_github_actions.sh
+\end{lstlisting}
+This script executes:
 \begin{enumerate}
-    \item Maximizing beam transmission ($>98\%$).
-    \item Minimizing transverse envelope scalloping.
-    \item Minimizing longitudinal energy spread ($\Delta p / p$).
+    \item CI Contract verification (\texttt{scripts/ci\_contract.py}).
+    \item Formatting and linting (\texttt{ruff check .}, \texttt{black --check .}).
+    \item Static type analysis (\texttt{mypy helios/}).
+    \item Full test suite execution (\texttt{pytest}).
 \end{enumerate}
 
-\chapter{Automated Fault Recovery and Self-Healing}
-
-\section{Autonomous RF Rematching}
-Upon cavity trip or phase unlock in superconducting cryomodules, \texttt{helios.healing.rf\_rematch} recalculates downstream cavity voltages and phases via normalized L-BFGS-B optimization to preserve target beam arrival time and final energy.
-
-\section{Magnet Power Supply Recovery}
-\texttt{helios.healing.magnet\_recovery} isolates tripped magnet power supplies and recalculates compensatory dipole kicks using remaining healthy steerers.
-
-\chapter{LinkML Ontology and Knowledge Graph}
-
-HELIOS formally defines its accelerator domain using the \textbf{LinkML} standard (\texttt{helios/ontology/helios\_schema.yaml}):
-\begin{itemize}
-    \item \textbf{Schema Classes}: Defines \texttt{BeamlineElement}, \texttt{MagneticElement}, \texttt{Quadrupole}, \texttt{RFCavityElement}, \texttt{BeamPositionMonitor}, and \texttt{LinacLatticeModel}.
-    \item \textbf{W3C RDF / Turtle OWL Exporter}: Serializes digital twins into Linked Open Data knowledge graphs with upstream and downstream connection topology.
-    \item \textbf{Topology Navigator}: The \texttt{BeamlineKnowledgeGraph} enables spatial and causal queries along the beamline (e.g., locating nearest upstream correctors).
-\end{itemize}
-
-\chapter{Digital Twin Synchronization and Security}
-
-\section{Ensemble Kalman State Estimation}
-\texttt{helios.physics.sync} implements a continuous Kalman filter assimilating live BPM telemetry to estimate unmeasured physical states, including beam energy spread and emittance.
-
-\section{Role-Based Access Control and Watchdogs}
-\begin{itemize}
-    \item \textbf{RBAC Security}: HMAC-signed tokens enforce permissions across \texttt{VIEWER}, \texttt{PHYSICIST}, \texttt{SAFETY\_OFFICER}, and \texttt{ADMIN}.
-    \item \textbf{MPS Heartbeat Watchdog}: Sub-second watchdog enforcing fail-safe fallback upon communication disruption.
-    \item \textbf{Cryptographic Audit Trail}: SHA-256 hash chaining guaranteeing tamper evidence and regulatory compliance.
-\end{itemize}
-
-\chapter{Verification and Test Suite}
-
-HELIOS includes an automated test suite verifying all 29 development phases:
+\section{Test Suite Execution}
+Run the pytest suite:
 \begin{lstlisting}[language=bash]
 pytest
 \end{lstlisting}
-The suite validates 98 tests covering lattice physics, neural surrogates, EPICS communication, RL environments, fault recovery, LinkML schemas, and end-to-end commissioning harnesses with 100\% passing status.
+All \textbf{138 unit and integration tests} pass with \textbf{0 warnings} across Python 3.10 through 3.14.
 
 \end{document}
