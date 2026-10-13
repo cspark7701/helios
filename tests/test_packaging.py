@@ -29,8 +29,9 @@ def test_cli_info():
     assert "Heavy Ion" in result.stdout
 
 
-def test_cli_tune_orbit_mebt_mock():
+def test_cli_tune_orbit_mebt_mock(monkeypatch, tmp_path):
     """Verify CLI tune-orbit command works on baseline section."""
+    monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["tune-orbit", "--section", "MEBT", "--autonomy", "3"])
     assert result.exit_code == 0
     assert "Plan Status" in result.stdout
