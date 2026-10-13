@@ -295,6 +295,30 @@ def get_default_registry() -> CapabilityRegistry:
         risk_level=RiskLevel.CRITICAL,
         keywords=["panic", "shutdown", "dump", "kill beam", "emergency zero"],
     ))
+    registry.register(Capability(
+        name="autonomous_rf_cavity_rematch",
+        description="Autonomously recalculate downstream cavity voltages and phases upon cavity trip to maintain energy gain",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.MEDIUM,
+        keywords=["rematch", "cavity trip", "energy recovery", "rf failure", "self-healing"],
+    ))
+    registry.register(Capability(
+        name="recover_tripped_magnet",
+        description="Isolate tripped magnet power supply and recalculate compensatory orbit correction with remaining healthy steerers",
+        domain=CapabilityDomain.OPTIMIZATION,
+        target_agent="HELIOS-Tuner",
+        risk_level=RiskLevel.MEDIUM,
+        keywords=["magnet trip", "power supply fault", "fallback steer", "isolate"],
+    ))
+    registry.register(Capability(
+        name="mitigate_beam_loss_hotspot",
+        description="Pinpoint radiation loss hotspots from BLM telemetry and steer beam off vacuum chamber walls",
+        domain=CapabilityDomain.DIAGNOSTICS,
+        target_agent="HELIOS-Diagnostics",
+        risk_level=RiskLevel.LOW,
+        keywords=["loss hotspot", "scraping", "blm mitigation", "radiation relief"],
+    ))
 
     # Control & Data Agent Capabilities
     registry.register(Capability(

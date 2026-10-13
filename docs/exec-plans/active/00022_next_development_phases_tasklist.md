@@ -55,14 +55,14 @@ flowchart TD
 
 ## Phase 16: Automated Fault Recovery & Self-Healing Linac Architecture
 
-- [ ] **16.1 Autonomous Local RF Cavity Failure Rematching**
-  - [ ] Detect RF cavity trips or microphonics unlock in superconducting cryomodules.
-  - [ ] Autonomously recalculate downstream cavity phases and amplitudes to maintain synchronous arrival time and target energy without dropping the beam.
-- [ ] **16.2 Magnet Power Supply Trip Isolation & Re-Steering**
-  - [ ] Fast isolation of tripped magnet sectors.
-  - [ ] Reconfigure neighbouring focusing magnets to preserve stable optical necking.
-- [ ] **16.3 Beam Loss Localization & Automated Beam Centering**
-  - [ ] Radiation centroid localization using BLM arrays and automatic steerer correction toward vacuum pipe center.
+- [x] **16.1 Autonomous Local RF Cavity Failure Rematching**
+  - [x] Detect RF cavity trips or microphonics unlock in superconducting cryomodules.
+  - [x] Autonomously recalculate downstream cavity phases and amplitudes to maintain synchronous arrival time and target energy without dropping the beam.
+- [x] **16.2 Magnet Power Supply Trip Isolation & Re-Steering**
+  - [x] Fast isolation of tripped magnet sectors.
+  - [x] Reconfigure neighbouring focusing magnets to preserve stable optical necking.
+- [x] **16.3 Beam Loss Localization & Automated Beam Centering**
+  - [x] Radiation centroid localization using BLM arrays and automatic steerer correction toward vacuum pipe center.
 
 ---
 
