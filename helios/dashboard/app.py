@@ -1,8 +1,9 @@
 """HELIOS Web Dashboard Backend Application (FastAPI).
 
 Provides REST and WebSocket endpoints for real-time accelerator telemetry,
-interactive physics visualizations, orbit tuning, and Human-in-the-Loop plan approval.
-Features a clean, high-contrast white background with color fonts for control room displays.
+interactive physics visualizations, orbit tuning, Human-in-the-Loop plan approval,
+and an interactive side panel Natural Language Prompt Window for control room physicists.
+Features a clean, high-contrast white background with color fonts.
 """
 
 import asyncio
@@ -48,9 +49,7 @@ LEBT_STATION_DATA = [
 ]
 
 LEBT_STEERER_NAMES = ["STM_1", "STM_2", "STM_3", "STM_4", "STM_5"]
-LEBT_STEERER_POS = [1.2, 3.1, 6.8, 9.2, 10.1]
 
-# Calibrated Orbit Response Matrix for LEBT (mm/mrad)
 LEBT_RX = np.array([
     [-0.039,  0.000,  0.000,  0.000,  0.000],
     [-0.045,  0.155,  0.000,  0.000,  0.000],
@@ -86,7 +85,6 @@ def execute_analytic_orbit_correction(
         x_init = np.array([s["x_init"] for s in stations])
         y_init = np.array([s["y_init"] for s in stations])
     else:
-        # MEBT baseline
         stations = [
             {"name": f"MEBT_BPM_{i+1:02d}", "z_m": round(0.5 + i * 0.45, 3), "x_init": round(0.15 * np.sin(i * 0.9), 4), "y_init": round(-0.10 * np.cos(i * 0.8), 4)}
             for i in range(8)
@@ -106,7 +104,6 @@ def execute_analytic_orbit_correction(
     rms_x_init = float(np.sqrt(np.mean(x_init**2)))
     rms_y_init = float(np.sqrt(np.mean(y_init**2)))
 
-    # Invert orbit distortion using SVD
     kicks_x, _ = SVDOrbitCorrection.calculate_correction(
         response_matrix=Rx,
         measured_offsets_mm=x_init,
@@ -194,7 +191,6 @@ def create_dashboard_app(
     ctrl = control_interface or MockControlInterface()
     rc = rollback_controller or RollbackController(control_interface=ctrl)
 
-    # In-memory plan store for approval workflow
     plans_store: Dict[str, Dict[str, Any]] = {
         "00001": {
             "plan_id": "00001",
@@ -225,7 +221,7 @@ def create_dashboard_app(
 
     @app.get("/", response_class=HTMLResponse)
     async def get_dashboard_html() -> str:
-        """Serve single-page white-background operator console UI with color fonts."""
+        """Serve single-page operator console UI with side panel prompt window."""
         return """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -265,7 +261,7 @@ def create_dashboard_app(
             background: var(--bg-page);
             color: var(--text-body);
             line-height: 1.5;
-            padding-bottom: 40px;
+            padding-bottom: 30px;
         }
 
         /* Top Navigation Bar */
@@ -350,41 +346,52 @@ def create_dashboard_app(
         }
         .btn-panic:hover { background: #b91c1c; transform: translateY(-1px); }
 
-        /* Container Layout */
-        .container {
-            max-width: 1400px;
+        /* Two-Column Layout with Side Panel */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 390px;
+            gap: 22px;
+            max-width: 1680px;
             margin: 0 auto;
-            padding: 24px;
+            padding: 22px 28px;
         }
+        @media (max-width: 1180px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .main-col { min-width: 0; }
+        .side-col { min-width: 0; }
 
         /* KPI Cards Grid */
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 16px;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .kpi-card {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: 10px;
-            padding: 18px 20px;
+            padding: 16px 18px;
             box-shadow: var(--shadow-card);
             transition: box-shadow 0.2s;
         }
         .kpi-card:hover { box-shadow: var(--shadow-hover); }
         .kpi-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: flex;
             justify-content: space-between;
         }
         .kpi-value {
-            font-size: 30px;
+            font-size: 28px;
             font-weight: 800;
             letter-spacing: -0.5px;
         }
@@ -399,13 +406,13 @@ def create_dashboard_app(
             display: flex;
             gap: 8px;
             border-bottom: 2px solid var(--border-subtle);
-            margin-bottom: 24px;
+            margin-bottom: 22px;
         }
         .tab-btn {
             background: transparent;
             border: none;
-            padding: 10px 18px;
-            font-size: 14px;
+            padding: 10px 16px;
+            font-size: 13px;
             font-weight: 700;
             color: var(--text-muted);
             cursor: pointer;
@@ -414,7 +421,7 @@ def create_dashboard_app(
             transition: all 0.2s;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
         .tab-btn:hover { color: var(--primary-blue); }
         .tab-btn.active {
@@ -430,7 +437,7 @@ def create_dashboard_app(
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: 10px;
-            padding: 22px;
+            padding: 20px;
             box-shadow: var(--shadow-card);
             margin-bottom: 20px;
         }
@@ -438,12 +445,12 @@ def create_dashboard_app(
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             padding-bottom: 12px;
             border-bottom: 1px solid var(--border-subtle);
         }
         .panel-title {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 800;
             color: var(--text-heading);
             display: flex;
@@ -454,25 +461,25 @@ def create_dashboard_app(
         /* Form Controls */
         .form-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
         }
         .form-group {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
         .form-label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
             color: var(--text-heading);
         }
         .form-control {
-            padding: 9px 12px;
+            padding: 8px 12px;
             border: 1px solid var(--border-subtle);
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 13px;
             color: var(--text-body);
             background: #ffffff;
             outline: none;
@@ -488,33 +495,21 @@ def create_dashboard_app(
             background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-blue-dark) 100%);
             color: #ffffff;
             border: none;
-            padding: 10px 22px;
+            padding: 9px 18px;
             border-radius: 6px;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             box-shadow: 0 2px 4px rgba(37,99,235,0.3);
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
         .btn-primary:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 6px rgba(37,99,235,0.4);
         }
-        .btn-outline {
-            background: #ffffff;
-            color: var(--text-body);
-            border: 1px solid var(--border-subtle);
-            padding: 9px 18px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-outline:hover { background: #f8fafc; border-color: var(--border-hover); }
 
         /* Tables */
         .table-wrap { overflow-x: auto; margin-top: 12px; }
@@ -528,11 +523,11 @@ def create_dashboard_app(
             background: #f8fafc;
             color: var(--text-heading);
             font-weight: 700;
-            padding: 10px 14px;
+            padding: 9px 12px;
             border-bottom: 2px solid var(--border-subtle);
         }
         .data-table td {
-            padding: 10px 14px;
+            padding: 9px 12px;
             border-bottom: 1px solid var(--border-subtle);
             color: var(--text-body);
         }
@@ -545,30 +540,181 @@ def create_dashboard_app(
         .text-amber { color: var(--accent-amber); font-weight: 700; }
         .text-red { color: var(--accent-red); font-weight: 700; }
 
-        /* SVG Chart Styles */
-        .chart-box {
-            background: #ffffff;
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            padding: 16px;
-            margin-top: 14px;
-        }
-        svg text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-
-        /* Results summary strip */
+        /* Results strip */
         .results-strip {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 12px;
             background: #f8fafc;
             border: 1px solid var(--border-subtle);
             border-radius: 8px;
-            padding: 14px;
+            padding: 12px 14px;
             margin-bottom: 16px;
         }
         .strip-item { display: flex; flex-direction: column; }
         .strip-title { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
-        .strip-val { font-size: 20px; font-weight: 800; }
+        .strip-val { font-size: 18px; font-weight: 800; }
+
+        .chart-box {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 14px;
+            margin-top: 14px;
+        }
+
+        /* SIDE PANEL PROMPT WINDOW STYLES */
+        .prompt-panel {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px);
+            position: sticky;
+            top: 86px;
+        }
+        .prompt-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .prompt-title {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .prompt-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #fafafa;
+        }
+        .chat-bubble {
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.45;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            animation: fadeIn 0.2s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .bubble-user {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            margin-left: 20px;
+        }
+        .bubble-user-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--primary-blue);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        .bubble-user-text {
+            color: var(--accent-navy);
+            font-weight: 600;
+        }
+        .bubble-assistant {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            margin-right: 10px;
+        }
+        .bubble-assistant-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--accent-green);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .plan-card-inline {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        .plan-step-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px dashed #e2e8f0;
+            color: var(--text-body);
+        }
+        .quick-chips-box {
+            padding: 10px 14px;
+            background: #ffffff;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .chip-btn {
+            background: #ffffff;
+            border: 1px solid var(--border-subtle);
+            border-radius: 9999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-body);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chip-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            background: var(--accent-cyan-bg);
+        }
+        .prompt-input-area {
+            padding: 12px 14px;
+            border-top: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+        .prompt-textarea {
+            width: 100%;
+            height: 68px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--text-body);
+            background: #ffffff;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .prompt-textarea:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+        .prompt-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -587,257 +733,304 @@ def create_dashboard_app(
         </div>
     </header>
 
-    <div class="container">
+    <!-- Main Two-Column Layout Grid -->
+    <div class="layout-grid">
 
-        <!-- Top KPI Overview Bar -->
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Beam Transmission <span class="badge badge-green">Nominal</span></div>
-                <div class="kpi-value text-green" id="kpi-transmission">99.4%</div>
-                <div class="kpi-sub">Beam Current: 4.85 mA | Energy: 0.50 MeV/u</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Orbit Distortion (RMS) <span class="badge badge-blue">&plusmn;0.50 mm Limit</span></div>
-                <div class="kpi-value text-blue" id="kpi-orbit">0.1135 mm</div>
-                <div class="kpi-sub">Tolerance: &plusmn;0.50 mm | Monitors: 6/6 Active</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Radiation & Losses <span class="badge badge-amber">Safe</span></div>
-                <div class="kpi-value text-amber" id="kpi-losses">0.12 W/m</div>
-                <div class="kpi-sub">MPS Trip Limit: 1.00 W/m | Interlocks: Normal</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Power Supply Actuation <span class="badge badge-purple">Calibrated</span></div>
-                <div class="kpi-value text-purple" id="kpi-steerers">5 Steerers</div>
-                <div class="kpi-sub">Transfer: 0.168 A/mrad | DAC Step: 0.05 A</div>
-            </div>
-        </div>
+        <!-- LEFT COLUMN: Main Operator Console -->
+        <main class="main-col">
 
-        <!-- Tabbed Navigation Bar -->
-        <div class="tabs-nav">
-            <button class="tab-btn active" onclick="switchTab('tab-tuning')">🎯 Closed-Loop Orbit Tuning</button>
-            <button class="tab-btn" onclick="switchTab('tab-diagnostics')">📊 Beam Diagnostics & Optics</button>
-            <button class="tab-btn" onclick="switchTab('tab-safety')">🛡️ Safety Plans & MPS Interlocks</button>
-            <button class="tab-btn" onclick="switchTab('tab-stream')">📡 Real-Time Telemetry Stream</button>
-        </div>
-
-        <!-- TAB 1: CLOSED-LOOP ORBIT TUNING -->
-        <div id="tab-tuning" class="tab-pane active">
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">🎯 Closed-Loop Trajectory Tuning & Current Actuation</div>
-                    <div style="font-size: 13px; color: var(--text-muted);">Digital Twin SVD Response Matrix Solver</div>
+            <!-- Top KPI Overview Bar -->
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Beam Transmission <span class="badge badge-green">Nominal</span></div>
+                    <div class="kpi-value text-green" id="kpi-transmission">99.4%</div>
+                    <div class="kpi-sub">Beam Current: 4.85 mA | Energy: 0.50 MeV/u</div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Linac Section</label>
-                        <select class="form-control" id="tune-section">
-                            <option value="LEBT" selected>LEBT (5 Steerers, 6 Diagnostic Stations)</option>
-                            <option value="MEBT">MEBT (4 Steerers, 8 BPM Stations)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Physics Engine</label>
-                        <select class="form-control" id="tune-engine">
-                            <option value="analytic" selected>Fast Analytic SVD Engine (&lt; 0.05s)</option>
-                            <option value="track">TRACK Beam Dynamics Simulator (Wine)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Steerer Calibration Factor (A/mrad)</label>
-                        <input type="number" step="0.001" class="form-control" id="tune-factor" value="0.168">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Current Step Limit (A)</label>
-                        <input type="number" step="0.01" class="form-control" id="tune-step" value="0.05">
-                    </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Orbit Distortion (RMS) <span class="badge badge-blue">&plusmn;0.50 mm</span></div>
+                    <div class="kpi-value text-blue" id="kpi-orbit">0.1135 mm</div>
+                    <div class="kpi-sub">Tolerance: &plusmn;0.50 mm | Monitors: 6/6 Active</div>
                 </div>
-
-                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 20px;">
-                    <button class="btn-primary" id="btn-run-tune" onclick="executeOrbitCorrection()">
-                        <span>⚡ Run Closed-Loop Orbit Correction</span>
-                    </button>
-                    <span id="tune-status" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Ready to tune.</span>
+                <div class="kpi-card">
+                    <div class="kpi-label">Radiation Losses <span class="badge badge-amber">Safe</span></div>
+                    <div class="kpi-value text-amber" id="kpi-losses">0.12 W/m</div>
+                    <div class="kpi-sub">MPS Trip Limit: 1.00 W/m | Interlocks: Normal</div>
                 </div>
-
-                <!-- Results Strip -->
-                <div class="results-strip" id="tune-results-strip">
-                    <div class="strip-item">
-                        <span class="strip-title">Initial Orbit RMS</span>
-                        <span class="strip-val text-red" id="res-init-rms">0.1135 mm</span>
-                    </div>
-                    <div class="strip-item">
-                        <span class="strip-title">Corrected Orbit RMS</span>
-                        <span class="strip-val text-green" id="res-corr-rms">0.0820 mm</span>
-                    </div>
-                    <div class="strip-item">
-                        <span class="strip-title">RMS Improvement</span>
-                        <span class="strip-val text-blue" id="res-improvement">+27.8%</span>
-                    </div>
-                    <div class="strip-item">
-                        <span class="strip-title">Orbit Correction Time</span>
-                        <span class="strip-val text-purple" id="res-timing">0.042 s</span>
-                    </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Corrector Current <span class="badge badge-purple">Calibrated</span></div>
+                    <div class="kpi-value text-purple" id="kpi-steerers">5 Steerers</div>
+                    <div class="kpi-sub">Transfer: 0.168 A/mrad | Step: 0.05 A</div>
                 </div>
+            </div>
 
-                <!-- Interactive Orbit Trajectory Chart (SVG) -->
-                <div class="chart-box">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 14px; font-weight: 700; color: var(--text-heading);">Beam Centroid Trajectory X(z) vs Longitudinal Position</span>
-                        <div style="display: flex; gap: 14px; font-size: 12px;">
-                            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-weight: 700;">
-                                <span style="width: 10px; height: 10px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Initial X (mm)
-                            </span>
-                            <span style="display: flex; align-items: center; gap: 4px; color: var(--primary-blue); font-weight: 700;">
-                                <span style="width: 10px; height: 10px; background: var(--primary-blue); border-radius: 50%; display: inline-block;"></span> Corrected X (mm)
-                            </span>
-                            <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 700;">
-                                <span style="width: 10px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tolerance
-                            </span>
+            <!-- Tabbed Navigation Bar -->
+            <div class="tabs-nav">
+                <button class="tab-btn active" onclick="switchTab('tab-tuning')">🎯 Closed-Loop Orbit Tuning</button>
+                <button class="tab-btn" onclick="switchTab('tab-diagnostics')">📊 Beam Diagnostics & Optics</button>
+                <button class="tab-btn" onclick="switchTab('tab-safety')">🛡️ Safety Plans & MPS Interlocks</button>
+                <button class="tab-btn" onclick="switchTab('tab-stream')">📡 Real-Time Telemetry Stream</button>
+            </div>
+
+            <!-- TAB 1: CLOSED-LOOP ORBIT TUNING -->
+            <div id="tab-tuning" class="tab-pane active">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">🎯 Closed-Loop Trajectory Tuning & Current Actuation</div>
+                        <div style="font-size: 13px; color: var(--text-muted);">SVD Orbit Response Matrix Solver</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Linac Section</label>
+                            <select class="form-control" id="tune-section">
+                                <option value="LEBT" selected>LEBT (5 Steerers, 6 Diagnostic Stations)</option>
+                                <option value="MEBT">MEBT (4 Steerers, 8 BPM Stations)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Physics Engine</label>
+                            <select class="form-control" id="tune-engine">
+                                <option value="analytic" selected>Fast Analytic SVD Engine (&lt; 0.05s)</option>
+                                <option value="track">TRACK Beam Dynamics Simulator (Wine)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Steerer Calibration Factor (A/mrad)</label>
+                            <input type="number" step="0.001" class="form-control" id="tune-factor" value="0.168">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Current Step Limit (A)</label>
+                            <input type="number" step="0.01" class="form-control" id="tune-step" value="0.05">
                         </div>
                     </div>
-                    <svg id="orbit-chart-svg" width="100%" height="280" viewBox="0 0 900 280"></svg>
-                </div>
 
-                <!-- Steerer Power Supply Actuation Table -->
-                <div style="margin-top: 24px;">
-                    <div class="panel-title" style="margin-bottom: 8px;">⚡ Actuated Steerer Power Supply Currents</div>
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 18px;">
+                        <button class="btn-primary" id="btn-run-tune" onclick="executeOrbitCorrection()">
+                            <span>⚡ Run Closed-Loop Orbit Correction</span>
+                        </button>
+                        <span id="tune-status" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Ready to tune.</span>
+                    </div>
+
+                    <!-- Results Strip -->
+                    <div class="results-strip" id="tune-results-strip">
+                        <div class="strip-item">
+                            <span class="strip-title">Initial Orbit RMS</span>
+                            <span class="strip-val text-red" id="res-init-rms">0.1135 mm</span>
+                        </div>
+                        <div class="strip-item">
+                            <span class="strip-title">Corrected Orbit RMS</span>
+                            <span class="strip-val text-green" id="res-corr-rms">0.0820 mm</span>
+                        </div>
+                        <div class="strip-item">
+                            <span class="strip-title">RMS Improvement</span>
+                            <span class="strip-val text-blue" id="res-improvement">+27.8%</span>
+                        </div>
+                        <div class="strip-item">
+                            <span class="strip-title">Orbit Correction Time</span>
+                            <span class="strip-val text-purple" id="res-timing">0.042 s</span>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Orbit Trajectory Chart (SVG) -->
+                    <div class="chart-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">Beam Centroid Trajectory X(z) vs Longitudinal Position</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-weight: 700;">
+                                    <span style="width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Initial X (mm)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px; color: var(--primary-blue); font-weight: 700;">
+                                    <span style="width: 8px; height: 8px; background: var(--primary-blue); border-radius: 50%; display: inline-block;"></span> Corrected X (mm)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 700;">
+                                    <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tolerance
+                                </span>
+                            </div>
+                        </div>
+                        <svg id="orbit-chart-svg" width="100%" height="260" viewBox="0 0 900 260"></svg>
+                    </div>
+
+                    <!-- Steerer Power Supply Actuation Table -->
+                    <div style="margin-top: 22px;">
+                        <div class="panel-title" style="margin-bottom: 8px;">⚡ Actuated Steerer Power Supply Currents</div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Corrector Magnet</th>
+                                        <th>Deflection Kick &theta;<sub>x</sub> (mrad)</th>
+                                        <th>Power Supply I<sub>x</sub> (A)</th>
+                                        <th>Deflection Kick &theta;<sub>y</sub> (mrad)</th>
+                                        <th>Power Supply I<sub>y</sub> (A)</th>
+                                        <th>DAC Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="steerers-table-body">
+                                    <tr>
+                                        <td><strong>STM_1</strong></td>
+                                        <td class="text-blue">+0.0000 mrad</td>
+                                        <td class="text-purple">+0.00 A</td>
+                                        <td class="text-blue">+0.0000 mrad</td>
+                                        <td class="text-purple">+0.00 A</td>
+                                        <td><span class="badge badge-green">APPLIED</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Diagnostic Stations Readings Table -->
+                    <div style="margin-top: 22px;">
+                        <div class="panel-title" style="margin-bottom: 8px;">📡 Diagnostic Observation Stations Summary</div>
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Monitor Station</th>
+                                        <th>Position z (m)</th>
+                                        <th>Initial X (mm)</th>
+                                        <th>Corrected X (mm)</th>
+                                        <th>Offset Residual &Delta;X (mm)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monitors-table-body">
+                                    <tr>
+                                        <td>WS_1</td>
+                                        <td>1.9812 m</td>
+                                        <td class="text-red">+0.0424 mm</td>
+                                        <td class="text-green">+0.0424 mm</td>
+                                        <td>0.0000 mm</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- TAB 2: BEAM DIAGNOSTICS & OPTICS -->
+            <div id="tab-diagnostics" class="tab-pane">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📊 Transverse Beam Envelope & Radiation Losses</div>
+                    </div>
+
+                    <div class="chart-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">3-Sigma Beam Envelope vs Aperture Boundary</span>
+                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                                <span class="text-blue">3&sigma;<sub>x</sub> Envelope (mm)</span>
+                                <span class="text-purple">3&sigma;<sub>y</sub> Envelope (mm)</span>
+                                <span class="text-red">&plusmn;15.0 mm Aperture Limit</span>
+                            </div>
+                        </div>
+                        <svg id="envelope-chart-svg" width="100%" height="240" viewBox="0 0 900 240"></svg>
+                    </div>
+
+                    <div class="chart-box" style="margin-top: 18px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">Beam Loss Monitors (BLM) Radiation Distribution</span>
+                            <span class="text-red" style="font-size: 11px;">Trip Threshold: 1.00 W/m</span>
+                        </div>
+                        <svg id="blm-chart-svg" width="100%" height="190" viewBox="0 0 900 190"></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: SAFETY & PLANS -->
+            <div id="tab-safety" class="tab-pane">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">🛡️ Active Operational Execution Plans (Human-in-the-Loop)</div>
+                    </div>
+
                     <div class="table-wrap">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>Corrector Magnet</th>
-                                    <th>Deflection Kick &theta;<sub>x</sub> (mrad)</th>
-                                    <th>Power Supply I<sub>x</sub> (A)</th>
-                                    <th>Deflection Kick &theta;<sub>y</sub> (mrad)</th>
-                                    <th>Power Supply I<sub>y</sub> (A)</th>
-                                    <th>DAC Status</th>
+                                    <th>Plan ID</th>
+                                    <th>Operational Directive</th>
+                                    <th>Autonomy Level</th>
+                                    <th>Workflow State</th>
+                                    <th>Operator Actions</th>
                                 </tr>
                             </thead>
-                            <tbody id="steerers-table-body">
+                            <tbody id="plans-table-body">
                                 <tr>
-                                    <td><strong>STM_1</strong></td>
-                                    <td class="text-blue">+0.0000 mrad</td>
-                                    <td class="text-purple">+0.00 A</td>
-                                    <td class="text-blue">+0.0000 mrad</td>
-                                    <td class="text-purple">+0.00 A</td>
-                                    <td><span class="badge badge-green">APPLIED</span></td>
+                                    <td><strong class="text-blue">00001</strong></td>
+                                    <td>LEBT Closed-Loop Trajectory Correction</td>
+                                    <td><span class="badge badge-purple">ASSISTED</span></td>
+                                    <td><span class="badge badge-blue">READY</span></td>
+                                    <td><button class="btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="approvePlan('00001')">Approve & Execute</button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+            </div>
 
-                <!-- Diagnostic Stations Readings Table -->
-                <div style="margin-top: 24px;">
-                    <div class="panel-title" style="margin-bottom: 8px;">📡 Diagnostic Observation Stations Summary</div>
-                    <div class="table-wrap">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Monitor Station</th>
-                                    <th>Position z (m)</th>
-                                    <th>Initial X (mm)</th>
-                                    <th>Corrected X (mm)</th>
-                                    <th>Offset Residual &Delta;X (mm)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="monitors-table-body">
-                                <tr>
-                                    <td>WS_1</td>
-                                    <td>1.9812 m</td>
-                                    <td class="text-red">+0.0424 mm</td>
-                                    <td class="text-green">+0.0424 mm</td>
-                                    <td>0.0000 mm</td>
-                                </tr>
-                            </tbody>
-                        </table>
+            <!-- TAB 4: REAL-TIME TELEMETRY STREAM -->
+            <div id="tab-stream" class="tab-pane">
+                <div class="panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📡 Live WebSocket Telemetry Feed</div>
+                        <div id="ws-status" class="badge badge-green"><span class="pulse-dot"></span> Live Stream Active</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; max-height: 380px; overflow-y: auto;" id="stream-log">
+                        <div style="color: var(--text-muted);">Waiting for telemetry stream packets...</div>
                     </div>
                 </div>
-
             </div>
-        </div>
 
-        <!-- TAB 2: BEAM DIAGNOSTICS & OPTICS -->
-        <div id="tab-diagnostics" class="tab-pane">
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">📊 Transverse Beam Envelope & Radiation Losses</div>
+        </main>
+
+        <!-- RIGHT COLUMN: SIDE PANEL PROMPT WINDOW -->
+        <aside class="side-col">
+            <div class="prompt-panel">
+                <div class="prompt-header">
+                    <div class="prompt-title">
+                        <span>💬 AI Assistant Prompt</span>
+                    </div>
+                    <span class="badge badge-purple" style="font-size: 10px;">HELIOS-LLM</span>
                 </div>
 
-                <div class="chart-box">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 14px; font-weight: 700; color: var(--text-heading);">3-Sigma Beam Envelope vs Aperture Boundary</span>
-                        <div style="display: flex; gap: 14px; font-size: 12px;">
-                            <span class="text-blue">3&sigma;<sub>x</sub> Envelope (mm)</span>
-                            <span class="text-purple">3&sigma;<sub>y</sub> Envelope (mm)</span>
-                            <span class="text-red">&plusmn;15.0 mm Aperture Limit</span>
+                <!-- Chat Messages Scroll Area -->
+                <div class="prompt-messages" id="prompt-messages">
+                    <div class="chat-bubble bubble-assistant">
+                        <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator</span></div>
+                        <div style="color: var(--text-body);">
+                            Control room console ready. Enter an operational directive (e.g. <em>"Correct orbit in LEBT"</em> or <em>"Calculate steerer currents with 0.168 A/mrad"</em>) to synthesize and execute a validated plan.
                         </div>
                     </div>
-                    <svg id="envelope-chart-svg" width="100%" height="260" viewBox="0 0 900 260"></svg>
                 </div>
 
-                <div class="chart-box" style="margin-top: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 14px; font-weight: 700; color: var(--text-heading);">Beam Loss Monitors (BLM) Radiation Distribution</span>
-                        <span class="text-red" style="font-size: 12px;">Trip Threshold: 1.00 W/m</span>
+                <!-- Quick Prompt Suggestion Chips -->
+                <div class="quick-chips-box">
+                    <button class="chip-btn" onclick="sendQuickPrompt('Correct orbit in LEBT with 0.168 A/mrad')">🎯 Correct LEBT Orbit</button>
+                    <button class="chip-btn" onclick="sendQuickPrompt('Scan buncher cavity phase in MEBT')">⚡ Cavity Phase Scan</button>
+                    <button class="chip-btn" onclick="sendQuickPrompt('Verify linac beam transmission and radiation losses')">📊 Check Losses</button>
+                </div>
+
+                <!-- Input Box -->
+                <div class="prompt-input-area">
+                    <textarea class="prompt-textarea" id="prompt-input" placeholder="Type directive: e.g. 'Flatten LEBT orbit with 0.168 A/mrad'..." onkeydown="handlePromptKey(event)"></textarea>
+                    <div class="prompt-actions">
+                        <span style="font-size: 11px; color: var(--text-muted);" id="prompt-char-count">Press Enter ↵ to send</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-primary" id="btn-send-prompt" onclick="submitPrompt()" style="padding: 6px 14px; font-size: 12px;">
+                                <span>⚡ Send</span>
+                            </button>
+                        </div>
                     </div>
-                    <svg id="blm-chart-svg" width="100%" height="200" viewBox="0 0 900 200"></svg>
                 </div>
             </div>
-        </div>
-
-        <!-- TAB 3: SAFETY & PLANS -->
-        <div id="tab-safety" class="tab-pane">
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">🛡️ Active Operational Execution Plans (Human-in-the-Loop)</div>
-                </div>
-
-                <div class="table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Plan ID</th>
-                                <th>Operational Directive</th>
-                                <th>Autonomy Level</th>
-                                <th>Workflow State</th>
-                                <th>Operator Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="plans-table-body">
-                            <tr>
-                                <td><strong class="text-blue">00001</strong></td>
-                                <td>LEBT Closed-Loop Trajectory Correction</td>
-                                <td><span class="badge badge-purple">ASSISTED</span></td>
-                                <td><span class="badge badge-blue">READY</span></td>
-                                <td><button class="btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="approvePlan('00001')">Approve & Execute</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- TAB 4: REAL-TIME TELEMETRY STREAM -->
-        <div id="tab-stream" class="tab-pane">
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-title">📡 Live WebSocket Telemetry Feed</div>
-                    <div id="ws-status" class="badge badge-green"><span class="pulse-dot"></span> Live Stream Active</div>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; font-family: monospace; font-size: 13px; max-height: 380px; overflow-y: auto;" id="stream-log">
-                    <div style="color: var(--text-muted);">Waiting for telemetry stream packets...</div>
-                </div>
-            </div>
-        </div>
+        </aside>
 
     </div>
 
     <!-- Client-Side Dashboard Logic -->
     <script>
-        // Tab switching
         function switchTab(tabId) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -848,11 +1041,10 @@ def create_dashboard_app(
             }
         }
 
-        // Render SVG Orbit Trajectory Chart
         function renderOrbitChart(monitors, tolerance) {
             const svg = document.getElementById('orbit-chart-svg');
-            const w = 900, h = 280;
-            const padL = 60, padR = 40, padT = 30, padB = 40;
+            const w = 900, h = 260;
+            const padL = 60, padR = 40, padT = 25, padB = 35;
             const plotW = w - padL - padR;
             const plotH = h - padT - padB;
 
@@ -868,23 +1060,19 @@ def create_dashboard_app(
 
             let html = '';
 
-            // Grid lines
             html += `<line x1="${padL}" y1="${padT}" x2="${padL + plotW}" y2="${padT}" stroke="#e2e8f0" />`;
             html += `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#e2e8f0" />`;
             html += `<line x1="${padL}" y1="${scaleY(0)}" x2="${padL + plotW}" y2="${scaleY(0)}" stroke="#94a3b8" stroke-dasharray="3,3" />`;
 
-            // Tolerance band (+/- tolerance)
             const tolTop = scaleY(tolerance);
             const tolBottom = scaleY(-tolerance);
             html += `<rect x="${padL}" y="${tolTop}" width="${plotW}" height="${tolBottom - tolTop}" fill="#ecfdf5" fill-opacity="0.5" stroke="#10b981" stroke-dasharray="4,4" />`;
 
-            // Axis labels
-            html += `<text x="${padL}" y="${scaleY(tolerance) - 4}" font-size="11" fill="#059669">+${tolerance} mm</text>`;
-            html += `<text x="${padL}" y="${scaleY(-tolerance) + 12}" font-size="11" fill="#059669">-${tolerance} mm</text>`;
-            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="12" fill="#475569" text-anchor="end" font-weight="bold">X (mm)</text>`;
-            html += `<text x="${padL + plotW/2}" y="${h - 8}" font-size="12" fill="#475569" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
+            html += `<text x="${padL}" y="${scaleY(tolerance) - 4}" font-size="10" fill="#059669">+${tolerance} mm</text>`;
+            html += `<text x="${padL}" y="${scaleY(-tolerance) + 12}" font-size="10" fill="#059669">-${tolerance} mm</text>`;
+            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="11" fill="#475569" text-anchor="end" font-weight="bold">X (mm)</text>`;
+            html += `<text x="${padL + plotW/2}" y="${h - 6}" font-size="11" fill="#475569" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
 
-            // Initial curve (red)
             let pathInit = '';
             monitors.forEach((m, idx) => {
                 const px = scaleX(m.z_m), py = scaleY(m.x_init_mm);
@@ -892,7 +1080,6 @@ def create_dashboard_app(
             });
             html += `<path d="${pathInit}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,4" />`;
 
-            // Corrected curve (blue)
             let pathCorr = '';
             monitors.forEach((m, idx) => {
                 const px = scaleX(m.z_m), py = scaleY(m.x_corr_mm);
@@ -900,20 +1087,18 @@ def create_dashboard_app(
             });
             html += `<path d="${pathCorr}" fill="none" stroke="#2563eb" stroke-width="2.5" />`;
 
-            // Points
             monitors.forEach(m => {
                 const px = scaleX(m.z_m);
                 const pyInit = scaleY(m.x_init_mm);
                 const pyCorr = scaleY(m.x_corr_mm);
-                html += `<circle cx="${px}" cy="${pyInit}" r="4.5" fill="#dc2626"><title>${m.name} @ ${m.z_m}m: X_init = ${m.x_init_mm} mm</title></circle>`;
-                html += `<circle cx="${px}" cy="${pyCorr}" r="5" fill="#2563eb"><title>${m.name} @ ${m.z_m}m: X_corr = ${m.x_corr_mm} mm</title></circle>`;
-                html += `<text x="${px}" y="${padT + plotH + 18}" font-size="10" fill="#64748b" text-anchor="middle">${m.name}</text>`;
+                html += `<circle cx="${px}" cy="${pyInit}" r="4" fill="#dc2626"><title>${m.name}: X_init = ${m.x_init_mm} mm</title></circle>`;
+                html += `<circle cx="${px}" cy="${pyCorr}" r="4.5" fill="#2563eb"><title>${m.name}: X_corr = ${m.x_corr_mm} mm</title></circle>`;
+                html += `<text x="${px}" y="${padT + plotH + 16}" font-size="10" fill="#64748b" text-anchor="middle">${m.name}</text>`;
             });
 
             svg.innerHTML = html;
         }
 
-        // Execute orbit correction via API
         async function executeOrbitCorrection() {
             const btn = document.getElementById('btn-run-tune');
             const status = document.getElementById('tune-status');
@@ -939,19 +1124,14 @@ def create_dashboard_app(
                 });
                 const data = await res.json();
 
-                // Update Results Strip
                 document.getElementById('res-init-rms').textContent = data.initial_rms_x_mm.toFixed(4) + ' mm';
                 document.getElementById('res-corr-rms').textContent = data.corrected_rms_x_mm.toFixed(4) + ' mm';
                 document.getElementById('res-improvement').textContent = (data.improvement_pct >= 0 ? '+' : '') + data.improvement_pct.toFixed(1) + '%';
                 document.getElementById('res-timing').textContent = data.elapsed_time_s.toFixed(3) + ' s';
-
-                // Update KPI banner
                 document.getElementById('kpi-orbit').textContent = data.corrected_rms_x_mm.toFixed(4) + ' mm';
 
-                // Render Chart
                 renderOrbitChart(data.monitors, 0.50);
 
-                // Update Steerers Table
                 const tbodyS = document.getElementById('steerers-table-body');
                 tbodyS.innerHTML = data.steerers.map(s => `
                     <tr>
@@ -964,7 +1144,6 @@ def create_dashboard_app(
                     </tr>
                 `).join('');
 
-                // Update Monitors Table
                 const tbodyM = document.getElementById('monitors-table-body');
                 tbodyM.innerHTML = data.monitors.map(m => {
                     const diff = m.x_corr_mm - m.x_init_mm;
@@ -979,8 +1158,9 @@ def create_dashboard_app(
                     `;
                 }).join('');
 
-                status.textContent = `Correction completed in ${data.elapsed_time_s.toFixed(3)}s!`;
+                status.textContent = `Completed in ${data.elapsed_time_s.toFixed(3)}s!`;
                 status.style.color = '#059669';
+                return data;
             } catch (err) {
                 status.textContent = 'Error: ' + err.message;
                 status.style.color = '#dc2626';
@@ -989,10 +1169,8 @@ def create_dashboard_app(
             }
         }
 
-        // Load Diagnostics Plots (Envelope & BLM)
         async function loadDiagnosticPlots() {
             try {
-                // Envelope Plot
                 const resEnv = await fetch('/api/plots/envelope');
                 const dataEnv = await resEnv.json();
                 const svgEnv = document.getElementById('envelope-chart-svg');
@@ -1001,19 +1179,17 @@ def create_dashboard_app(
                 const envY = dataEnv.envelope_3sig_y_pos_mm;
                 const ap = dataEnv.aperture_limit_mm;
 
-                const padL = 60, padR = 40, padT = 20, padB = 40;
-                const plotW = 900 - padL - padR, plotH = 260 - padT - padB;
+                const padL = 60, padR = 40, padT = 20, padB = 35;
+                const plotW = 900 - padL - padR, plotH = 240 - padT - padB;
                 const scaleX = v => padL + (v / Math.max(...s)) * plotW;
                 const scaleY = v => padT + (ap * 1.15 - v) / (ap * 2.3) * plotH;
 
                 let html = '';
-                // Aperture limit lines
                 html += `<line x1="${padL}" y1="${scaleY(ap)}" x2="${padL + plotW}" y2="${scaleY(ap)}" stroke="#dc2626" stroke-dasharray="4,4" stroke-width="1.5" />`;
                 html += `<line x1="${padL}" y1="${scaleY(-ap)}" x2="${padL + plotW}" y2="${scaleY(-ap)}" stroke="#dc2626" stroke-dasharray="4,4" stroke-width="1.5" />`;
-                html += `<text x="${padL + plotW - 10}" y="${scaleY(ap) - 6}" font-size="11" fill="#dc2626" text-anchor="end">+15.0 mm Aperture</text>`;
-                html += `<text x="${padL + plotW - 10}" y="${scaleY(-ap) + 14}" font-size="11" fill="#dc2626" text-anchor="end">-15.0 mm Aperture</text>`;
+                html += `<text x="${padL + plotW - 10}" y="${scaleY(ap) - 6}" font-size="10" fill="#dc2626" text-anchor="end">+15.0 mm Aperture</text>`;
+                html += `<text x="${padL + plotW - 10}" y="${scaleY(-ap) + 14}" font-size="10" fill="#dc2626" text-anchor="end">-15.0 mm Aperture</text>`;
 
-                // 3-sigma curves
                 let pXPos = '', pXNeg = '', pYPos = '', pYNeg = '';
                 s.forEach((z, i) => {
                     const px = scaleX(z);
@@ -1029,7 +1205,6 @@ def create_dashboard_app(
 
                 svgEnv.innerHTML = html;
 
-                // BLM Plot
                 const resBlm = await fetch('/api/plots/blm');
                 const dataBlm = await resBlm.json();
                 const svgBlm = document.getElementById('blm-chart-svg');
@@ -1037,21 +1212,21 @@ def create_dashboard_app(
                 const blmVals = dataBlm.loss_values_w;
                 const trip = dataBlm.trip_threshold_w;
 
-                const bPlotW = 900 - padL - padR, bPlotH = 200 - padT - padB;
+                const bPlotW = 900 - padL - padR, bPlotH = 190 - padT - padB;
                 const bScaleX = v => padL + (v / Math.max(...blmS, 4.0)) * bPlotW;
                 const bScaleY = v => padT + (trip * 1.2 - v) / (trip * 1.2) * bPlotH;
 
                 let bHtml = '';
                 bHtml += `<line x1="${padL}" y1="${bScaleY(trip)}" x2="${padL + bPlotW}" y2="${bScaleY(trip)}" stroke="#dc2626" stroke-dasharray="4,4" stroke-width="2" />`;
-                bHtml += `<text x="${padL + bPlotW - 10}" y="${bScaleY(trip) - 6}" font-size="11" fill="#dc2626" text-anchor="end">Trip Limit: 1.00 W/m</text>`;
+                bHtml += `<text x="${padL + bPlotW - 10}" y="${bScaleY(trip) - 6}" font-size="10" fill="#dc2626" text-anchor="end">Trip Limit: 1.00 W/m</text>`;
 
                 blmVals.forEach((loss, i) => {
                     const bx = bScaleX(blmS[i]);
                     const by = bScaleY(loss);
                     const bh = padT + bPlotH - by;
                     bHtml += `<rect x="${bx - 12}" y="${by}" width="24" height="${bh}" fill="#f59e0b" rx="2" />`;
-                    bHtml += `<text x="${bx}" y="${by - 6}" font-size="11" fill="#d97706" text-anchor="middle" font-weight="bold">${loss.toFixed(2)} W</text>`;
-                    bHtml += `<text x="${bx}" y="${padT + bPlotH + 16}" font-size="11" fill="#64748b" text-anchor="middle">${dataBlm.blm_names[i]}</text>`;
+                    bHtml += `<text x="${bx}" y="${by - 6}" font-size="10" fill="#d97706" text-anchor="middle" font-weight="bold">${loss.toFixed(2)} W</text>`;
+                    bHtml += `<text x="${bx}" y="${padT + bPlotH + 16}" font-size="10" fill="#64748b" text-anchor="middle">${dataBlm.blm_names[i]}</text>`;
                 });
                 svgBlm.innerHTML = bHtml;
 
@@ -1060,7 +1235,6 @@ def create_dashboard_app(
             }
         }
 
-        // Human-in-the-loop plan approval
         async function approvePlan(planId) {
             try {
                 const res = await fetch(`/api/plans/${planId}/approve`, {method: 'POST'});
@@ -1072,7 +1246,6 @@ def create_dashboard_app(
             }
         }
 
-        // Emergency Panic
         async function triggerPanic() {
             if (confirm("🚨 EMERGENCY PANIC SHUTDOWN: Immediately dump heavy ion beam, zero RF cavity setpoints, and safe all magnetic power supplies?")) {
                 try {
@@ -1083,6 +1256,122 @@ def create_dashboard_app(
                     alert("Panic trigger failed: " + e.message);
                 }
             }
+        }
+
+        // SIDE PANEL PROMPT WINDOW LOGIC
+        function handlePromptKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitPrompt();
+            }
+        }
+
+        function sendQuickPrompt(text) {
+            document.getElementById('prompt-input').value = text;
+            submitPrompt();
+        }
+
+        async function submitPrompt() {
+            const input = document.getElementById('prompt-input');
+            const promptText = input.value.trim();
+            if (!promptText) return;
+
+            const msgsBox = document.getElementById('prompt-messages');
+            const btn = document.getElementById('btn-send-prompt');
+
+            // Append User message
+            const userBubble = document.createElement('div');
+            userBubble.className = 'chat-bubble bubble-user';
+            userBubble.innerHTML = `
+                <div class="bubble-user-label">Physicist Directive</div>
+                <div class="bubble-user-text">${promptText}</div>
+            `;
+            msgsBox.appendChild(userBubble);
+            input.value = '';
+            msgsBox.scrollTop = msgsBox.scrollHeight;
+
+            btn.disabled = true;
+
+            // Append Thinking placeholder
+            const assistBubble = document.createElement('div');
+            assistBubble.className = 'chat-bubble bubble-assistant';
+            assistBubble.innerHTML = `
+                <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator</span></div>
+                <div style="color: var(--text-muted); font-style: italic;">Formulating execution plan & physics verification...</div>
+            `;
+            msgsBox.appendChild(assistBubble);
+            msgsBox.scrollTop = msgsBox.scrollHeight;
+
+            try {
+                const res = await fetch('/api/prompt', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt: promptText})
+                });
+                const data = await res.json();
+
+                let stepsHtml = '';
+                if (data.plan && data.plan.steps) {
+                    stepsHtml = `
+                        <div class="plan-card-inline">
+                            <div style="font-weight: 700; color: var(--accent-navy); margin-bottom: 4px;">Proposed Plan: ${data.plan.title} (ID: ${data.plan.plan_id})</div>
+                            ${data.plan.steps.map(s => `
+                                <div class="plan-step-item">
+                                    <span><strong>${s.name}</strong> (${s.agent})</span>
+                                    <span class="badge badge-blue" style="font-size: 9px;">${s.action}</span>
+                                </div>
+                            `).join('')}
+                            <div style="margin-top: 8px;">
+                                <button class="btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="executePlanFromChat('${data.plan.plan_id}')">⚡ Execute Plan</button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                assistBubble.innerHTML = `
+                    <div class="bubble-assistant-label"><span>🤖 HELIOS Orchestrator</span></div>
+                    <div style="color: var(--text-body);">${data.explanation}</div>
+                    ${stepsHtml}
+                `;
+            } catch (err) {
+                assistBubble.innerHTML = `
+                    <div class="bubble-assistant-label"><span style="color:var(--accent-red)">⚠️ Error</span></div>
+                    <div style="color: var(--accent-red);">Failed to process directive: ${err.message}</div>
+                `;
+            } finally {
+                btn.disabled = false;
+                msgsBox.scrollTop = msgsBox.scrollHeight;
+            }
+        }
+
+        async function executePlanFromChat(planId) {
+            const msgsBox = document.getElementById('prompt-messages');
+            const note = document.createElement('div');
+            note.className = 'chat-bubble bubble-assistant';
+            note.innerHTML = `
+                <div class="bubble-assistant-label"><span>⚡ Executing Plan ${planId}</span></div>
+                <div style="color: var(--text-muted);">Actuating power supplies & verifying closed-loop orbit...</div>
+            `;
+            msgsBox.appendChild(note);
+            msgsBox.scrollTop = msgsBox.scrollHeight;
+
+            // Trigger orbit correction
+            const result = await executeOrbitCorrection();
+            if (result) {
+                note.innerHTML = `
+                    <div class="bubble-assistant-label"><span style="color: var(--accent-green)">✔ Plan ${planId} Executed</span></div>
+                    <div style="color: var(--text-body);">
+                        Orbit corrected successfully! Horizontal RMS: <strong>${result.initial_rms_x_mm} mm &rarr; ${result.corrected_rms_x_mm} mm</strong> (${result.improvement_pct >= 0 ? '+' : ''}${result.improvement_pct}%).
+                        Execution time: <strong>${result.elapsed_time_s}s</strong>.
+                    </div>
+                `;
+            } else {
+                note.innerHTML = `
+                    <div class="bubble-assistant-label"><span style="color: var(--accent-red)">⚠️ Plan ${planId} Failed</span></div>
+                    <div style="color: var(--accent-red);">Execution encountered an error. Check machine telemetry.</div>
+                `;
+            }
+            msgsBox.scrollTop = msgsBox.scrollHeight;
         }
 
         // Live WebSocket Telemetry Stream
@@ -1109,7 +1398,6 @@ def create_dashboard_app(
             };
         }
 
-        // Initial trigger
         window.addEventListener('DOMContentLoaded', () => {
             executeOrbitCorrection();
             initWebSocket();
@@ -1218,7 +1506,6 @@ def create_dashboard_app(
         if section.upper() == "LEBT" and engine == "track":
             try:
                 from examples.tune_orbit_lebt import run_tune_orbit_example
-                # Execute in background thread to prevent blocking event loop
                 res = await asyncio.to_thread(
                     run_tune_orbit_example,
                     model_dir=Path("examples/lebt"),
@@ -1240,12 +1527,58 @@ def create_dashboard_app(
             except Exception as e:
                 logger.warning(f"TRACK execution failed ({e}), falling back to analytic model")
 
-        # Analytic execution
         return execute_analytic_orbit_correction(
             section=section,
             conversion_factor_a_per_mrad=factor,
             current_increment_a=step,
         )
+
+    @app.post("/api/prompt")
+    async def process_prompt_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Process conversational natural language directive from side panel prompt window."""
+        prompt = payload.get("prompt", "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+
+        from helios.agents.planner import NaturalLanguagePlanner
+        planner = NaturalLanguagePlanner()
+        plan, explanation = planner.formulate_plan_from_prompt(prompt)
+
+        plans_store[plan.plan_id] = {
+            "plan_id": plan.plan_id,
+            "title": plan.title,
+            "state": plan.state.value if hasattr(plan.state, "value") else str(plan.state),
+            "autonomy_level": plan.autonomy_level.value if hasattr(plan.autonomy_level, "value") else str(plan.autonomy_level),
+            "steps": [
+                {
+                    "step_id": s.step_id,
+                    "name": s.name,
+                    "agent": s.target_agent,
+                    "action": s.action,
+                }
+                for s in plan.steps
+            ],
+            "approved": False,
+        }
+
+        return {
+            "explanation": explanation,
+            "plan": {
+                "plan_id": plan.plan_id,
+                "title": plan.title,
+                "steps": [
+                    {
+                        "step_id": s.step_id,
+                        "name": s.name,
+                        "agent": s.target_agent,
+                        "action": s.action,
+                        "parameters": s.parameters,
+                    }
+                    for s in plan.steps
+                ],
+            },
+            "success": True,
+        }
 
     @app.websocket("/ws/telemetry")
     async def websocket_telemetry(websocket: WebSocket) -> None:

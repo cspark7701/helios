@@ -133,3 +133,22 @@ def test_dashboard_orbit_tuning_endpoint(client):
     assert len(data["monitors"]) == 6
     assert "elapsed_time_s" in data
 
+
+def test_dashboard_prompt_window_endpoint(client):
+    """Verify side panel prompt endpoint parses natural language directives and formulates plans."""
+    resp = client.post("/api/prompt", json={
+        "prompt": "Flatten orbit distortion in LEBT",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is True
+    assert "explanation" in data
+    assert "plan" in data
+    assert data["plan"]["title"]
+    assert len(data["plan"]["steps"]) >= 1
+
+    # Empty prompt validation
+    resp_empty = client.post("/api/prompt", json={"prompt": ""})
+    assert resp_empty.status_code == 400
+
+

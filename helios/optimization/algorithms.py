@@ -47,7 +47,7 @@ class SVDOrbitCorrection:
         # Singular Value Decomposition: R = U * S * V^T
         U, S, Vt = np.linalg.svd(R, full_matrices=False)
 
-        max_s = S[0] if len(S) > 0 else 1.0
+        max_s = float(S[0]) if (len(S) > 0 and S[0] > 1e-12) else 1.0
         # Invert singular values with cutoff and optional Tikhonov damping
         S_inv = np.zeros_like(S)
         used_singular_values = 0
