@@ -193,3 +193,49 @@ def test_safety_gatekeeper_execute_plan_authorization():
     assert gatekeeper.execute(plan) is True
     assert ctrl.get("MEBT:PSC:CH01:CurrentSet") == 1.5
 
+
+def test_rollback_controller_failure_paths_and_deletion(tmp_path):
+    """Verify rollback failure branches: empty stack, missing ID, and journal deletion."""
+    ctrl = MockControlInterface()
+    db_path = tmp_path / "rollback.db"
+    rc = RollbackController(control_interface=ctrl, journal_path=db_path)
+
+    # 1. Rollback on empty stack returns False
+    assert rc.trigger_rollback() is False
+    assert rc.trigger_rollback("nonexistent-id") is False
+
+    # 2. Register a checkpoint
+    cp_id = rc.create_checkpoint("test_cp", {"MEBT:TEST:PV": 10.0})
+    assert len(rc._stack) == 1
+
+    # 3. Requesting a non-matching checkpoint ID returns False
+    assert rc.trigger_rollback("wrong_id") is False
+
+    # 4. Deleting checkpoint from journal
+    assert rc.journal is not None
+    rc.journal.delete_checkpoint(cp_id)
+    reloaded = rc.journal.load_all_checkpoints()
+    assert len(reloaded) == 0
+
+
+def test_panic_shutdown_variants(monkeypatch):
+    """Verify panic shutdown with explicit PV list and config fallback exception."""
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("CUSTOM:PANIC:01", 5.0)
+    ctrl.set_initial_pv("CUSTOM:PANIC:02", 10.0)
+
+    rc = RollbackController(control_interface=ctrl)
+
+    # 1. Custom PV list
+    success = rc.panic_shutdown(pvs_to_zero=["CUSTOM:PANIC:01", "CUSTOM:PANIC:02"])
+    assert success is True
+    assert ctrl.get("CUSTOM:PANIC:01") == 0.0
+    assert ctrl.get("CUSTOM:PANIC:02") == 0.0
+
+    # 2. FacilityConfig exception fallback
+    from helios.core import facility_config
+    monkeypatch.setattr(facility_config.FacilityConfig, "load_default", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("Config error")))
+    fallback_success = rc.panic_shutdown()
+    assert fallback_success is True
+
+

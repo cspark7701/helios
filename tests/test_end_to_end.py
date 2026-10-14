@@ -99,3 +99,133 @@ def test_unreadable_bpm_aborts_without_actuation(tmp_path: Path):
     assert "Diagnostics BPM telemetry unreadable" in str(exc_info.value)
     # Ensure steerer was never actuated
     assert ctrl.get("MEBT:PSC:CH01:CurrentSet") is None
+
+
+def test_end_to_end_physics_rejection(tmp_path: Path, monkeypatch):
+    """Verify plan is rejected and halts when Physics Agent verifier fails."""
+    from helios.core.schemas import ValidationCheck, ValidationResult
+
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:X_POS", 0.5)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:Y_POS", -0.2)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:X_POS", 0.8)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:Y_POS", -0.3)
+    ctrl.set_initial_pv("MEBT:PSC:CH01:CurrentSet", 0.0)
+
+    orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
+    # Force physics surrogate validation to fail
+    monkeypatch.setattr(
+        orch.physics_surrogate,
+        "validate_plan_setpoints",
+        lambda sps: ValidationResult(
+            validator_agent="HELIOS-Physics",
+            is_valid=False,
+            checks=[ValidationCheck(check_name="LossCheck", passed=False, message="Projected beam loss exceeds 1.0 W")],
+            errors=["Projected beam loss exceeds 1.0 W"],
+        ),
+    )
+
+    plan = orch.run_orbit_correction_loop(
+        plan_id="00053",
+        section="MEBT",
+        steerers=["MEBT_CH01"],
+        bpms=["MEBT_BPM01", "MEBT_BPM02"],
+        operator_confirmed=True,
+    )
+
+    assert plan.state == PlanState.FAILED
+    assert ctrl.get("MEBT:PSC:CH01:CurrentSet") == 0.0
+
+
+def test_end_to_end_safety_rejection(tmp_path: Path, monkeypatch):
+    """Verify plan is rejected and halts when Safety Gatekeeper fails."""
+    from helios.core.schemas import ValidationCheck, ValidationResult
+
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:X_POS", 0.5)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:Y_POS", -0.2)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:X_POS", 0.8)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:Y_POS", -0.3)
+    ctrl.set_initial_pv("MEBT:PSC:CH01:CurrentSet", 0.0)
+
+    orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
+    # Force safety gatekeeper validation to fail
+    monkeypatch.setattr(
+        orch.safety_gatekeeper,
+        "validate_setpoints",
+        lambda sps: ValidationResult(
+            validator_agent="HELIOS-Safety",
+            is_valid=False,
+            checks=[ValidationCheck(check_name="Limits", passed=False, message="Setpoint exceeds hard limit")],
+            errors=["Setpoint exceeds hard limit"],
+        ),
+    )
+
+    plan = orch.run_orbit_correction_loop(
+        plan_id="00054",
+        section="MEBT",
+        steerers=["MEBT_CH01"],
+        bpms=["MEBT_BPM01", "MEBT_BPM02"],
+        operator_confirmed=True,
+    )
+
+    assert plan.state == PlanState.FAILED
+    assert ctrl.get("MEBT:PSC:CH01:CurrentSet") == 0.0
+
+
+def test_end_to_end_unreadable_rollback_setpoint(tmp_path: Path):
+    """Verify plan raises MissingReadbackError if initial steerer setpoint is unreadable."""
+    from helios.interfaces.base import MissingReadbackError
+
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:X_POS", 0.5)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:Y_POS", -0.2)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:X_POS", 0.8)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:Y_POS", -0.3)
+    # Leave steerer setpoint unreadable (None)
+
+    orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
+
+    with pytest.raises(MissingReadbackError) as exc_info:
+        orch.run_orbit_correction_loop(
+            plan_id="00055",
+            section="MEBT",
+            steerers=["MEBT_CH01"],
+            bpms=["MEBT_BPM01", "MEBT_BPM02"],
+            operator_confirmed=True,
+        )
+
+    assert "Cannot capture rollback target" in str(exc_info.value)
+
+
+def test_end_to_end_actuation_failure_triggers_automatic_rollback(tmp_path: Path, monkeypatch):
+    """Verify hardware actuation failure initiates automatic rollback."""
+    from helios.interfaces.base import ControlInterfaceError
+
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:X_POS", 0.5)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:Y_POS", -0.2)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:X_POS", 0.8)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:Y_POS", -0.3)
+    ctrl.set_initial_pv("MEBT:PSC:CH01:CurrentSet", 0.5)
+
+    orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
+
+    # Simulate hardware failure during actuation
+    monkeypatch.setattr(
+        orch.safety_gatekeeper,
+        "execute",
+        lambda plan: (_ for _ in ()).throw(ControlInterfaceError("Actuator disconnected")),
+    )
+
+    plan = orch.run_orbit_correction_loop(
+        plan_id="00056",
+        section="MEBT",
+        steerers=["MEBT_CH01"],
+        bpms=["MEBT_BPM01", "MEBT_BPM02"],
+        operator_confirmed=True,
+    )
+
+    assert plan.state == PlanState.ROLLED_BACK
+    assert "Actuator disconnected" in (plan.provenance_metadata.get("failure_reason") or "")
+

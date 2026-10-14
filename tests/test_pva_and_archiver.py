@@ -154,3 +154,72 @@ def test_archiver_appliance_client():
     assert "mean" in stats
     assert "std" in stats
     assert "drift_per_min" in stats
+
+
+def test_pva_live_unwrapping_and_failure_branches(monkeypatch):
+    """Verify live PVA error handling, context validation, and NT unwrapping."""
+    from helios.interfaces.base import ControlInterfaceError
+
+    # 1. Uninitialized context raises ControlInterfaceError
+    mgr = ControlSecurityManager()
+    mgr.set_session_role(UserRole.ADMIN)
+    pva = PVAccessInterface(security_manager=mgr, use_mock=True)
+    pva.use_mock = False
+    pva.pva_ctxt = None
+
+    with pytest.raises(ControlInterfaceError, match="PVA context is not initialized"):
+        pva.get("TEST:PV")
+
+    with pytest.raises(ControlInterfaceError, match="PVA context is not initialized"):
+        pva.put("TEST:PV", 1.0)
+
+    with pytest.raises(ControlInterfaceError, match="PVA context is not initialized"):
+        pva.subscribe("TEST:PV", lambda pv, val: None)
+
+    # 2. Mock live PVA context with NT unwrapping (.raw / .value)
+    class FakeNTValue:
+        def __init__(self, val):
+            self.raw = True
+            self.value = val
+
+    class FakePvaContext:
+        def __init__(self):
+            self.store = {}
+            self.monitors = []
+
+        def get(self, pv):
+            if pv == "FAIL:PV":
+                raise RuntimeError("PVA bus error")
+            return FakeNTValue(self.store.get(pv, 42.0))
+
+        def put(self, pv, val, timeout=5.0):
+            if pv == "FAIL:PV":
+                raise RuntimeError("PVA timeout")
+            self.store[pv] = val
+
+        def monitor(self, pv, handler):
+            self.monitors.append((pv, handler))
+
+    fake_ctxt = FakePvaContext()
+    pva.pva_ctxt = fake_ctxt
+
+    # Test get unwraps .value
+    assert pva.get("TEST:SCALAR") == 42.0
+
+    # Test get failure raises ControlInterfaceError
+    with pytest.raises(ControlInterfaceError, match="PVA get failed"):
+        pva.get("FAIL:PV")
+
+    # Test put succeeds and failure raises ControlInterfaceError
+    assert pva.put("TEST:SCALAR", 99.5) is True
+    with pytest.raises(ControlInterfaceError, match="PVA put failed"):
+        pva.put("FAIL:PV", 10.0)
+
+    # Test monitor unwraps .raw value
+    received = []
+    pva.subscribe("TEST:SCALAR", lambda pv, val: received.append((pv, val)))
+    assert len(fake_ctxt.monitors) == 1
+    _, handler = fake_ctxt.monitors[0]
+    handler(FakeNTValue(123.4))
+    assert received == [("TEST:SCALAR", 123.4)]
+

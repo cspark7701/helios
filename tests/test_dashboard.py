@@ -220,4 +220,44 @@ def test_dashboard_llm_model_selection(client):
     assert data["success"] is True
 
 
+def test_dashboard_plan_not_found(client):
+    """Verify 404 handling when approving or rejecting a nonexistent plan."""
+    phys_headers = get_auth_headers(client, role="PHYSICIST")
+
+    resp_appr = client.post("/api/plans/99999/approve", headers=phys_headers)
+    assert resp_appr.status_code == 404
+    assert "Plan ID not found" in resp_appr.json()["detail"]
+
+    resp_rej = client.post("/api/plans/99999/reject", headers=phys_headers)
+    assert resp_rej.status_code == 404
+    assert "Plan ID not found" in resp_rej.json()["detail"]
+
+
+def test_dashboard_websocket_telemetry(client):
+    """Verify real-time telemetry streaming over WebSocket connection."""
+    import json
+    with client.websocket_connect("/ws/telemetry") as websocket:
+        data = websocket.receive_text()
+        payload = json.loads(data)
+        assert "timestamp" in payload
+        assert "transmission_pct" in payload
+        assert "orbit_rms_mm" in payload
+
+
+def test_dashboard_tune_orbit_track_fallback(client):
+    """Verify LEBT orbit tuning with engine='track' handles fallback gracefully."""
+    phys_headers = get_auth_headers(client, role="PHYSICIST")
+    resp = client.post("/api/tune/orbit", json={
+        "section": "LEBT",
+        "engine": "track",
+        "conversion_factor": 0.168,
+        "current_increment": 0.05,
+    }, headers=phys_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "initial_rms_x_mm" in data
+    assert "corrected_rms_x_mm" in data
+
+
+
 

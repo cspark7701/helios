@@ -85,12 +85,23 @@ include = ["helios*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra --import-mode=importlib"
+addopts = "-ra --cov=helios --cov-report=term-missing --cov-fail-under=85"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = [
     "ignore::starlette.exceptions.StarletteDeprecationWarning",
 ]
+
+[tool.coverage.run]
+source = ["helios"]
+omit = [
+    "helios/cli/main.py",
+]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+
 
 [tool.ruff]
 line-length = 120

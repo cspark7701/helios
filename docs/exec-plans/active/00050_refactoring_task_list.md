@@ -102,7 +102,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
   - `helios_linac.egg-info/` is correctly ignored; confirm `Dockerfile`/`docker-compose.yml` still match `pyproject.toml` extras after R-14.
   - `setup.sh`: remove hard-coded miniforge path (line 39) and default `TRACK_ROOT` (line 21).
 
-- [ ] **R-20 (M): Close test-coverage blind spots.**
+- [x] **R-20 (M): Close test-coverage blind spots.**
   Test files are grouped by theme rather than by module (for example `test_production_and_scaling.py`), so ownership is unclear. Run `pytest --cov=helios --cov-report=term-missing` (`pytest-cov` is already installed) and set a floor (suggest starting at the measured value). Prioritize `interfaces/pva.py` live-path failures, `safety/rollback.py` failure paths, `agents/orchestrator.py` failure branches, and the dashboard endpoints, which are exactly the areas touched by R-01 to R-08.
 
 ---
