@@ -48,7 +48,7 @@ helios/physics/twin/
   - Ensure protocol imports only standard library and machine-neutral `synapticTrack` interfaces.
 
 ### Phase 2: Plugin Registry & Mock Fallback (`registry.py`)
-- [ ] **T-04: Implement Dynamic Entry-Point Discovery**
+- [x] **T-04: Implement Dynamic Entry-Point Discovery**
   - Discover plugins registered under the `helios.facilities` entry-point group using `importlib.metadata.entry_points`.
   - Isolate third-party exceptions: if a private plugin fails to load, log a warning without raising, preserving HELIOS availability.
 - [ ] **T-05: Implement Built-in `MockFacilityPlugin` for Public CI**
