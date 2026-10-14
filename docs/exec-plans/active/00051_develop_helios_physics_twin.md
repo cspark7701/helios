@@ -58,7 +58,7 @@ helios/physics/twin/
   - Wrap `AnalyticDigitalTwinEngine` as a default fallback when no neural surrogate plugin is registered for a given linac section.
 
 ### Phase 3: Pre-Flight Safety Verifier & Aperture Loss Model (`verifier.py`)
-- [ ] **T-07: Implement `TwinPreFlightVerifier`**
+- [x] **T-07: Implement `TwinPreFlightVerifier`**
   - Ingest candidate control setpoints from `HELIOS-Tuner` or operational plans.
   - Execute pre-flight verification step in under 2 ms:
     1. Check candidate values against `TwinDomain.out_of_domain()`. Reject or escalate out-of-domain requests.
