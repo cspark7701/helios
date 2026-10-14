@@ -1,5 +1,6 @@
 """HELIOS Accelerator Physics Module: Lattices, beam dynamics codes, and surrogate models."""
 
+from helios.physics import twin
 from helios.physics.benchmarks import (
     CodeBenchmarkResult,
     CrossCodeBenchmarkReport,
@@ -56,7 +57,6 @@ from helios.physics.stripper import (
 from helios.physics.surrogate import (
     FastPhysicsSurrogate,
 )
-from helios.physics import twin
 from helios.physics.twin import (
     FacilityPlugin,
     FacilityTwin,
