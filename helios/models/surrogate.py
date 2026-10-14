@@ -87,7 +87,7 @@ class LinacSurrogateNet(_ModuleBase):  # type: ignore[misc, valid-type]
             nn.Sigmoid(),
         )
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: Any) -> tuple[Any, Any]:
         h = self.in_proj(x)
         h = self.res1(h)
         h = self.res2(h)

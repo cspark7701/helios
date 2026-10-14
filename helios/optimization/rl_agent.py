@@ -5,6 +5,7 @@ accelerator trajectory tuning, space charge compensation, and multi-objective co
 """
 
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -51,7 +52,7 @@ class ActorCriticNetwork(_ModuleBase):  # type: ignore[misc, valid-type]
         # Critic head (state value V(s))
         self.critic = nn.Linear(hidden_dim, 1)
 
-    def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, obs: Any) -> tuple[Any, Any, Any]:
         features = self.shared(obs)
         mean = self.actor_mean(features)
         value = self.critic(features)
