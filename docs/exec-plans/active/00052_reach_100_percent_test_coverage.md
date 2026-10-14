@@ -23,7 +23,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover diagnostics in `helios/diagnostics/anomaly.py`, `archiver.py`, `telemetry.py`, `survey.py`.
 
 ### Phase 4: Modular Digital Twin Framework
-- [ ] **T-05: Twin Registry, Protocol, Gym Env & MPC (`tests/test_coverage_twin.py`)**
+- [x] **T-05: Twin Registry, Protocol, Gym Env & MPC (`tests/test_coverage_twin.py`)**
   - Cover uncovered lines in `helios/physics/twin/registry.py` (entry point loading error handling, raon plugin import branch, missing facility lookups), `protocol.py`, `env.py` (target reached branch, rendering), `mpc.py` (step clamping), `sync.py`, and `helios/physics/twin/__init__.py` (import fallback branches).
 
 ### Phase 5: Safety, RF Systems & Recovery

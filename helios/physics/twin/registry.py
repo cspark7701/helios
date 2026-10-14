@@ -113,8 +113,8 @@ class AnalyticTwinFallbackPlugin:
                 pts = self.engine.run_simulation(self.lattice)
                 res: dict[str, float] = {}
                 for i, p in enumerate(pts[:4]):
-                    res[f"BPM{i+1:02d}:x_mm"] = p.x_pos_mm
-                    res[f"BPM{i+1:02d}:y_mm"] = p.y_pos_mm
+                    res[f"BPM{i+1:02d}:x_mm"] = p.x_mm
+                    res[f"BPM{i+1:02d}:y_mm"] = p.y_mm
                 return res
 
             def predict_tensor(self, x: Any) -> Any:
