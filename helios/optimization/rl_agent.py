@@ -12,49 +12,42 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    HAVE_TORCH = True
-except ImportError:
-    torch = None
-    nn = None
-    optim = None
-    HAVE_TORCH = False
+except ImportError as e:
+    from helios._optional import OptionalDependencyError
+    raise OptionalDependencyError("torch", extra="ml", feature="Reinforcement learning agent") from e
 
 logger = logging.getLogger(__name__)
 
 
-if HAVE_TORCH:
-    class ActorCriticNetwork(nn.Module):
-        """Continuous Actor-Critic network with Gaussian action distributions."""
+class ActorCriticNetwork(nn.Module):
+    """Continuous Actor-Critic network with Gaussian action distributions."""
 
-        def __init__(self, obs_dim: int, action_dim: int, hidden_dim: int = 64):
-            super().__init__()
-            # Shared feature extractor
-            self.shared = nn.Sequential(
-                nn.Linear(obs_dim, hidden_dim),
-                nn.Tanh(),
-                nn.Linear(hidden_dim, hidden_dim),
-                nn.Tanh(),
-            )
-            # Actor head (mean action)
-            self.actor_mean = nn.Sequential(
-                nn.Linear(hidden_dim, action_dim),
-                nn.Tanh(),  # Bounded actions in [-1, 1]
-            )
-            # Log std (learnable parameter)
-            self.actor_log_std = nn.Parameter(torch.zeros(action_dim))
+    def __init__(self, obs_dim: int, action_dim: int, hidden_dim: int = 64):
+        super().__init__()
+        # Shared feature extractor
+        self.shared = nn.Sequential(
+            nn.Linear(obs_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+        )
+        # Actor head (mean action)
+        self.actor_mean = nn.Sequential(
+            nn.Linear(hidden_dim, action_dim),
+            nn.Tanh(),  # Bounded actions in [-1, 1]
+        )
+        # Log std (learnable parameter)
+        self.actor_log_std = nn.Parameter(torch.zeros(action_dim))
 
-            # Critic head (state value V(s))
-            self.critic = nn.Linear(hidden_dim, 1)
+        # Critic head (state value V(s))
+        self.critic = nn.Linear(hidden_dim, 1)
 
-        def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-            features = self.shared(obs)
-            mean = self.actor_mean(features)
-            value = self.critic(features)
-            std = torch.exp(self.actor_log_std)
-            return mean, std, value
-else:
-    class ActorCriticNetwork:  # type: ignore
-        pass
+    def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        features = self.shared(obs)
+        mean = self.actor_mean(features)
+        value = self.critic(features)
+        std = torch.exp(self.actor_log_std)
+        return mean, std, value
 
 
 class LinacRLAgent:
@@ -72,19 +65,11 @@ class LinacRLAgent:
         self.action_dim = action_dim
         self.device = device
 
-        if HAVE_TORCH:
-            self.net = ActorCriticNetwork(obs_dim, action_dim, hidden_dim).to(device)
-            self.optimizer = optim.Adam(self.net.parameters(), lr=learning_rate)
-        else:
-            self.net = None
-            self.optimizer = None
+        self.net = ActorCriticNetwork(obs_dim, action_dim, hidden_dim).to(device)
+        self.optimizer = optim.Adam(self.net.parameters(), lr=learning_rate)
 
     def act(self, obs: np.ndarray, deterministic: bool = True) -> np.ndarray:
         """Select action vector given current accelerator observation."""
-        if not HAVE_TORCH or self.net is None:
-            # Deterministic linear proportional feedback fallback
-            return -0.2 * obs[:self.action_dim]
-
         with torch.no_grad():
             obs_tensor = torch.tensor(obs, dtype=torch.float32, device=self.device).unsqueeze(0)
             mean, std, _ = self.net(obs_tensor)
@@ -107,9 +92,6 @@ class LinacRLAgent:
         gamma: float = 0.99,
     ) -> float:
         """Run policy gradient / value loss update step."""
-        if not HAVE_TORCH or self.net is None:
-            return 0.0
-
         self.net.train()
         obs_t = torch.tensor(obs, dtype=torch.float32, device=self.device)
         act_t = torch.tensor(actions, dtype=torch.float32, device=self.device)

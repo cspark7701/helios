@@ -12,12 +12,9 @@ from typing import Any
 try:
     from fastapi import FastAPI, WebSocket
     from fastapi.responses import HTMLResponse
-    HAVE_FASTAPI = True
-except ImportError:
-    FastAPI = None
-    WebSocket = None
-    HTMLResponse = None
-    HAVE_FASTAPI = False
+except ImportError as e:
+    from helios._optional import OptionalDependencyError
+    raise OptionalDependencyError("fastapi", extra="dashboard", feature="Operator Web Dashboard") from e
 
 from helios.core.plan_engine import PlanStore
 from helios.core.schemas import AutonomyLevel, ExecutionPlan, PlanState, PlanStep
@@ -64,9 +61,6 @@ def create_dashboard_app(
     plan_store: PlanStore | None = None,
 ) -> Any:
     """Factory creating configured FastAPI dashboard application."""
-    if not HAVE_FASTAPI:
-        raise RuntimeError("FastAPI is not installed. Install with 'pip install fastapi uvicorn'.")
-
     app = FastAPI(
         title="HELIOS Heavy Ion Linac Operator Dashboard",
         description="Autonomous AI Agent Monitoring and Human-in-the-Loop Control Room Console",

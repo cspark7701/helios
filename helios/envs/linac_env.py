@@ -11,17 +11,15 @@ import numpy as np
 try:
     import gymnasium as gym
     from gymnasium import spaces
-    HAVE_GYMNASIUM = True
-except ImportError:
-    HAVE_GYMNASIUM = False
-    gym = object  # type: ignore
-    spaces = None  # type: ignore
+except ImportError as e:
+    from helios._optional import OptionalDependencyError
+    raise OptionalDependencyError("gymnasium", extra="rl", feature="Linac Gym Environment") from e
 
 from helios.physics.engine import AnalyticDigitalTwinEngine
 from helios.physics.lattice import Lattice, create_baseline_mebt_lattice
 
 
-class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
+class LinacGymEnv(gym.Env):
     """Gymnasium reinforcement learning environment for heavy ion linac orbit & envelope control."""
 
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -35,9 +33,6 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
         domain_randomization: bool = False,
         target_rms_mm: float = 0.10,
     ):
-        if not HAVE_GYMNASIUM:
-            raise RuntimeError("Gymnasium is required. Install via 'pip install gymnasium'.")
-
         super().__init__()
         self.lattice = lattice or create_baseline_mebt_lattice()
         self.engine = AnalyticDigitalTwinEngine()

@@ -10,6 +10,7 @@ from typing import Any
 
 import numpy as np
 
+from helios._optional import require
 from helios.interfaces.base import (
     BaseControlInterface,
     ControlInterfaceError,
@@ -20,13 +21,11 @@ from helios.interfaces.security import ControlSecurityManager
 try:
     from p4p.client.thread import Context as PvaContext
     from p4p.nt import NTNDArray, NTScalar, NTTable
-    HAVE_P4P = True
 except ImportError:
     PvaContext = None
     NTTable = None
     NTNDArray = None
     NTScalar = None
-    HAVE_P4P = False
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +44,9 @@ class PVAccessInterface(BaseControlInterface):
         self.pva_ctxt = None
 
         if not self.use_mock:
-            if not HAVE_P4P:
-                raise ControlInterfaceError("p4p package is not installed. Pass use_mock=True or install p4p.")
             try:
+                require("p4p", extra="epics", feature="live EPICS pvAccess")
+                from p4p.client.thread import Context as PvaContext
                 self.pva_ctxt = PvaContext("pva")
             except Exception as e:
                 raise ControlInterfaceError(f"Failed to initialize p4p PVA context: {e}") from e

@@ -14,12 +14,9 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    HAVE_TORCH = True
-except ImportError:
-    torch = None
-    nn = None
-    optim = None
-    HAVE_TORCH = False
+except ImportError as e:
+    from helios._optional import OptionalDependencyError
+    raise OptionalDependencyError("torch", extra="ml", feature="Neural linac surrogate") from e
 
 logger = logging.getLogger(__name__)
 
@@ -37,57 +34,53 @@ class SurrogatePrediction:
     confidence_score: float
 
 
-if HAVE_TORCH:
-    class ResidualBlock(nn.Module):
-        """Residual skip connection block for stable surrogate training."""
+class ResidualBlock(nn.Module):
+    """Residual skip connection block for stable surrogate training."""
 
-        def __init__(self, hidden_dim: int):
-            super().__init__()
-            self.fc1 = nn.Linear(hidden_dim, hidden_dim)
-            self.relu = nn.GELU()
-            self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+    def __init__(self, hidden_dim: int):
+        super().__init__()
+        self.fc1 = nn.Linear(hidden_dim, hidden_dim)
+        self.relu = nn.GELU()
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
 
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            residual = x
-            out = self.fc2(self.relu(self.fc1(x)))
-            return self.relu(out + residual)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        residual = x
+        out = self.fc2(self.relu(self.fc1(x)))
+        return self.relu(out + residual)
 
 
-    class LinacSurrogateNet(nn.Module):
-        """PyTorch Neural Network for linac beam envelope & loss modeling."""
+class LinacSurrogateNet(nn.Module):
+    """PyTorch Neural Network for linac beam envelope & loss modeling."""
 
-        def __init__(self, input_dim: int = 12, num_locations: int = 20, hidden_dim: int = 64):
-            super().__init__()
-            self.input_dim = input_dim
-            self.num_locations = num_locations
-            self.hidden_dim = hidden_dim
+    def __init__(self, input_dim: int = 12, num_locations: int = 20, hidden_dim: int = 64):
+        super().__init__()
+        self.input_dim = input_dim
+        self.num_locations = num_locations
+        self.hidden_dim = hidden_dim
 
-            self.in_proj = nn.Sequential(
-                nn.Linear(input_dim, hidden_dim),
-                nn.GELU(),
-            )
-            self.res1 = ResidualBlock(hidden_dim)
-            self.res2 = ResidualBlock(hidden_dim)
+        self.in_proj = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.GELU(),
+        )
+        self.res1 = ResidualBlock(hidden_dim)
+        self.res2 = ResidualBlock(hidden_dim)
 
-            # Heads:
-            # 1. Envelope & Centroid: 4 values per location (sigma_x, sigma_y, x, y)
-            self.head_tracking = nn.Linear(hidden_dim, num_locations * 4)
-            # 2. Transmission in [0, 1]
-            self.head_transmission = nn.Sequential(
-                nn.Linear(hidden_dim, 1),
-                nn.Sigmoid(),
-            )
+        # Heads:
+        # 1. Envelope & Centroid: 4 values per location (sigma_x, sigma_y, x, y)
+        self.head_tracking = nn.Linear(hidden_dim, num_locations * 4)
+        # 2. Transmission in [0, 1]
+        self.head_transmission = nn.Sequential(
+            nn.Linear(hidden_dim, 1),
+            nn.Sigmoid(),
+        )
 
-        def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-            h = self.in_proj(x)
-            h = self.res1(h)
-            h = self.res2(h)
-            tracking = self.head_tracking(h)
-            transmission = self.head_transmission(h)
-            return tracking, transmission
-else:
-    class LinacSurrogateNet:  # type: ignore
-        pass
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        h = self.in_proj(x)
+        h = self.res1(h)
+        h = self.res2(h)
+        tracking = self.head_tracking(h)
+        transmission = self.head_transmission(h)
+        return tracking, transmission
 
 
 class NeuralLinacSurrogate:
@@ -125,24 +118,17 @@ class NeuralLinacSurrogate:
         self.device = device
         self.input_dim = len(self.input_keys)
 
-        if HAVE_TORCH:
-            self.model = LinacSurrogateNet(
-                input_dim=self.input_dim,
-                num_locations=self.num_locations,
-                hidden_dim=hidden_dim,
-            ).to(self.device)
-            self.model.eval()
-        else:
-            self.model = None
+        self.model = LinacSurrogateNet(
+            input_dim=self.input_dim,
+            num_locations=self.num_locations,
+            hidden_dim=hidden_dim,
+        ).to(self.device)
+        self.model.eval()
 
     def predict(self, parameter_dict: dict[str, float]) -> SurrogatePrediction:
         """Perform fast neural surrogate prediction for given setpoints."""
         # Convert parameter dict to normalized feature vector
         features = [float(parameter_dict.get(k, 0.0)) for k in self.input_keys]
-
-        if not HAVE_TORCH or self.model is None:
-            # Analytic surrogate fallback
-            return self._analytic_fallback_predict(features)
 
         with torch.no_grad():
             x_tensor = torch.tensor([features], dtype=torch.float32, device=self.device)
@@ -196,9 +182,6 @@ class NeuralLinacSurrogate:
 
     def train_step(self, x_batch: np.ndarray, y_tracking: np.ndarray, y_trans: np.ndarray, lr: float = 1e-3) -> float:
         """Run a single training optimization step."""
-        if not HAVE_TORCH or self.model is None:
-            return 0.0
-
         self.model.train()
         optimizer = optim.Adam(self.model.parameters(), lr=lr)
         criterion_mse = nn.MSELoss()
@@ -219,12 +202,11 @@ class NeuralLinacSurrogate:
 
     def save_weights(self, path: Path) -> None:
         """Save model state dict to disk."""
-        if HAVE_TORCH and self.model is not None:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            torch.save(self.model.state_dict(), str(path))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(self.model.state_dict(), str(path))
 
     def load_weights(self, path: Path) -> None:
         """Load model state dict from disk."""
-        if HAVE_TORCH and self.model is not None and path.exists():
+        if path.exists():
             self.model.load_state_dict(torch.load(str(path), map_location=self.device))
             self.model.eval()

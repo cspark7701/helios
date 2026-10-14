@@ -78,7 +78,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
 - [ ] **R-13 (M): Break up the longest functions.**
   `agents/orchestrator.py::run_orbit_correction_loop` (116 lines; split into read, plan, validate, authorize, actuate, verify, each returning a typed result), `safety/srf_protection.py::validate_srf_state` (99), `physics/liquid_stripper.py::evaluate_stripper` (102), `physics/lattice.py::track_envelope` (97), `tuning/pareto.py::optimize_nsga2` (93), `physics/engine.py::run_from_directory` (93), `physics/pusher.py::track_boris` (92), `recovery/rf_rematch.py::rematch_downstream_cavities` (85). Add characterization tests first, then split.
 
-- [ ] **R-14 (M): Unify optional-dependency handling.**
+- [x] **R-14 (M): Unify optional-dependency handling.**
   Four ad-hoc `try/except ImportError` blocks (`HAVE_TORCH` x2 in `models/surrogate.py` and `optimization/rl_agent.py`, `HAVE_GYMNASIUM`, `HAVE_FASTAPI`) with divergent failure behavior (silent `None` model, `RuntimeError`, fall back to `object`). Add `helios/_optional.py` with `require("torch", extra="ml")` that raises one consistent, actionable error, and export extras names that match `pyproject.toml`. Note `LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object)` should not be importable as a half-working class.
 
 ---
