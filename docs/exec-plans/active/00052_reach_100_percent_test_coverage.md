@@ -27,7 +27,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover uncovered lines in `helios/physics/twin/registry.py` (entry point loading error handling, raon plugin import branch, missing facility lookups), `protocol.py`, `env.py` (target reached branch, rendering), `mpc.py` (step clamping), `sync.py`, and `helios/physics/twin/__init__.py` (import fallback branches).
 
 ### Phase 5: Safety, RF Systems & Recovery
-- [ ] **T-06: Safety Gatekeepers, Fast MPS & SRF Protection (`tests/test_coverage_safety_rf.py`)**
+- [x] **T-06: Safety Gatekeepers, Fast MPS & SRF Protection (`tests/test_coverage_safety_rf.py`)**
   - Cover uncovered lines in `helios/safety/gatekeeper.py`, `srf_protection.py`, `predictive.py`, `fast_mps.py`, `policy.py`, `activation.py`, `mps.py`.
   - Cover RF subsystems: `helios/rf/cryoplant.py` (closed-loop cryogenic balancing, heat load trip), `conditioning.py`, `multipactor.py`, `microphonics.py`.
   - Cover recovery modules: `helios/recovery/loss_mitigation.py`, `magnet_recovery.py`, `rf_rematch.py`.
