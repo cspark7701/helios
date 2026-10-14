@@ -54,7 +54,7 @@ helios/physics/twin/
 - [x] **T-05: Implement Built-in `MockFacilityPlugin` for Public CI**
   - Provide a zero-dependency synthetic mock plugin using `synapticTrack.inference.MockNonlinearSurrogate` or analytic fallback.
   - Ensure all HELIOS unit tests and CI workflows run cleanly without requiring local access to `raon`.
-- [ ] **T-06: Implement `AnalyticTwinFallback`**
+- [x] **T-06: Implement `AnalyticTwinFallback`**
   - Wrap `AnalyticDigitalTwinEngine` as a default fallback when no neural surrogate plugin is registered for a given linac section.
 
 ### Phase 3: Pre-Flight Safety Verifier & Aperture Loss Model (`verifier.py`)
