@@ -12,7 +12,11 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 logger = logging.getLogger(__name__)
 
@@ -142,12 +146,15 @@ class TensorParticleTracker:
     """Sub-millisecond batch transfer-matrix particle tracking using PyTorch."""
 
     def __init__(self, device: str = "cpu"):
+        if torch is None:
+            from helios._optional import require
+            require("torch", extra="ml", feature="TensorParticleTracker")
         self.device = torch.device(device)
 
     def track_particle_ensemble(
         self,
-        initial_particles: torch.Tensor,  # Shape [N, 6] (x, xp, y, yp, z, dp/p)
-        transfer_matrices: list[torch.Tensor],  # List of [6, 6] tensors per element
+        initial_particles: Any,  # Shape [N, 6] (x, xp, y, yp, z, dp/p)
+        transfer_matrices: list[Any],  # List of [6, 6] tensors per element
         aperture_radius_m: float = 0.02,
     ) -> dict[str, Any]:
         """Track particle ensemble across transfer matrices with aperture boundary checks."""

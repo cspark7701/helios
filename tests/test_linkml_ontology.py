@@ -11,6 +11,9 @@ Validates:
 
 from pathlib import Path
 import pytest
+
+pytest.importorskip("rdflib")
+pytest.importorskip("linkml")
 import rdflib
 
 from helios.interfaces.channel_map import DeviceType, LinacDevice

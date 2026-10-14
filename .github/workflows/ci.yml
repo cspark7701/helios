@@ -51,7 +51,8 @@ jobs:
       - name: Install Package and Dev Dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -e '.[dev,dashboard]'
+          pip install -e '.[dev,dashboard,ontology]'
+          pip install -e '.[ml]' || true
 
       - name: Verify Core Package Import Boundaries
         run: |

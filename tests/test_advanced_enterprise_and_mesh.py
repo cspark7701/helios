@@ -2,16 +2,8 @@
 
 import time
 import numpy as np
-import torch
 import pytest
 
-from helios.physics.differentiable import (
-    DifferentiableDrift,
-    DifferentiableQuadrupole,
-    DifferentiableRFCavity,
-    DifferentiableLattice,
-    InverseLatticeSolver,
-)
 from helios.tuning.ionsource import (
     ECRSourceParameters,
     ECRSourceOptimizer,
@@ -39,6 +31,15 @@ from helios.ui.visualizer import PhaseSpaceVisualizer
 
 def test_differentiable_physics_and_inverse_solver():
     """Verify PyTorch autodiff through lattice and inverse parameter recovery."""
+    torch = pytest.importorskip("torch")
+    from helios.physics.differentiable import (
+        DifferentiableDrift,
+        DifferentiableLattice,
+        DifferentiableQuadrupole,
+        DifferentiableRFCavity,
+        InverseLatticeSolver,
+    )
+
     torch.manual_seed(42)
     # Create simple FODO-like section
     drift1 = DifferentiableDrift("drift1", length=0.3)

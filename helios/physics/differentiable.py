@@ -5,8 +5,13 @@ accelerator lattice elements, enabling analytical gradient backpropagation for
 rapid parameter recovery and physics-informed inverse problem solving.
 """
 
-import torch
-import torch.nn as nn
+try:
+    import torch
+    import torch.nn as nn
+except ImportError as e:
+    from helios._optional import OptionalDependencyError
+    raise OptionalDependencyError("torch", extra="ml", feature="Differentiable beam dynamics") from e
+
 from pydantic import BaseModel
 
 

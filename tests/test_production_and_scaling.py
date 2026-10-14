@@ -10,15 +10,15 @@ Validates:
 from datetime import datetime
 import numpy as np
 import pytest
-import torch
 
-from helios.physics.parallel import ParallelSimulationEngine, TensorParticleTracker
+from helios.physics.parallel import ParallelSimulationEngine
 from helios.physics.sync import DigitalTwinKalmanFilter, DigitalTwinDriftDetector, GoldenBaselineArchive
 from helios.tuning.pareto import MultiObjectiveParetoOptimizer
 from helios.security.rbac import RBACManager, MPSHeartbeatWatchdog, UserRole, Permission
 
 
-def test_parallel_simulation_and_tensor_tracking():
+def test_parallel_simulation_and_uq():
+    """Verify parallel parameter sweep and uncertainty quantification without ML dependencies."""
     # 1. Parameter sweep
     def mock_eval(params):
         k1 = params.get("quad_gradient", 15.0)
@@ -46,7 +46,12 @@ def test_parallel_simulation_and_tensor_tracking():
     assert uq.mean_transmission_pct > 90.0
     assert uq.robustness_score > 0.5
 
-    # 3. Tensor Particle Tracker (PyTorch)
+
+def test_tensor_particle_tracker():
+    """Verify PyTorch tensor particle tracker when torch is available."""
+    torch = pytest.importorskip("torch")
+    from helios.physics.parallel import TensorParticleTracker
+
     tracker = TensorParticleTracker(device="cpu")
     # 100 particles with small gaussian spread
     particles = torch.randn(100, 6) * 0.001
