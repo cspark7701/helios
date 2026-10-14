@@ -76,7 +76,7 @@ helios/physics/twin/
     - Observation: normalized diagnostic errors concatenated with normalized control setpoints.
     - Action: normalized control step adjustments $\Delta u$.
     - Reward: weighted RMS trajectory error penalty + actuator change regularization.
-- [ ] **T-10: Domain Randomization and Quantization**
+- [x] **T-10: Domain Randomization and Quantization**
   - Support physical parameter jitter (initial Twiss parameters, incoming beam angle/position offsets).
   - Apply discrete power supply current quantization (e.g. 0.05 A DAC resolution) and slew rate clamping during simulation steps.
   - Verify throughput achieves $\le 0.5\text{ ms}$ per step ($\ge 2{,}000\text{ steps/s}$ on CPU).
