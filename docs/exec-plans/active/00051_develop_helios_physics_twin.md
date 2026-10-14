@@ -43,7 +43,7 @@ helios/physics/twin/
   - Provide `out_of_domain(u, margin=0.0) -> list[str]` returning violated control names.
 - [x] **T-02: Define `FacilityTwin` Container**
   - Encapsulate `facility: str`, `section: str`, `surrogate: FrozenSurrogateInterface`, `control_names`, `control_units`, `diagnostic_names`, `domain: TwinDomain`, and `provenance: Mapping[str, str]` (checkpoint SHA-256, schema version, factory ID).
-- [ ] **T-03: Define `FacilityPlugin` Formal Protocol**
+- [x] **T-03: Define `FacilityPlugin` Formal Protocol**
   - Specify `available_sections() -> Sequence[str]`, `load_twin(section) -> FacilityTwin`, `to_actuator_commands(section, controls) -> Mapping[str, dict]`, and `make_env(section, **kwargs) -> gym.Env`.
   - Ensure protocol imports only standard library and machine-neutral `synapticTrack` interfaces.
 
