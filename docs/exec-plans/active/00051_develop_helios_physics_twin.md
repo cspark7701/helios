@@ -51,7 +51,7 @@ helios/physics/twin/
 - [x] **T-04: Implement Dynamic Entry-Point Discovery**
   - Discover plugins registered under the `helios.facilities` entry-point group using `importlib.metadata.entry_points`.
   - Isolate third-party exceptions: if a private plugin fails to load, log a warning without raising, preserving HELIOS availability.
-- [ ] **T-05: Implement Built-in `MockFacilityPlugin` for Public CI**
+- [x] **T-05: Implement Built-in `MockFacilityPlugin` for Public CI**
   - Provide a zero-dependency synthetic mock plugin using `synapticTrack.inference.MockNonlinearSurrogate` or analytic fallback.
   - Ensure all HELIOS unit tests and CI workflows run cleanly without requiring local access to `raon`.
 - [ ] **T-06: Implement `AnalyticTwinFallback`**
