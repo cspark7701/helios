@@ -54,22 +54,15 @@ class SRFProtectionMonitor:
         """Register or update limits for a specific SRF cavity."""
         self.limits[limits.cavity_id] = limits
 
-    def validate_srf_state(
-        self,
+    @staticmethod
+    def _check_gradient(
         cavity_id: str,
         gradient_mv_m: float,
-        cryo_temp_k: float = 2.05,
-        helium_level_pct: float = 90.0,
-        p_fwd_kw: float = 5.0,
-        p_refl_kw: float = 0.2,
-    ) -> ValidationResult:
-        """Evaluate candidate cavity setpoint and live cryo telemetry against quench thresholds."""
-        lim = self.limits.get(cavity_id, SRFCavityLimits(cavity_id=cavity_id))
-        checks: list[ValidationCheck] = []
-        errors: list[str] = []
-        warnings: list[str] = []
-
-        # 1. Accelerating Gradient Quench Check
+        lim: SRFCavityLimits,
+        checks: list[ValidationCheck],
+        errors: list[str],
+        warnings: list[str],
+    ) -> None:
         gradient_safe = gradient_mv_m <= lim.max_gradient_mv_m
         checks.append(ValidationCheck(
             check_name=f"{cavity_id} Gradient Quench Limit",
@@ -87,7 +80,14 @@ class SRFProtectionMonitor:
                 f"{cavity_id}: Gradient {gradient_mv_m:.2f} MV/m approaches quench limit ({lim.max_gradient_mv_m:.2f} MV/m)"
             )
 
-        # 2. Multipacting Barrier Avoidance
+    @staticmethod
+    def _check_multipacting(
+        cavity_id: str,
+        gradient_mv_m: float,
+        lim: SRFCavityLimits,
+        checks: list[ValidationCheck],
+        errors: list[str],
+    ) -> None:
         in_mp_band = any(low <= gradient_mv_m <= high for low, high in lim.multipacting_zones)
         checks.append(ValidationCheck(
             check_name=f"{cavity_id} Multipacting Avoidance",
@@ -101,7 +101,14 @@ class SRFProtectionMonitor:
                 f"{cavity_id}: Gradient {gradient_mv_m:.2f} MV/m resides within resonant multipacting zone {lim.multipacting_zones}"
             )
 
-        # 3. Cryogenic Helium Bath Temperature
+    @staticmethod
+    def _check_cryo_temp(
+        cavity_id: str,
+        cryo_temp_k: float,
+        lim: SRFCavityLimits,
+        checks: list[ValidationCheck],
+        errors: list[str],
+    ) -> None:
         temp_safe = cryo_temp_k <= lim.max_cryo_temp_k
         checks.append(ValidationCheck(
             check_name=f"{cavity_id} Cryogenic Temp (He-II Bath)",
@@ -115,7 +122,14 @@ class SRFProtectionMonitor:
                 f"{cavity_id}: Cryogenic bath temperature {cryo_temp_k:.3f} K exceeds superfluid limit {lim.max_cryo_temp_k:.3f} K"
             )
 
-        # 4. Liquid Helium Inventory Level
+    @staticmethod
+    def _check_helium_level(
+        cavity_id: str,
+        helium_level_pct: float,
+        lim: SRFCavityLimits,
+        checks: list[ValidationCheck],
+        errors: list[str],
+    ) -> None:
         he_level_safe = helium_level_pct >= lim.min_helium_level_pct
         checks.append(ValidationCheck(
             check_name=f"{cavity_id} Liquid Helium Level",
@@ -129,7 +143,15 @@ class SRFProtectionMonitor:
                 f"{cavity_id}: Liquid helium level {helium_level_pct:.1f}% is below minimum safe level {lim.min_helium_level_pct:.1f}%"
             )
 
-        # 5. RF Reflected Power Ratio Check
+    @staticmethod
+    def _check_reflected_power(
+        cavity_id: str,
+        p_fwd_kw: float,
+        p_refl_kw: float,
+        lim: SRFCavityLimits,
+        checks: list[ValidationCheck],
+        errors: list[str],
+    ) -> None:
         refl_ratio = (p_refl_kw / p_fwd_kw) if p_fwd_kw > 0.05 else 0.0
         refl_safe = refl_ratio <= lim.max_reflected_power_ratio
         checks.append(ValidationCheck(
@@ -144,10 +166,29 @@ class SRFProtectionMonitor:
                 f"{cavity_id}: Reflected power ratio {refl_ratio:.3f} exceeds threshold {lim.max_reflected_power_ratio:.3f} (arcing/detuning risk)"
             )
 
-        overall_valid = len(errors) == 0
+    def validate_srf_state(
+        self,
+        cavity_id: str,
+        gradient_mv_m: float,
+        cryo_temp_k: float = 2.05,
+        helium_level_pct: float = 90.0,
+        p_fwd_kw: float = 5.0,
+        p_refl_kw: float = 0.2,
+    ) -> ValidationResult:
+        """Evaluate candidate cavity setpoint and live cryo telemetry against quench thresholds."""
+        lim = self.limits.get(cavity_id, SRFCavityLimits(cavity_id=cavity_id))
+        checks: list[ValidationCheck] = []
+        errors: list[str] = []
+        warnings: list[str] = []
+
+        self._check_gradient(cavity_id, gradient_mv_m, lim, checks, errors, warnings)
+        self._check_multipacting(cavity_id, gradient_mv_m, lim, checks, errors)
+        self._check_cryo_temp(cavity_id, cryo_temp_k, lim, checks, errors)
+        self._check_helium_level(cavity_id, helium_level_pct, lim, checks, errors)
+        self._check_reflected_power(cavity_id, p_fwd_kw, p_refl_kw, lim, checks, errors)
 
         return ValidationResult(
-            is_valid=overall_valid,
+            is_valid=len(errors) == 0,
             validator_agent="HELIOS-Safety",
             checks=checks,
             errors=errors,

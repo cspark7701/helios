@@ -59,39 +59,15 @@ class HeliosOrchestrator:
         self.rollback_controller = RollbackController(self.control)
         self.orbit_workflow = OrbitCorrectionWorkflow(self.lattice, self.channels)
 
-    def run_orbit_correction_loop(
-        self,
-        plan_id: str,
-        section: str = "MEBT",
-        steerers: list[str] | None = None,
-        bpms: list[str] | None = None,
-        autonomy_level: AutonomyLevel = AutonomyLevel.BOUNDED_AUTONOMOUS,
-        operator_confirmed: bool = True,
-    ) -> ExecutionPlan:
-        """Executes the standard Plan-First Closed-Loop Orbit Correction Pipeline.
-
-        Workflow:
-        1. Query live BPM telemetry (Diagnostics Agent)
-        2. Formulate correction plan & steerer kicks (Tuning Agent)
-        3. Pre-flight simulation verification (Physics Agent)
-        4. Hardware boundary & interlock verification (Safety Agent)
-        5. Save active plan artifact in docs/exec-plans/active/
-        6. HITL authorization check (Policy Engine)
-        7. Snapshot rollback checkpoint & actuate hardware (Control Agent)
-        8. Read post-actuation telemetry & verify orbit improvement (Diagnostics Agent)
-        9. Mark plan complete and archive artifact in docs/exec-plans/completed/
-        """
-        steerers = steerers or ["MEBT_CH01"]
-        bpms = bpms or ["MEBT_BPM01", "MEBT_BPM02"]
-
-        # Step 1: Read Telemetry (Diagnostics)
-        bpm_x = {}
-        bpm_y = {}
+    def read_bpm_telemetry(self, section: str, bpms: list[str]) -> tuple[dict[str, float], dict[str, float]]:
+        """Read horizontal and vertical telemetry from specified BPMs."""
+        bpm_x: dict[str, float] = {}
+        bpm_y: dict[str, float] = {}
         for b in bpms:
             b_name = b.replace(f"{section}_", "")
             dev = self.channels.get_device(section, b_name)
             pv_x = dev.readback_pv if dev else f"{section}:DIAG:{b_name}:X_POS"
-            pv_y = (dev.metadata.get("pv_y") if dev and dev.metadata.get("pv_y") else f"{section}:DIAG:{b_name}:Y_POS")
+            pv_y = dev.metadata.get("pv_y") if dev and dev.metadata.get("pv_y") else f"{section}:DIAG:{b_name}:Y_POS"
             val_x = self.control.get(pv_x)
             val_y = self.control.get(pv_y)
             if val_x is None or val_y is None:
@@ -100,8 +76,19 @@ class HeliosOrchestrator:
                 )
             bpm_x[b] = float(val_x)
             bpm_y[b] = float(val_y)
+        return bpm_x, bpm_y
 
-        # Step 2: Formulate Correction Plan (Tuner)
+    def formulate_orbit_plan(
+        self,
+        plan_id: str,
+        section: str,
+        steerers: list[str],
+        bpms: list[str],
+        bpm_x: dict[str, float],
+        bpm_y: dict[str, float],
+        autonomy_level: AutonomyLevel,
+    ) -> tuple[ExecutionPlan, PlanLifecycleManager, dict[str, float]]:
+        """Formulate candidate correction plan and compute proposed setpoints."""
         plan, proposed_setpoints = self.orbit_workflow.build_orbit_correction_plan(
             plan_id=plan_id,
             section=section,
@@ -112,24 +99,29 @@ class HeliosOrchestrator:
         )
         plan.autonomy_level = autonomy_level
         plan_manager = PlanLifecycleManager(plan)
+        return plan, plan_manager, proposed_setpoints
 
-        # Step 3: Pre-flight Simulation Verification (Physics)
+    def validate_plan_safety_and_physics(
+        self,
+        plan: ExecutionPlan,
+        plan_manager: PlanLifecycleManager,
+        proposed_setpoints: dict[str, float],
+    ) -> bool:
+        """Execute pre-flight physics simulation and safety verification checks."""
         phys_val = self.physics_surrogate.validate_plan_setpoints(proposed_setpoints)
         plan_manager.attach_physics_validation(phys_val)
         if not phys_val.is_valid:
             self.store.save_active(plan)
             logger.error("Orbit plan rejected by Physics Agent simulation verifier!")
-            return plan
+            return False
 
-        # Step 4: Safety & Limits Verification (Safety)
         safety_val = self.safety_gatekeeper.validate_setpoints(proposed_setpoints)
         plan_manager.attach_safety_validation(safety_val)
         if not safety_val.is_valid:
             self.store.save_active(plan)
             logger.error("Orbit plan rejected by Safety Agent boundary check!")
-            return plan
+            return False
 
-        # Register rollback targets in plan
         for pv in proposed_setpoints.keys():
             current_sp = self.control.get(pv)
             if current_sp is None:
@@ -138,52 +130,83 @@ class HeliosOrchestrator:
                 )
             plan.rollback_targets[pv] = float(current_sp)
 
-        # Step 5: Save Active Execution Plan Artifact
         self.store.save_active(plan)
+        return True
 
-        # Step 6: Authorization Gate
+    def authorize_and_actuate(
+        self,
+        plan: ExecutionPlan,
+        plan_manager: PlanLifecycleManager,
+        section: str,
+        bpms: list[str],
+        proposed_setpoints: dict[str, float],
+        operator_confirmed: bool,
+    ) -> bool:
+        """Authorize execution and actuate hardware through safety gatekeeper with rollback protection."""
         authorized, auth_msg = AutonomyPolicyEngine.evaluate_plan_authorization(plan, operator_confirmed)
         if not authorized:
             logger.warning(f"Execution authorization withheld: {auth_msg}")
-            return plan
+            return False
 
         plan_manager.authorize_execution(operator_approval=operator_confirmed)
-
-        # Step 7: Rollback Baseline & Hardware Actuation (Control)
         self.rollback_controller.capture_baseline_from_hardware(
             label=f"Pre-{plan.title}",
             pvs=list(proposed_setpoints.keys()),
         )
 
         try:
-            # Actuate hardware through Safety Gatekeeper
             self.safety_gatekeeper.execute(plan)
-
-            # Step 8: Post-actuation Telemetry Verification (Diagnostics)
-            post_bpm_x = {}
-            for b in bpms:
-                b_name = b.replace(f"{section}_", "")
-                dev = self.channels.get_device(section, b_name)
-                post_pv = dev.readback_pv if dev else f"{section}:DIAG:{b_name}:X_POS"
-                raw_post = self.control.get(post_pv)
-                if raw_post is None:
-                    raise MissingReadbackError(
-                        f"Post-actuation diagnostic telemetry unreadable on BPM {b} ({post_pv}). Verification failed."
-                    )
-                post_bpm_x[b] = float(raw_post)
-            post_rms = self.telemetry_processor.compute_rms_orbit(post_bpm_x)
-            plan.provenance_metadata["post_rms_x_mm"] = post_rms
-
-            # Step 9: Complete and Archive Plan Artifact
+            self._verify_post_actuation_telemetry(plan, section, bpms)
             plan_manager.complete_plan()
             self.store.archive_completed(plan)
             logger.info(f"Plan {plan.plan_id} completed successfully and archived.")
-
+            return True
         except (ControlInterfaceError, RuntimeError, TimeoutError) as e:
             logger.error(f"Execution failed, initiating automatic rollback: {e}")
             plan_manager.abort_or_fail(str(e))
             self.rollback_controller.trigger_rollback()
             plan_manager.mark_rolled_back()
             self.store.save_active(plan)
+            return False
 
+    def _verify_post_actuation_telemetry(self, plan: ExecutionPlan, section: str, bpms: list[str]) -> None:
+        """Read post-actuation telemetry and record residual RMS orbit."""
+        post_bpm_x: dict[str, float] = {}
+        for b in bpms:
+            b_name = b.replace(f"{section}_", "")
+            dev = self.channels.get_device(section, b_name)
+            post_pv = dev.readback_pv if dev else f"{section}:DIAG:{b_name}:X_POS"
+            raw_post = self.control.get(post_pv)
+            if raw_post is None:
+                raise MissingReadbackError(
+                    f"Post-actuation diagnostic telemetry unreadable on BPM {b} ({post_pv}). Verification failed."
+                )
+            post_bpm_x[b] = float(raw_post)
+        post_rms = self.telemetry_processor.compute_rms_orbit(post_bpm_x)
+        plan.provenance_metadata["post_rms_x_mm"] = post_rms
+
+    def run_orbit_correction_loop(
+        self,
+        plan_id: str,
+        section: str = "MEBT",
+        steerers: list[str] | None = None,
+        bpms: list[str] | None = None,
+        autonomy_level: AutonomyLevel = AutonomyLevel.BOUNDED_AUTONOMOUS,
+        operator_confirmed: bool = True,
+    ) -> ExecutionPlan:
+        """Executes the standard Plan-First Closed-Loop Orbit Correction Pipeline."""
+        steerers = steerers or ["MEBT_CH01"]
+        bpms = bpms or ["MEBT_BPM01", "MEBT_BPM02"]
+
+        bpm_x, bpm_y = self.read_bpm_telemetry(section, bpms)
+        plan, plan_manager, proposed_setpoints = self.formulate_orbit_plan(
+            plan_id, section, steerers, bpms, bpm_x, bpm_y, autonomy_level
+        )
+
+        if not self.validate_plan_safety_and_physics(plan, plan_manager, proposed_setpoints):
+            return plan
+
+        self.authorize_and_actuate(
+            plan, plan_manager, section, bpms, proposed_setpoints, operator_confirmed
+        )
         return plan

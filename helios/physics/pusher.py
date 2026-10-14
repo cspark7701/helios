@@ -43,6 +43,20 @@ class SymplecticParticlePusher:
         self.mass_kg = mass_amu * AMU_KG
         self.charge_c = charge_q * E_CHARGE
 
+    @staticmethod
+    def _boris_step(
+        u: np.ndarray, E: np.ndarray, B: np.ndarray, q_over_m: float, half_dt: float
+    ) -> np.ndarray:
+        """Execute one Boris rotation step on generalized momentum u = gamma * v."""
+        u_minus = u + (q_over_m * half_dt) * E
+        gamma_mid = np.sqrt(1.0 + np.dot(u_minus, u_minus) / C_LIGHT**2)
+        t_vec = (q_over_m * half_dt / gamma_mid) * B
+        s_vec = (2.0 * t_vec) / (1.0 + np.dot(t_vec, t_vec))
+
+        u_prime = u_minus + np.cross(u_minus, t_vec)
+        u_plus = u_minus + np.cross(u_prime, s_vec)
+        return u_plus + (q_over_m * half_dt) * E
+
     def track_boris(
         self,
         interpolator: FieldMap3DInterpolator,
@@ -52,36 +66,22 @@ class SymplecticParticlePusher:
         num_steps: int = 500,
         aperture_radius_m: float = 0.03,
     ) -> TrajectoryHistory:
-        """Execute relativistic Boris algorithm integration:
-
-        1. Half electric acceleration: u^- = u_n + (q*dt / (2*m)) * E_n
-        2. Magnetic rotation: u^+ = rotate(u^-, B_n)
-        3. Second half electric acceleration: u_{n+1} = u^+ + (q*dt / (2*m)) * E_n
-        where u = gamma * v.
-        """
+        """Execute relativistic Boris algorithm integration."""
         pos = initial_position_m.astype(np.float64).copy()
         vel = initial_velocity_m_s.astype(np.float64).copy()
 
         gamma = 1.0 / np.sqrt(max(1e-9, 1.0 - np.dot(vel, vel) / C_LIGHT**2))
         u = gamma * vel
 
-        history_t = []
-        history_x = []
-        history_y = []
-        history_z = []
-        history_vx = []
-        history_vy = []
-        history_vz = []
-        history_e = []
+        history_t, history_x, history_y, history_z = [], [], [], []
+        history_vx, history_vy, history_vz, history_e = [], [], [], []
 
         q_over_m = self.charge_c / self.mass_kg
         half_dt = time_step_s / 2.0
         survived = True
-
         curr_t = 0.0
 
-        for step in range(num_steps):
-            # Record current state
+        for _ in range(num_steps):
             gamma_curr = np.sqrt(1.0 + np.dot(u, u) / C_LIGHT**2)
             v_curr = u / gamma_curr
             ke_joules = (gamma_curr - 1.0) * self.mass_kg * C_LIGHT**2
@@ -96,30 +96,13 @@ class SymplecticParticlePusher:
             history_vz.append(v_curr[2])
             history_e.append(ke_mev_u)
 
-            # Aperture boundary check
-            r = np.sqrt(pos[0]**2 + pos[1]**2)
-            if r > aperture_radius_m:
+            if np.sqrt(pos[0]**2 + pos[1]**2) > aperture_radius_m:
                 survived = False
                 break
 
-            # Evaluate 3D fields
             E, B = interpolator.evaluate_field(pos[0], pos[1], pos[2], time_s=curr_t)
+            u = self._boris_step(u, E, B, q_over_m, half_dt)
 
-            # Step 1: Half electric kick
-            u_minus = u + (q_over_m * half_dt) * E
-
-            # Step 2: Magnetic rotation
-            gamma_mid = np.sqrt(1.0 + np.dot(u_minus, u_minus) / C_LIGHT**2)
-            t_vec = (q_over_m * half_dt / gamma_mid) * B
-            s_vec = (2.0 * t_vec) / (1.0 + np.dot(t_vec, t_vec))
-
-            u_prime = u_minus + np.cross(u_minus, t_vec)
-            u_plus = u_minus + np.cross(u_prime, s_vec)
-
-            # Step 3: Second half electric kick
-            u = u_plus + (q_over_m * half_dt) * E
-
-            # Update position: x_{n+1} = x_n + dt * v_{n+1/2}
             gamma_next = np.sqrt(1.0 + np.dot(u, u) / C_LIGHT**2)
             pos += time_step_s * (u / gamma_next)
             curr_t += time_step_s

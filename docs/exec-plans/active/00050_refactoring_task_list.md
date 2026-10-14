@@ -75,7 +75,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
 - [x] **R-12 (S): Deduplicate control-interface boilerplate.**
   `get_many`/`put_many` are re-implemented in `pva.py` and twice in `epics.py` although `BaseControlInterface` (`base.py:80-84`) already defines them. Make the base implementations concrete and delete overrides. The mock store and subscriber dispatch are duplicated between `MockControlInterface` and `PVAccessInterface`; extract one `InMemoryPVStore`.
 
-- [ ] **R-13 (M): Break up the longest functions.**
+- [x] **R-13 (M): Break up the longest functions.**
   `agents/orchestrator.py::run_orbit_correction_loop` (116 lines; split into read, plan, validate, authorize, actuate, verify, each returning a typed result), `safety/srf_protection.py::validate_srf_state` (99), `physics/liquid_stripper.py::evaluate_stripper` (102), `physics/lattice.py::track_envelope` (97), `tuning/pareto.py::optimize_nsga2` (93), `physics/engine.py::run_from_directory` (93), `physics/pusher.py::track_boris` (92), `recovery/rf_rematch.py::rematch_downstream_cavities` (85). Add characterization tests first, then split.
 
 - [x] **R-14 (M): Unify optional-dependency handling.**

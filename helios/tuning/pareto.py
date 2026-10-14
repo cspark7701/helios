@@ -42,75 +42,58 @@ class NSGAResult:
 class MultiObjectiveParetoOptimizer:
     """Optimizes heavy ion linac operating points across competing physics criteria."""
 
-    @classmethod
-    def optimize_nsga2(
-        cls,
-        eval_fn: Callable[[dict[str, float]], tuple[float, float, float]],
-        parameter_bounds: dict[str, tuple[float, float]],
-        population_size: int = 24,
-        generations: int = 8,
-        crossover_prob: float = 0.8,
-        mutation_prob: float = 0.2,
-    ) -> NSGAResult:
-        """Run NSGA-II genetic algorithm over parameter bounds.
 
-        Objectives:
-            f1: Transmission (Maximize, transformed to minimize -f1)
-            f2: Envelope RMS (Minimize)
-            f3: Energy spread (Minimize)
-        """
-        param_names = list(parameter_bounds.keys())
-        n_params = len(param_names)
-
-        # Initialize uniform population within bounds
-        pop = np.zeros((population_size, n_params))
+    @staticmethod
+    def _init_uniform_population(
+        parameter_bounds: dict[str, tuple[float, float]], population_size: int, param_names: list[str]
+    ) -> np.ndarray:
+        pop = np.zeros((population_size, len(param_names)))
         for i, name in enumerate(param_names):
             low, high = parameter_bounds[name]
             pop[:, i] = np.random.uniform(low, high, population_size)
+        return pop
 
-        for gen in range(generations):
-            # Evaluate fitness: returns (transmission_pct, envelope_rms_mm, energy_spread_pct)
-            scores = np.zeros((population_size, 3))
-            for i in range(population_size):
-                p_dict = {name: float(pop[i, j]) for j, name in enumerate(param_names)}
-                trans, env, dpp = eval_fn(p_dict)
-                scores[i, 0] = -trans  # Minimize negative transmission
-                scores[i, 1] = env
-                scores[i, 2] = dpp
+    @staticmethod
+    def _breed_next_generation(
+        pop: np.ndarray,
+        parameter_bounds: dict[str, tuple[float, float]],
+        param_names: list[str],
+        crossover_prob: float,
+        mutation_prob: float,
+    ) -> np.ndarray:
+        population_size, n_params = pop.shape
+        next_pop = []
+        for _ in range(population_size // 2):
+            p1_idx = np.random.randint(0, population_size)
+            p2_idx = np.random.randint(0, population_size)
+            parent1 = pop[p1_idx]
+            parent2 = pop[p2_idx]
 
-            # Fast non-dominated sort
-            _fronts = cls._fast_non_dominated_sort(scores)
+            if np.random.rand() < crossover_prob:
+                alpha = np.random.rand(n_params)
+                c1 = alpha * parent1 + (1 - alpha) * parent2
+                c2 = (1 - alpha) * parent1 + alpha * parent2
+            else:
+                c1, c2 = parent1.copy(), parent2.copy()
 
-            # Crossover & Mutation for next generation
-            next_pop = []
-            for _ in range(population_size // 2):
-                p1_idx = np.random.randint(0, population_size)
-                p2_idx = np.random.randint(0, population_size)
-                parent1 = pop[p1_idx]
-                parent2 = pop[p2_idx]
+            for child in [c1, c2]:
+                if np.random.rand() < mutation_prob:
+                    mut_idx = np.random.randint(0, n_params)
+                    low, high = parameter_bounds[param_names[mut_idx]]
+                    child[mut_idx] += np.random.normal(0, (high - low) * 0.1)
+                    child[mut_idx] = np.clip(child[mut_idx], low, high)
 
-                if np.random.rand() < crossover_prob:
-                    alpha = np.random.rand(n_params)
-                    c1 = alpha * parent1 + (1 - alpha) * parent2
-                    c2 = (1 - alpha) * parent1 + alpha * parent2
-                else:
-                    c1, c2 = parent1.copy(), parent2.copy()
+            next_pop.extend([c1, c2])
+        return np.array(next_pop[:population_size])
 
-                # Mutation
-                for child in [c1, c2]:
-                    if np.random.rand() < mutation_prob:
-                        mut_idx = np.random.randint(0, n_params)
-                        low, high = parameter_bounds[param_names[mut_idx]]
-                        child[mut_idx] += np.random.normal(0, (high - low) * 0.1)
-                        child[mut_idx] = np.clip(child[mut_idx], low, high)
-
-                next_pop.extend([c1, c2])
-
-            pop = np.array(next_pop[:population_size])
-
-        # Final evaluation of population
+    @staticmethod
+    def _evaluate_final_solutions(
+        pop: np.ndarray,
+        param_names: list[str],
+        eval_fn: Callable[[dict[str, float]], tuple[float, float, float]],
+    ) -> list[ParetoSolution]:
         final_solutions = []
-        for i in range(population_size):
+        for i in range(pop.shape[0]):
             p_dict = {name: float(pop[i, j]) for j, name in enumerate(param_names)}
             trans, env, dpp = eval_fn(p_dict)
             final_solutions.append(
@@ -123,8 +106,37 @@ class MultiObjectiveParetoOptimizer:
                     rank=1,
                 )
             )
+        return final_solutions
 
-        # Select Pareto front (rank 1)
+    @classmethod
+    def optimize_nsga2(
+        cls,
+        eval_fn: Callable[[dict[str, float]], tuple[float, float, float]],
+        parameter_bounds: dict[str, tuple[float, float]],
+        population_size: int = 20,
+        generations: int = 10,
+        crossover_prob: float = 0.8,
+        mutation_prob: float = 0.2,
+    ) -> NSGAResult:
+        """Run multi-objective Pareto optimization (NSGA-II)."""
+        param_names = list(parameter_bounds.keys())
+        pop = cls._init_uniform_population(parameter_bounds, population_size, param_names)
+
+        for _ in range(generations):
+            scores = np.zeros((population_size, 3))
+            for i in range(population_size):
+                p_dict = {name: float(pop[i, j]) for j, name in enumerate(param_names)}
+                trans, env, dpp = eval_fn(p_dict)
+                scores[i, 0] = -trans
+                scores[i, 1] = env
+                scores[i, 2] = dpp
+
+            cls._fast_non_dominated_sort(scores)
+            pop = cls._breed_next_generation(
+                pop, parameter_bounds, param_names, crossover_prob, mutation_prob
+            )
+
+        final_solutions = cls._evaluate_final_solutions(pop, param_names, eval_fn)
         pareto_front = [s for s in final_solutions if s.transmission_pct >= 95.0] or final_solutions[:5]
         best_trans = max(final_solutions, key=lambda s: s.transmission_pct)
         best_env = min(final_solutions, key=lambda s: s.envelope_rms_mm)

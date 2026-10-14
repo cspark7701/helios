@@ -72,6 +72,77 @@ class Lattice:
                 return e
         return None
 
+    @staticmethod
+    def _init_envelope_state(
+        initial_x_mm: float,
+        initial_y_mm: float,
+        initial_sigma_x_mm: float,
+        initial_sigma_y_mm: float,
+        emittance_x_mm_mrad: float,
+        emittance_y_mm_mrad: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        x_vec = np.array([
+            initial_x_mm * 1e-3, 0.0,
+            initial_y_mm * 1e-3, 0.0,
+            0.0, 0.0
+        ], dtype=float)
+
+        sig_x_m = initial_sigma_x_mm * 1e-3
+        sig_y_m = initial_sigma_y_mm * 1e-3
+        eps_x_m = emittance_x_mm_mrad * 1e-6
+        eps_y_m = emittance_y_mm_mrad * 1e-6
+
+        Sigma = np.zeros((6, 6), dtype=float)
+        Sigma[0, 0] = sig_x_m**2
+        Sigma[1, 1] = (eps_x_m / max(sig_x_m, 1e-9))**2
+        Sigma[2, 2] = sig_y_m**2
+        Sigma[3, 3] = (eps_y_m / max(sig_y_m, 1e-9))**2
+        Sigma[4, 4] = 1e-6
+        Sigma[5, 5] = 1e-6
+        return x_vec, Sigma
+
+    def _transport_element(
+        self,
+        elem: Element,
+        x_vec: np.ndarray,
+        Sigma: np.ndarray,
+        cumulative_s: float,
+        loss_accumulated: float,
+    ) -> tuple[np.ndarray, np.ndarray, float, float, TrajectoryPoint]:
+        R = elem.transfer_matrix_6x6(self.kinetic_energy_mev_u, self.mass_amu, self.charge_q)
+        if isinstance(elem, Steerer):
+            x_vec[1] += elem.kick_x_mrad * 1e-3
+            x_vec[3] += elem.kick_y_mrad * 1e-3
+
+        x_vec = R @ x_vec
+        Sigma = R @ Sigma @ R.T
+        cumulative_s += elem.length
+
+        sig_x = math.sqrt(max(0.0, Sigma[0, 0])) * 1e3
+        sig_y = math.sqrt(max(0.0, Sigma[2, 2])) * 1e3
+
+        aperture_mm = elem.aperture_radius_m * 1e3 if isinstance(elem, Quadrupole) else 20.0
+        envelope_edge_x = abs(x_vec[0] * 1e3) + 3.0 * sig_x
+        envelope_edge_y = abs(x_vec[2] * 1e3) + 3.0 * sig_y
+        max_edge = max(envelope_edge_x, envelope_edge_y)
+
+        if max_edge > aperture_mm:
+            excess = (max_edge - aperture_mm) / aperture_mm
+            loss_accumulated += min(0.5, excess * 0.1)
+
+        point = TrajectoryPoint(
+            element_name=elem.name,
+            s_m=cumulative_s,
+            x_mm=x_vec[0] * 1e3,
+            xp_mrad=x_vec[1] * 1e3,
+            y_mm=x_vec[2] * 1e3,
+            yp_mrad=x_vec[3] * 1e3,
+            sigma_x_mm=sig_x,
+            sigma_y_mm=sig_y,
+            loss_fraction=min(1.0, loss_accumulated),
+        )
+        return x_vec, Sigma, cumulative_s, loss_accumulated, point
+
     def track_envelope(
         self,
         initial_sigma_x_mm: float = 2.0,
@@ -82,91 +153,31 @@ class Lattice:
         initial_y_mm: float = 0.0,
     ) -> list[TrajectoryPoint]:
         """Track beam centroid and RMS envelope (sigma matrix) through the lattice."""
-        # 6x1 Centroid state vector in [m, rad, m, rad, m, 1]
-        x_vec = np.array([
-            initial_x_mm * 1e-3, 0.0,
-            initial_y_mm * 1e-3, 0.0,
-            0.0, 0.0
-        ], dtype=float)
+        x_vec, Sigma = self._init_envelope_state(
+            initial_x_mm, initial_y_mm, initial_sigma_x_mm, initial_sigma_y_mm,
+            emittance_x_mm_mrad, emittance_y_mm_mrad
+        )
 
-        # 6x6 Beam second moment matrix (Sigma)
-        # sigma_x^2, beta, alpha
-        sig_x_m = initial_sigma_x_mm * 1e-3
-        sig_y_m = initial_sigma_y_mm * 1e-3
-        eps_x_m = emittance_x_mm_mrad * 1e-6
-        eps_y_m = emittance_y_mm_mrad * 1e-6
-
-        # Construct initial transverse covariance
-        Sigma = np.zeros((6, 6), dtype=float)
-        Sigma[0, 0] = sig_x_m**2
-        Sigma[1, 1] = (eps_x_m / max(sig_x_m, 1e-9))**2
-        Sigma[2, 2] = sig_y_m**2
-        Sigma[3, 3] = (eps_y_m / max(sig_y_m, 1e-9))**2
-        Sigma[4, 4] = 1e-6
-        Sigma[5, 5] = 1e-6
-
-        trajectory: list[TrajectoryPoint] = []
-        cumulative_s = 0.0
-
-        # Record initial point
-        trajectory.append(TrajectoryPoint(
-            element_name="START",
-            s_m=0.0,
-            x_mm=x_vec[0] * 1e3,
-            xp_mrad=x_vec[1] * 1e3,
-            y_mm=x_vec[2] * 1e3,
-            yp_mrad=x_vec[3] * 1e3,
-            sigma_x_mm=math.sqrt(max(0.0, Sigma[0, 0])) * 1e3,
-            sigma_y_mm=math.sqrt(max(0.0, Sigma[2, 2])) * 1e3,
-        ))
-
-        loss_accumulated = 0.0
-
-        for elem in self.elements:
-            R = elem.transfer_matrix_6x6(self.kinetic_energy_mev_u, self.mass_amu, self.charge_q)
-
-            # Apply steering kick if Steerer
-            if isinstance(elem, Steerer):
-                x_vec[1] += elem.kick_x_mrad * 1e-3
-                x_vec[3] += elem.kick_y_mrad * 1e-3
-
-            # Transport centroid: x_new = R * x
-            x_vec = R @ x_vec
-
-            # Transport Sigma: Sigma_new = R * Sigma * R^T
-            Sigma = R @ Sigma @ R.T
-
-            cumulative_s += elem.length
-
-            sig_x = math.sqrt(max(0.0, Sigma[0, 0])) * 1e3
-            sig_y = math.sqrt(max(0.0, Sigma[2, 2])) * 1e3
-
-            # Aperture check for beam loss estimation
-            aperture_mm = 20.0
-            if isinstance(elem, Quadrupole):
-                aperture_mm = elem.aperture_radius_m * 1e3
-
-            # Estimate beam loss if 3-sigma envelope exceeds aperture
-            envelope_edge_x = abs(x_vec[0] * 1e3) + 3.0 * sig_x
-            envelope_edge_y = abs(x_vec[2] * 1e3) + 3.0 * sig_y
-            max_edge = max(envelope_edge_x, envelope_edge_y)
-
-            if max_edge > aperture_mm:
-                excess = (max_edge - aperture_mm) / aperture_mm
-                step_loss = min(0.5, excess * 0.1)
-                loss_accumulated += step_loss
-
-            trajectory.append(TrajectoryPoint(
-                element_name=elem.name,
-                s_m=cumulative_s,
+        trajectory: list[TrajectoryPoint] = [
+            TrajectoryPoint(
+                element_name="START",
+                s_m=0.0,
                 x_mm=x_vec[0] * 1e3,
                 xp_mrad=x_vec[1] * 1e3,
                 y_mm=x_vec[2] * 1e3,
                 yp_mrad=x_vec[3] * 1e3,
-                sigma_x_mm=sig_x,
-                sigma_y_mm=sig_y,
-                loss_fraction=min(1.0, loss_accumulated),
-            ))
+                sigma_x_mm=math.sqrt(max(0.0, Sigma[0, 0])) * 1e3,
+                sigma_y_mm=math.sqrt(max(0.0, Sigma[2, 2])) * 1e3,
+            )
+        ]
+        cumulative_s = 0.0
+        loss_accumulated = 0.0
+
+        for elem in self.elements:
+            x_vec, Sigma, cumulative_s, loss_accumulated, point = self._transport_element(
+                elem, x_vec, Sigma, cumulative_s, loss_accumulated
+            )
+            trajectory.append(point)
 
         return trajectory
 

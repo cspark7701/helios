@@ -282,6 +282,54 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                         continue
         return points
 
+    def _prepare_directory_workspace(self, input_path: Path) -> None:
+        self.work_dir.mkdir(parents=True, exist_ok=True)
+        for item in input_path.glob("*"):
+            if item.is_file():
+                shutil.copy(item, self.work_dir / item.name)
+        if self.track_exe.parent.exists():
+            for dll in self.track_exe.parent.glob("*.dll"):
+                shutil.copy(dll, self.work_dir / dll.name)
+
+    @staticmethod
+    def _resolve_effective_kicks(
+        steerer_kicks: dict[str, tuple[float, float]] | None,
+        steerer_currents: dict[str, tuple[float, float]] | None,
+        conversion_factor_a_per_mrad: float,
+        current_increment_a: float,
+    ) -> dict[str, tuple[float, float]]:
+        effective_kicks = dict(steerer_kicks or {})
+        if steerer_currents:
+            for s_name, (ix, iy) in steerer_currents.items():
+                if current_increment_a > 0.0:
+                    ix_q = round(ix / current_increment_a) * current_increment_a
+                    iy_q = round(iy / current_increment_a) * current_increment_a
+                else:
+                    ix_q, iy_q = ix, iy
+                kx = ix_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
+                ky = iy_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
+                effective_kicks[s_name] = (kx, ky)
+        return effective_kicks
+
+    @staticmethod
+    def _inject_steerer_kicks(sclinac_file: Path, effective_kicks: dict[str, tuple[float, float]]) -> None:
+        if not (effective_kicks and sclinac_file.exists()):
+            return
+        lines = sclinac_file.read_text(encoding="utf-8").splitlines()
+        new_lines = []
+        for line in lines:
+            matched = False
+            for stm_key, (kx, ky) in effective_kicks.items():
+                idx_str = stm_key.replace("STM_", "").strip()
+                pattern = f"stM      {idx_str}"
+                if pattern in line or ("corr" in line and f"STM_{idx_str}" in line):
+                    new_lines.append(f"0    corr     0.0   0.0   0.0   6.0   0   {kx:.4f}   {ky:.4f}")
+                    matched = True
+                    break
+            if not matched:
+                new_lines.append(line)
+        sclinac_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
     def run_from_directory(
         self,
         input_dir: Path,
@@ -291,72 +339,18 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
         current_increment_a: float = 0.05,
         timeout_seconds: float = 40.0,
     ) -> list[TrajectoryPoint]:
-        """Execute TRACK simulation using existing deck files in an input directory (e.g. examples/lebt).
-
-        Args:
-            input_dir: Directory containing track.dat, sclinac.dat, and scratch distribution files.
-            steerer_kicks: Optional mapping of steerer name -> (kick_x_mrad, kick_y_mrad).
-            steerer_currents: Optional mapping of steerer name -> (current_x_a, current_y_a) in Amperes.
-                              If provided, currents are converted to kicks using conversion_factor_a_per_mrad.
-            conversion_factor_a_per_mrad: Transfer factor (default: 0.168 A/mrad for LEBT).
-            current_increment_a: Power supply current step resolution in Amperes (default: 0.05 A).
-            timeout_seconds: Maximum execution time in seconds.
-
-        Returns:
-            List of parsed TrajectoryPoint telemetry across the lattice.
-        """
+        """Execute TRACK simulation using existing deck files in an input directory."""
         input_path = Path(input_dir).resolve()
         if not input_path.exists():
             raise FileNotFoundError(f"Input directory {input_path} does not exist.")
 
-        self.work_dir.mkdir(parents=True, exist_ok=True)
-
-        # Copy all input assets into execution workspace
-        for item in input_path.glob("*"):
-            if item.is_file():
-                shutil.copy(item, self.work_dir / item.name)
-
-        # Copy supporting DLLs if running via Wine from track directory
-        if self.track_exe.parent.exists():
-            for dll in self.track_exe.parent.glob("*.dll"):
-                shutil.copy(dll, self.work_dir / dll.name)
-
-        # Resolve kicks: if steerer_currents provided, convert to quantized kicks
-        effective_kicks = dict(steerer_kicks or {})
-        if steerer_currents:
-            for s_name, (ix, iy) in steerer_currents.items():
-                # Quantize current to increments
-                if current_increment_a > 0.0:
-                    ix_q = round(ix / current_increment_a) * current_increment_a
-                    iy_q = round(iy / current_increment_a) * current_increment_a
-                else:
-                    ix_q, iy_q = ix, iy
-                kx = ix_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
-                ky = iy_q / conversion_factor_a_per_mrad if conversion_factor_a_per_mrad else 0.0
-                effective_kicks[s_name] = (kx, ky)
-
-        # Inject steerer setpoints if provided
-        sclinac_file = self.work_dir / "sclinac.dat"
-        if effective_kicks and sclinac_file.exists():
-            lines = sclinac_file.read_text(encoding="utf-8").splitlines()
-            new_lines = []
-            for line in lines:
-                matched = False
-                for stm_key, (kx, ky) in effective_kicks.items():
-                    # Support keys like STM_1 or 1
-                    idx_str = stm_key.replace("STM_", "").strip()
-                    pattern = f"stM      {idx_str}"
-                    if pattern in line or "corr" in line and f"STM_{idx_str}" in line:
-                        # Replace commented or uncommented stM line with active corr element (no trailing comments!)
-                        new_lines.append(f"0    corr     0.0   0.0   0.0   6.0   0   {kx:.4f}   {ky:.4f}")
-                        matched = True
-                        break
-                if not matched:
-                    new_lines.append(line)
-            sclinac_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+        self._prepare_directory_workspace(input_path)
+        effective_kicks = self._resolve_effective_kicks(
+            steerer_kicks, steerer_currents, conversion_factor_a_per_mrad, current_increment_a
+        )
+        self._inject_steerer_kicks(self.work_dir / "sclinac.dat", effective_kicks)
 
         cmd = [self.wine_bin, str(self.track_exe.resolve())] if self.track_exe.suffix.lower() == ".exe" else [str(self.track_exe.resolve())]
-
         res = subprocess.run(
             cmd,
             cwd=self.work_dir,
