@@ -50,7 +50,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
   `dashboard/app.py:197-221` hard-codes plans `00001`/`00002`, and approval mutates that dict rather than `helios.core.plan_engine` state, so the GUI can show "IN_PROGRESS" for a plan that never executes.
   *Change*: back `/api/plans*` with `PlanStore`/`PlanLifecycleManager`; approval calls the same authorization path as the CLI.
 
-- [ ] **R-08 (L): Split `helios/dashboard/app.py` (1,828 lines).**
+- [x] **R-08 (L): Split `helios/dashboard/app.py` (1,828 lines).**
   `create_dashboard_app` is about 1,650 lines and `get_dashboard_html` about 1,330, mostly an inline HTML/CSS/JS string. It also embeds facility constants (RAON LEBT station table, response matrices `LEBT_RX/RY`, 0.168 A/mrad, 0.05 A step, lines 40-110) and the orbit-correction algorithm `execute_analytic_orbit_correction` (about 100 lines).
   *Change*:
   1. Move HTML/CSS/JS to `helios/dashboard/static/` (served as files; testable, lintable).
