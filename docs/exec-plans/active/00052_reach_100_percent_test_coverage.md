@@ -18,7 +18,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover uncovered lines in `helios/core/llm.py` (OpenAI provider HTTP request, error handling, Ollama HTTP stream, fallback), `plan_engine.py` (execution errors, step timeouts, state transitions), `facility_config.py`, `capabilities.py`, `mesh.py`, `agents/orchestrator.py`, `agents/cotuner.py`, `agents/planner.py`.
 
 ### Phase 3: Control & Diagnostic Interfaces
-- [ ] **T-04: EPICS, PVA, Channel Map & Archiver Interfaces (`tests/test_coverage_interfaces.py`)**
+- [x] **T-04: EPICS, PVA, Channel Map & Archiver Interfaces (`tests/test_coverage_interfaces.py`)**
   - Cover uncovered lines in `helios/interfaces/epics.py` (CA connect, put, get, monitor callbacks, reconnect), `pva.py` (P4P client interactions, disconnected channels), `channel_map.py` (YAML/JSON loaders, channel validation), `archiver.py` (Appliance HTTP queries, retry logic), `base.py`, `security.py`.
   - Cover diagnostics in `helios/diagnostics/anomaly.py`, `archiver.py`, `telemetry.py`, `survey.py`.
 
