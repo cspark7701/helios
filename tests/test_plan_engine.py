@@ -6,6 +6,7 @@ import pytest
 from helios.core.plan_engine import (
     PlanArtifactStore,
     PlanLifecycleManager,
+    PlanStore,
     PlanTransitionError,
 )
 from helios.core.schemas import (
@@ -123,3 +124,31 @@ def test_artifact_store_save_and_archive(tmp_path: Path):
     assert not active_path.exists()
     assert completed_path.exists()
     assert "00012_mebt_steerer_zeroing.md" in completed_path.name
+
+
+def test_plan_store_lifecycle_and_approval(tmp_path: Path):
+    """Test PlanStore registration, querying, approval, and rejection."""
+    store = PlanStore(base_dir=tmp_path, persist_artifacts=True)
+    plan = ExecutionPlan(
+        plan_id="00020",
+        title="BPM Orbit Steering",
+        objective="Steer orbit through BPMs",
+        autonomy_level=AutonomyLevel.ASSISTED,
+        state=PlanState.SAFETY_APPROVED,
+        steps=[PlanStep(step_id="s1", name="Step 1", target_agent="HELIOS-Tuner", action="tune")],
+    )
+    store.register_plan(plan)
+
+    # Retrieval
+    assert store.get_plan("00020") is not None
+    assert store.get_manager("00020") is not None
+    assert len(store.list_plans()) >= 1
+
+    # Approval transitions plan to EXECUTING
+    approved_plan = store.approve_plan("00020", operator_approval=True)
+    assert approved_plan.state == PlanState.EXECUTING
+
+    # Rejection transitions plan to FAILED
+    rejected_plan = store.reject_plan("00020", reason="Test rejection")
+    assert rejected_plan.state == PlanState.FAILED
+

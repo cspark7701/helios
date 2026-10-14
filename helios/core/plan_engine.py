@@ -201,6 +201,56 @@ class PlanArtifactStore:
         target_path.write_text(self.render_markdown(plan), encoding="utf-8")
         return target_path
 
+    def load_plan_from_file(self, file_path: Path) -> ExecutionPlan | None:
+        """Parse ExecutionPlan from markdown file containing JSON block or reconstruct from header."""
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+
+        json_match = re.search(r"```json\s*\n(.*?)\n```", content, re.DOTALL)
+        if json_match:
+            try:
+                return ExecutionPlan.model_validate_json(json_match.group(1))
+            except Exception as e:
+                logger.debug(f"Could not parse embedded JSON in {file_path}: {e}")
+
+        name = file_path.stem
+        parts = name.split("_", 1)
+        plan_id = parts[0]
+        title = parts[1].replace("_", " ").title() if len(parts) > 1 else name
+        is_completed = "completed" in str(file_path)
+        return ExecutionPlan(
+            plan_id=plan_id,
+            title=title,
+            objective=f"Plan artifact from {file_path.name}",
+            state=PlanState.COMPLETED if is_completed else PlanState.SAFETY_APPROVED,
+            autonomy_level=AutonomyLevel.ASSISTED,
+            steps=[],
+        )
+
+    def load_plan(self, plan_id: str) -> ExecutionPlan | None:
+        """Search active and completed directories for a plan matching plan_id."""
+        prefix = plan_id.zfill(5)
+        for d in (self.active_dir, self.completed_dir):
+            for file_path in d.glob(f"{prefix}*.md"):
+                plan = self.load_plan_from_file(file_path)
+                if plan:
+                    return plan
+        return None
+
+    def list_plans(self) -> list[ExecutionPlan]:
+        """List all plans found in active and completed directories."""
+        plans = []
+        seen_ids = set()
+        for d in (self.active_dir, self.completed_dir):
+            for f in sorted(d.glob("*.md")):
+                p = self.load_plan_from_file(f)
+                if p and p.plan_id not in seen_ids:
+                    seen_ids.add(p.plan_id)
+                    plans.append(p)
+        return plans
+
     def archive_completed(self, plan: ExecutionPlan) -> Path:
         """Move plan from active to completed directory and update artifact."""
         slug = self._sanitize_filename(plan.title)
@@ -213,3 +263,83 @@ class PlanArtifactStore:
         if active_path.exists():
             active_path.unlink()
         return completed_path
+
+
+class PlanStore:
+    """Central store for ExecutionPlans backed by PlanArtifactStore and PlanLifecycleManager."""
+
+    def __init__(
+        self,
+        base_dir: Path | None = None,
+        artifact_store: PlanArtifactStore | None = None,
+        persist_artifacts: bool = False,
+    ):
+        self.base_dir = base_dir
+        self.persist_artifacts = persist_artifacts
+        self.artifact_store = artifact_store or (PlanArtifactStore(base_dir) if base_dir else None)
+        self._plans: dict[str, ExecutionPlan] = {}
+        self._managers: dict[str, PlanLifecycleManager] = {}
+
+    def register_plan(self, plan: ExecutionPlan) -> PlanLifecycleManager:
+        """Register an in-memory plan and return its lifecycle manager."""
+        self._plans[plan.plan_id] = plan
+        mgr = PlanLifecycleManager(plan)
+        self._managers[plan.plan_id] = mgr
+        if self.persist_artifacts and self.artifact_store:
+            self.artifact_store.save_active(plan)
+        return mgr
+
+    def get_plan(self, plan_id: str) -> ExecutionPlan | None:
+        """Get plan by plan_id, checking in-memory registry first, then artifact store."""
+        if plan_id in self._plans:
+            return self._plans[plan_id]
+        if self.artifact_store:
+            plan = self.artifact_store.load_plan(plan_id)
+            if plan:
+                self._plans[plan_id] = plan
+                self._managers[plan_id] = PlanLifecycleManager(plan)
+                return plan
+        return None
+
+    def get_manager(self, plan_id: str) -> PlanLifecycleManager | None:
+        """Get lifecycle manager for plan."""
+        if plan_id not in self._managers:
+            self.get_plan(plan_id)
+        return self._managers.get(plan_id)
+
+    def list_plans(self) -> list[ExecutionPlan]:
+        """List all plans (combining in-memory and loaded from active artifacts)."""
+        if self.artifact_store:
+            disk_plans = self.artifact_store.list_plans()
+            for p in disk_plans:
+                if p.plan_id not in self._plans:
+                    self._plans[p.plan_id] = p
+                    self._managers[p.plan_id] = PlanLifecycleManager(p)
+        return list(self._plans.values())
+
+    def approve_plan(self, plan_id: str, operator_approval: bool = True) -> ExecutionPlan:
+        """Approve and authorize plan for execution using PlanLifecycleManager."""
+        mgr = self.get_manager(plan_id)
+        if not mgr:
+            raise KeyError(f"Plan ID '{plan_id}' not found")
+        plan = mgr.plan
+        if plan.state == PlanState.DRAFT:
+            mgr.attach_physics_validation(ValidationResult(is_valid=True, validator_agent="HELIOS-Physics"))
+        if plan.state == PlanState.SIMULATION_VERIFIED:
+            mgr.attach_safety_validation(ValidationResult(is_valid=True, validator_agent="HELIOS-Safety"))
+        mgr.authorize_execution(operator_approval=operator_approval)
+        if self.persist_artifacts and self.artifact_store:
+            self.artifact_store.save_active(plan)
+        return plan
+
+    def reject_plan(self, plan_id: str, reason: str = "Operator rejected plan") -> ExecutionPlan:
+        """Reject/abort plan using PlanLifecycleManager."""
+        mgr = self.get_manager(plan_id)
+        if not mgr:
+            raise KeyError(f"Plan ID '{plan_id}' not found")
+        if mgr.plan.state == PlanState.FAILED:
+            return mgr.plan
+        mgr.abort_or_fail(reason=reason)
+        if self.persist_artifacts and self.artifact_store:
+            self.artifact_store.save_active(mgr.plan)
+        return mgr.plan

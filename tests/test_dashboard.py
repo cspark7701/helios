@@ -90,11 +90,13 @@ def test_dashboard_plan_approval_and_panic(client):
     resp_appr = client.post("/api/plans/00001/approve", headers=phys_headers)
     assert resp_appr.status_code == 200
     assert resp_appr.json()["status"] == "APPROVED"
+    assert resp_appr.json()["state"] == "EXECUTING"
 
     # 4. Plan rejection
     resp_rej = client.post("/api/plans/00001/reject", headers=phys_headers)
     assert resp_rej.status_code == 200
     assert resp_rej.json()["status"] == "REJECTED"
+    assert resp_rej.json()["state"] == "FAILED"
 
     # 5. Unauthenticated emergency panic fails with 401
     resp_panic_unauth = client.post("/api/emergency/panic")

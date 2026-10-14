@@ -20,6 +20,7 @@ from helios.core.llm import (
 from helios.core.plan_engine import (
     PlanArtifactStore,
     PlanLifecycleManager,
+    PlanStore,
     PlanTransitionError,
 )
 from helios.core.schemas import (
@@ -57,6 +58,7 @@ __all__ = [
     "PlanLifecycleManager",
     "PlanState",
     "PlanStep",
+    "PlanStore",
     "PlanTransitionError",
     "RiskLevel",
     "SetpointBatch",

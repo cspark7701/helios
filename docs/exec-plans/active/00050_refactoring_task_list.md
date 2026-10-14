@@ -46,7 +46,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
 
 ## P1: Structural debt
 
-- [ ] **R-07 (M): Replace the dashboard's in-memory demo plan store with the real plan store.**
+- [x] **R-07 (M): Replace the dashboard's in-memory demo plan store with the real plan store.**
   `dashboard/app.py:197-221` hard-codes plans `00001`/`00002`, and approval mutates that dict rather than `helios.core.plan_engine` state, so the GUI can show "IN_PROGRESS" for a plan that never executes.
   *Change*: back `/api/plans*` with `PlanStore`/`PlanLifecycleManager`; approval calls the same authorization path as the CLI.
 

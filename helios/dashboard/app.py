@@ -26,6 +26,8 @@ except ImportError:
     HAVE_FASTAPI = False
 
 from helios.core.llm import create_llm_client
+from helios.core.plan_engine import PlanStore
+from helios.core.schemas import AutonomyLevel, ExecutionPlan, PlanState, PlanStep
 from helios.dashboard.plots import (
     generate_blm_heatmap_data,
     generate_envelope_plot_data,
@@ -181,6 +183,7 @@ def create_dashboard_app(
     control_interface: BaseControlInterface | None = None,
     rollback_controller: RollbackController | None = None,
     rbac_manager: RBACManager | None = None,
+    plan_store: PlanStore | None = None,
 ) -> Any:
     """Factory creating configured FastAPI dashboard application."""
     if not HAVE_FASTAPI:
@@ -195,7 +198,40 @@ def create_dashboard_app(
     ctrl = control_interface or MockControlInterface()
     rc = rollback_controller or RollbackController(control_interface=ctrl)
     rbac = rbac_manager or RBACManager()
+    ps = plan_store or PlanStore()
     app.state.rbac = rbac
+    app.state.plan_store = ps
+
+    # Seed demonstration plans if not present
+    if ps.get_plan("00001") is None:
+        ps.register_plan(
+            ExecutionPlan(
+                plan_id="00001",
+                title="LEBT Closed-Loop Trajectory Correction",
+                objective="LEBT closed-loop trajectory correction",
+                state=PlanState.SAFETY_APPROVED,
+                autonomy_level=AutonomyLevel.ASSISTED,
+                steps=[
+                    PlanStep(step_id="step_1", name="BPM & Wire Scanner Readback", target_agent="HELIOS-Diagnostics", action="read_telemetry"),
+                    PlanStep(step_id="step_2", name="SVD Trajectory Inversion & Quantization", target_agent="HELIOS-Tuner", action="svd_inversion"),
+                    PlanStep(step_id="step_3", name="Steerer Power Supply Slew (A)", target_agent="HELIOS-Control", action="steerer_slew"),
+                ],
+            )
+        )
+    if ps.get_plan("00002") is None:
+        ps.register_plan(
+            ExecutionPlan(
+                plan_id="00002",
+                title="MEBT Longitudinal Envelope Matching",
+                objective="MEBT longitudinal envelope matching",
+                state=PlanState.DRAFT,
+                autonomy_level=AutonomyLevel.SUPERVISED,
+                steps=[
+                    PlanStep(step_id="step_1", name="Buncher Cavity Phase Scan", target_agent="HELIOS-Physics", action="phase_scan"),
+                    PlanStep(step_id="step_2", name="RFQ Output Verification", target_agent="HELIOS-Diagnostics", action="verify_output"),
+                ],
+            )
+        )
 
     def require_permission(required_perm: Permission):
         async def dependency(
@@ -235,32 +271,6 @@ def create_dashboard_app(
             return token
 
         return dependency
-
-    plans_store: dict[str, dict[str, Any]] = {
-        "00001": {
-            "plan_id": "00001",
-            "title": "LEBT Closed-Loop Trajectory Correction",
-            "state": "READY",
-            "autonomy_level": "ASSISTED",
-            "steps": [
-                {"step_id": "step_1", "name": "BPM & Wire Scanner Readback", "agent": "HELIOS-Diagnostics"},
-                {"step_id": "step_2", "name": "SVD Trajectory Inversion & Quantization", "agent": "HELIOS-Tuner"},
-                {"step_id": "step_3", "name": "Steerer Power Supply Slew (A)", "agent": "HELIOS-Control"},
-            ],
-            "approved": False,
-        },
-        "00002": {
-            "plan_id": "00002",
-            "title": "MEBT Longitudinal Envelope Matching",
-            "state": "PENDING",
-            "autonomy_level": "SUPERVISED",
-            "steps": [
-                {"step_id": "step_1", "name": "Buncher Cavity Phase Scan", "agent": "HELIOS-Physics"},
-                {"step_id": "step_2", "name": "RFQ Output Verification", "agent": "HELIOS-Diagnostics"},
-            ],
-            "approved": False,
-        },
-    }
 
     connected_clients: list[WebSocket] = []
 
@@ -1698,7 +1708,28 @@ def create_dashboard_app(
     @app.get("/api/plans")
     async def list_plans() -> list[dict[str, Any]]:
         """List current operational plans."""
-        return list(plans_store.values())
+        plans = ps.list_plans()
+        return [
+            {
+                "plan_id": p.plan_id,
+                "title": p.title,
+                "objective": p.objective,
+                "state": p.state.value if hasattr(p.state, "value") else str(p.state),
+                "autonomy_level": p.autonomy_level.name if hasattr(p.autonomy_level, "name") else str(p.autonomy_level),
+                "steps": [
+                    {
+                        "step_id": s.step_id,
+                        "name": s.name,
+                        "agent": s.target_agent,
+                        "action": s.action,
+                        "status": s.status.value if hasattr(s.status, "value") else str(s.status),
+                    }
+                    for s in p.steps
+                ],
+                "approved": p.state in (PlanState.EXECUTING, PlanState.COMPLETED),
+            }
+            for p in plans
+        ]
 
     @app.post("/api/auth/token")
     async def issue_auth_token(payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1724,12 +1755,14 @@ def create_dashboard_app(
         token: AuthToken = Depends(require_permission(Permission.EXECUTE_CAPUT)),
     ) -> dict[str, Any]:
         """Operator approval trigger for Human-in-the-Loop workflows."""
-        if plan_id not in plans_store:
+        try:
+            plan = ps.approve_plan(plan_id, operator_approval=True)
+        except KeyError:
             raise HTTPException(status_code=404, detail="Plan ID not found")
-        plans_store[plan_id]["approved"] = True
-        plans_store[plan_id]["state"] = "IN_PROGRESS"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
         logger.info(f"[RBAC AUDIT] Plan {plan_id} approved by user '{token.username}' (role '{token.role.value}')")
-        return {"status": "APPROVED", "plan_id": plan_id}
+        return {"status": "APPROVED", "plan_id": plan_id, "state": plan.state.value}
 
     @app.post("/api/plans/{plan_id}/reject")
     async def reject_plan(
@@ -1737,12 +1770,14 @@ def create_dashboard_app(
         token: AuthToken = Depends(require_permission(Permission.PROPOSE_SETPOINT)),
     ) -> dict[str, Any]:
         """Operator rejection trigger."""
-        if plan_id not in plans_store:
+        try:
+            plan = ps.reject_plan(plan_id, reason=f"Rejected by user '{token.username}'")
+        except KeyError:
             raise HTTPException(status_code=404, detail="Plan ID not found")
-        plans_store[plan_id]["approved"] = False
-        plans_store[plan_id]["state"] = "REJECTED"
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
         logger.info(f"[RBAC AUDIT] Plan {plan_id} rejected by user '{token.username}' (role '{token.role.value}')")
-        return {"status": "REJECTED", "plan_id": plan_id}
+        return {"status": "REJECTED", "plan_id": plan_id, "state": plan.state.value}
 
     @app.post("/api/emergency/panic")
     async def trigger_panic_shutdown(
@@ -1890,22 +1925,7 @@ def create_dashboard_app(
                 detail=f"Error querying model '{model_name}' via provider '{provider}': {str(e)}",
             )
 
-        plans_store[plan.plan_id] = {
-            "plan_id": plan.plan_id,
-            "title": plan.title,
-            "state": plan.state.value if hasattr(plan.state, "value") else str(plan.state),
-            "autonomy_level": plan.autonomy_level.value if hasattr(plan.autonomy_level, "value") else str(plan.autonomy_level),
-            "steps": [
-                {
-                    "step_id": s.step_id,
-                    "name": s.name,
-                    "agent": s.target_agent,
-                    "action": s.action,
-                }
-                for s in plan.steps
-            ],
-            "approved": False,
-        }
+        ps.register_plan(plan)
 
         return {
             "explanation": explanation,
