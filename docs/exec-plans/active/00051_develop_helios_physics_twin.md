@@ -82,7 +82,7 @@ helios/physics/twin/
   - Verify throughput achieves $\le 0.5\text{ ms}$ per step ($\ge 2{,}000\text{ steps/s}$ on CPU).
 
 ### Phase 5: Differentiable Neural MPC Engine (`mpc.py`)
-- [ ] **T-11: Implement `TwinNeuralMPC` Controller**
+- [x] **T-11: Implement `TwinNeuralMPC` Controller**
   - Replace dict-based `NeuralLinacSurrogate` dependence in `helios/optimization/mpc.py` with `FrozenSurrogateInterface`.
   - Implement PyTorch autograd loss minimization across a receding horizon $H$:
     $$\vec{u}^* = \arg\min_{\vec{u} \in \mathcal{D}} \sum_{k=1}^H \left\| W \big(\vec{y}_\theta(\vec{u}_k) - \vec{y}_{\text{target}}\big)\right\|^2 + \lambda_a \|\vec{u}_k - \vec{u}_0\|^2 + \lambda_s \|\vec{u}_k - \vec{u}_{k-1}\|^2$$
