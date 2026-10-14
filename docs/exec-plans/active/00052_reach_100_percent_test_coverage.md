@@ -14,7 +14,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover uncovered lines in `helios/physics/elements.py`, `species.py` (multi-charge components and isotopic lookups), `differentiable.py`, `parallel.py`, `halo.py`, `liquid_stripper.py`, `fieldmaps.py`, `vacuum.py`, `converters.py`, `pusher.py`, `beam_dump.py`, `css.py`, `stripper.py`, `surrogate.py`, `equipartition.py`.
 
 ### Phase 2: Core Orchestration, LLM & Plan Engine
-- [ ] **T-03: Core LLM Clients & Plan Engine Edge Cases (`tests/test_coverage_core.py`)**
+- [x] **T-03: Core LLM Clients & Plan Engine Edge Cases (`tests/test_coverage_core.py`)**
   - Cover uncovered lines in `helios/core/llm.py` (OpenAI provider HTTP request, error handling, Ollama HTTP stream, fallback), `plan_engine.py` (execution errors, step timeouts, state transitions), `facility_config.py`, `capabilities.py`, `mesh.py`, `agents/orchestrator.py`, `agents/cotuner.py`, `agents/planner.py`.
 
 ### Phase 3: Control & Diagnostic Interfaces
