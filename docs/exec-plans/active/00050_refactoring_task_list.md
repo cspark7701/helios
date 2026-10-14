@@ -60,7 +60,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
   5. Keep `create_dashboard_app` a thin composition root.
   *Done when*: no module over about 400 lines in `dashboard/`, existing dashboard tests unchanged and passing.
 
-- [ ] **R-09 (M): Split `core/capabilities.py::get_default_registry` (553 lines, file is 675).**
+- [x] **R-09 (M): Split `core/capabilities.py::get_default_registry` (553 lines, file is 675).**
   A single function that builds the whole registry. Move capability declarations to per-domain modules or a data file, keep the classifier and dispatch logic in `capabilities.py`. Add a test that every registered capability resolves to an importable target.
 
 - [x] **R-10 (M): Centralize facility and PV configuration (remove 57 hard-coded `MEBT:` strings).**

@@ -67,3 +67,18 @@ def test_dynamic_capability_classification_simulation():
     selected_impact = registry.classify_intent(prompt_impact, max_tools=4)
     selected_impact_names = [c.name for c in selected_impact]
     assert "run_impactz_simulation" in selected_impact_names
+
+
+def test_capabilities_resolve_to_importable_targets():
+    """Verify that every registered capability defines an importable target module."""
+    import importlib
+
+    registry = get_default_registry()
+    all_caps = registry.list_all()
+
+    assert len(all_caps) == 65
+    for cap in all_caps:
+        assert cap.target_module is not None, f"Capability {cap.name} missing target_module"
+        mod = importlib.import_module(cap.target_module)
+        assert mod is not None, f"Target module {cap.target_module} could not be imported"
+
