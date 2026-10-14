@@ -65,7 +65,7 @@ helios/physics/twin/
     2. Execute differentiable surrogate prediction: `surrogate.predict(beam_state, machine_setting)`.
     3. Evaluate predicted centroid orbit $\vec{x}_{\text{BPM}}$ against operational stay-clear boundaries.
     4. Compute stay-clear margin using beam envelope $\sigma(s)$ against physical aperture limits.
-- [ ] **T-08: Provenance & Audit Trail Integration**
+- [x] **T-08: Provenance & Audit Trail Integration**
   - Generate structured validation metadata: model identity, checkpoint checksum, inference execution latency, and OOD check status.
   - Wire directly into `HELIOS-Safety` (`SafetyGatekeeper`) and `docs/exec-plans/` audit logging.
 

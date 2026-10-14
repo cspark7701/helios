@@ -51,9 +51,15 @@ class GuardedControlInterface(BaseControlInterface):
 class SafetyGatekeeper:
     """Deterministic boundary and Machine Protection System (MPS) verifier."""
 
-    def __init__(self, channel_manager: ChannelManager, control_interface: BaseControlInterface | None = None):
+    def __init__(
+        self,
+        channel_manager: ChannelManager,
+        control_interface: BaseControlInterface | None = None,
+        twin_verifier: Any = None,
+    ):
         self.channels = channel_manager
         self.control = control_interface
+        self.twin_verifier = twin_verifier
         self._valid_tokens: dict[str, dict[str, Any]] = {}
         self.guarded_control: GuardedControlInterface | None = (
             GuardedControlInterface(control_interface, self) if control_interface else None
@@ -177,6 +183,15 @@ class SafetyGatekeeper:
                 ))
                 errors.append("MPS Interlock active: Live actuation prohibited!")
 
+        # Check 5: Digital twin pre-flight verification if twin verifier attached
+        projected_loss = 0.0
+        if self.twin_verifier:
+            twin_res = self.twin_verifier.validate_plan_setpoints(proposed_setpoints)
+            checks.extend(twin_res.checks)
+            errors.extend(twin_res.errors)
+            warnings.extend(twin_res.warnings)
+            projected_loss = twin_res.projected_beam_loss
+
         is_valid = len(errors) == 0
         token = self.mint_token(proposed_setpoints) if is_valid else None
 
@@ -184,6 +199,8 @@ class SafetyGatekeeper:
             is_valid=is_valid,
             validator_agent=agent_name,
             checks=checks,
+            projected_beam_loss=projected_loss,
+            provenance="twin" if self.twin_verifier else "analytic",
             authorization_token=token,
             warnings=warnings,
             errors=errors,

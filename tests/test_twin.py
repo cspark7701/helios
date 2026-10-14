@@ -140,3 +140,30 @@ def test_twin_state_synchronizer():
     assert "residuals" in rec
     assert "rms_residual_mm" in rec
     assert len(sync.telemetry_history) == 1
+
+
+def test_safety_gatekeeper_twin_verifier_integration():
+    """Verify SafetyGatekeeper wires with TwinPreFlightVerifier and provenance tracking (T-08)."""
+    from helios.interfaces.channel_map import ChannelManager
+    from helios.safety.gatekeeper import SafetyGatekeeper
+
+    twin = get_facility_twin(facility="mock", section="MEBT")
+    verifier = TwinPreFlightVerifier(twin=twin)
+    cm = ChannelManager()
+    gatekeeper = SafetyGatekeeper(channel_manager=cm, twin_verifier=verifier)
+
+    # In-domain safe candidate setpoints
+    safe_sp = {"MEBT:DCH:01": 0.5, "MEBT:DCV:01": -0.2}
+    val_res = gatekeeper.validate_setpoints(safe_sp)
+    assert val_res.is_valid is True
+    assert val_res.provenance == "twin"
+    assert val_res.authorization_token is not None
+    assert any("Twin Domain Envelope" in c.check_name for c in val_res.checks)
+
+    # Out-of-domain candidate setpoints
+    unsafe_sp = {"MEBT:DCH:01": 50.0}
+    val_unsafe = gatekeeper.validate_setpoints(unsafe_sp)
+    assert val_unsafe.is_valid is False
+    assert val_unsafe.authorization_token is None
+    assert any("Twin Domain" in err for err in val_unsafe.errors)
+

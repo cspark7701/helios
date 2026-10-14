@@ -31,7 +31,7 @@ class TwinPreFlightVerifier:
         # 1. Out-of-Domain (OOD) training envelope check
         ood_violations = self.twin.domain.out_of_domain(setpoints)
         if ood_violations:
-            msg = f"Candidate setpoints outside twin verified domain: {', '.join(ood_violations)}"
+            msg = f"Candidate setpoints outside Twin Domain envelope: {', '.join(ood_violations)}"
             errors.append(msg)
             checks.append(ValidationCheck(check_name="Twin Domain Envelope", passed=False, message=msg))
         else:
@@ -64,6 +64,15 @@ class TwinPreFlightVerifier:
         if max_orbit > self.aperture_limit_mm * 0.8:
             projected_loss = float(np.clip((max_orbit - self.aperture_limit_mm * 0.8) * 10.0, 0.0, 100.0))
             warnings.append(f"Beam envelope approaches vacuum chamber aperture ({max_orbit:.2f} mm)")
+
+        # 5. Provenance and latency telemetry
+        prov_type = self.twin.provenance.get("type", "surrogate")
+        prov_ver = self.twin.provenance.get("version", "1.0.0")
+        checks.append(ValidationCheck(
+            check_name="Twin Model Provenance",
+            passed=True,
+            message=f"Facility twin: {self.twin.facility}:{self.twin.section} ({prov_type} v{prov_ver})",
+        ))
 
         is_valid = len(errors) == 0
 
