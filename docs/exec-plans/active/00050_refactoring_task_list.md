@@ -88,7 +88,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
 - [x] **R-15 (S): Add the lint/type gates that plan 00049 says exist.**
   `docs/exec-plans/completed/00049_*.md` states CI includes `ruff`, `mypy`, and `black`, but `.github/workflows/ci.yml`, `.github/ci-contract.json`, and `pyproject.toml` contain none of them, and none are installed in the `helios` env. Either add them (recommended: `ruff` first, `mypy` on `helios/safety`, `helios/interfaces`, `helios/core` with `--strict`, widen later) via `scripts/ci_contract.py checks` so local and remote runs stay identical, or correct the plan document.
 
-- [ ] **R-16 (S): Fix plan-record numbering and consistency in `docs/exec-plans/`.**
+- [x] **R-16 (S): Fix plan-record numbering and consistency in `docs/exec-plans/`.**
   Duplicate IDs: `00001` and `00014` each appear twice in `completed/`; `00099_mebt_orbit_trajectory_correction.md` is out of sequence; gaps at 00028, 00031, 00034. `AGENTS.md` requires a unique 5-digit ID. Renumber or add an index, and add a test in `ci_contract.py checks` that IDs are unique.
 
 - [x] **R-17 (S): Modernize type hints.**

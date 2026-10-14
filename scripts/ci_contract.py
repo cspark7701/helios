@@ -69,6 +69,39 @@ def validate_workflow() -> None:
     print(f"✓ Workflow {WORKFLOW.name} parsed successfully ({len(jobs)} jobs defined).")
 
 
+def validate_plan_records() -> None:
+    """Verify that all execution plans in docs/exec-plans/ have unique 5-digit IDs."""
+    import re
+
+    exec_plans_dir = ROOT / "docs" / "exec-plans"
+    if not exec_plans_dir.exists():
+        return
+
+    plan_files = list((exec_plans_dir / "active").glob("*.md")) + list(
+        (exec_plans_dir / "completed").glob("*.md")
+    )
+    seen_ids: dict[str, Path] = {}
+    duplicates: list[tuple[str, Path, Path]] = []
+
+    for p in plan_files:
+        m = re.match(r"^(\d{5})_", p.name)
+        if not m:
+            continue
+        plan_id = m.group(1)
+        if plan_id in seen_ids:
+            duplicates.append((plan_id, seen_ids[plan_id], p))
+        else:
+            seen_ids[plan_id] = p
+
+    if duplicates:
+        dup_msgs = [f"ID {pid}: {f1.name} and {f2.name}" for pid, f1, f2 in duplicates]
+        raise ValueError(
+            "Duplicate execution plan IDs detected in docs/exec-plans/:\n" + "\n".join(dup_msgs)
+        )
+
+    print(f"✓ Execution plans validated ({len(seen_ids)} unique 5-digit plan IDs verified).")
+
+
 def run_checks(*, fast: bool = False, quiet: bool = False, dry_run: bool = False) -> None:
     """Run shared contract checks defined in ci-contract.json."""
     contract = load_contract()
@@ -194,6 +227,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.action == "validate":
         load_contract()
         validate_workflow()
+        validate_plan_records()
         return 0
     elif args.action == "matrix":
         print(generate_matrix(args.python_version))
