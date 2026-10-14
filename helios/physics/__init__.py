@@ -56,6 +56,17 @@ from helios.physics.stripper import (
 from helios.physics.surrogate import (
     FastPhysicsSurrogate,
 )
+from helios.physics.twin import (
+    FacilityPlugin,
+    FacilityTwin,
+    LinacSurrogateGymEnv,
+    TwinDomain,
+    TwinNeuralMPC,
+    TwinPreFlightVerifier,
+    TwinStateSynchronizer,
+    discover_facility_plugins,
+    get_facility_twin,
+)
 
 __all__ = [
     "AMU_MEV",
@@ -70,11 +81,14 @@ __all__ = [
     "DiagnosticElement",
     "Drift",
     "Element",
+    "FacilityPlugin",
+    "FacilityTwin",
     "FastPhysicsSurrogate",
     "ImpactZSimulator",
     "IonSpecies",
     "Lattice",
     "LatticeConverter",
+    "LinacSurrogateGymEnv",
     "MultiChargeBeam",
     "MultiChargeComponent",
     "Quadrupole",
@@ -86,6 +100,10 @@ __all__ = [
     "TraceWinSimulator",
     "TrackSimulator",
     "TrajectoryPoint",
+    "TwinDomain",
+    "TwinNeuralMPC",
+    "TwinPreFlightVerifier",
+    "TwinStateSynchronizer",
     "create_argon_beam",
     "create_baseline_mebt_lattice",
     "create_frib_ls1_lattice",
@@ -94,4 +112,6 @@ __all__ = [
     "create_raon_scl1_lattice",
     "create_uranium_multicharge_beam",
     "create_xenon_multicharge_beam",
+    "discover_facility_plugins",
+    "get_facility_twin",
 ]

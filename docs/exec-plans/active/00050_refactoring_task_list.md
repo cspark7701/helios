@@ -68,7 +68,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
   *Change*: one `FacilityConfig` (YAML under `configs/`, validated by pydantic) supplying PV names, steerer/BPM lists, units, limits, and TRACK location (`TRACK_ROOT` env, no default under a home directory). Constructors take names from it, not from literals.
   *Note*: this is the prerequisite for the facility plugin described in `docs/integration_synaptictrack_raon.md`.
 
-- [ ] **R-11 (L): Consolidate the three surrogate/twin abstractions into `helios.physics.twin`.**
+- [x] **R-11 (L): Consolidate the three surrogate/twin abstractions into `helios.physics.twin`.**
   `physics/surrogate.py::FastPhysicsSurrogate` (dict API over the analytic twin), `models/surrogate.py::NeuralLinacSurrogate` (untrained net, dict API, own `SurrogatePrediction`), and `physics/engine.py` backends (`AnalyticDigitalTwinEngine`, TRACK, ImpactZ) overlap, and `NeuralMPCController`/`LinacRLAgent` bind to a specific one.
   *Change*: define `helios.physics.twin` protocol (`FacilityTwin`, `TwinDomain`, `FacilityPlugin`, `TwinPreFlightVerifier`, `LinacSurrogateGymEnv`, `TwinNeuralMPC`), detailed in [00051_develop_helios_physics_twin.md](file:///home/cspark/Work/simulation_codes-working/helios/docs/exec-plans/active/00051_develop_helios_physics_twin.md). Adapt existing backends to it, and make MPC/RL/pre-flight depend only on the protocol. Delete the dead branch in `physics/engine.py` ImpactZ runner or implement it.
 

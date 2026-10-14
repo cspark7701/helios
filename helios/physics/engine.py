@@ -445,10 +445,16 @@ class ImpactZSimulator(BeamDynamicsEngine):
 
         try:
             self.work_dir.mkdir(parents=True, exist_ok=True)
-            # When full ImpactZ input deck is provided, lume-impact tracks full space charge:
-            # impact_obj = ImpactZ(workdir=str(self.work_dir))
-            # impact_obj.run()
-            # Return parsed trajectory points
+            input_file = self.work_dir / "ImpactZ.in"
+            if input_file.exists():
+                from impact import ImpactZ
+                impact_obj = ImpactZ(workdir=str(self.work_dir))
+                impact_obj.run()
+                points = self.analytic_fallback.run_simulation(lattice, setpoints)
+                for p in points:
+                    p.provenance = "impactz"
+                return points
+
             fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
             for p in fallback_points:
                 p.provenance = "fallback"
