@@ -9,13 +9,16 @@ from helios.optimization.mpc import (
     MPCStepResult,
     NeuralMPCController,
 )
-from helios.optimization.rl_agent import (
-    LinacRLAgent,
-)
 from helios.optimization.workflows import (
     OrbitCorrectionWorkflow,
     RFPhaseScanWorkflow,
 )
+
+try:
+    from helios.optimization.rl_agent import LinacRLAgent
+except Exception:
+    LinacRLAgent = None  # type: ignore[assignment, misc]
+
 
 __all__ = [
     "BayesianOptimizer",
