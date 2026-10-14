@@ -12,6 +12,7 @@ EXTRAS: dict[str, list[str]] = {
     "rl": ["gymnasium"],
     "dashboard": ["fastapi", "uvicorn", "requests"],
     "ontology": ["linkml", "linkml_runtime", "rdflib"],
+    "all": ["epics", "p4p", "torch", "gymnasium", "fastapi", "uvicorn", "requests", "linkml", "linkml_runtime", "rdflib"],
 }
 
 MODULE_TO_EXTRA: dict[str, str] = {

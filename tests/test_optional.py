@@ -42,3 +42,5 @@ def test_module_to_extra_mappings():
     assert "ml" in EXTRAS
     assert "rl" in EXTRAS
     assert "dashboard" in EXTRAS
+    assert "all" in EXTRAS
+
