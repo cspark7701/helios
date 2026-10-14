@@ -42,7 +42,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover `helios/dashboard/app.py`, `deps.py`, `routers/llm.py`, `plans.py`, `status.py`, `ws.py`, `tuning.py`.
 
 ### Phase 7: Final Verification & 100% Coverage Gate
-- [ ] **T-08: Pyproject Configuration & 100% Coverage Gate**
+- [x] **T-08: Pyproject Configuration & 100% Coverage Gate**
   - Update `pyproject.toml` to set `--cov-fail-under=100` and `fail_under = 100`.
   - Verify complete test suite achieves 100.0% coverage across all modules.
   - Run all CI contract checks (`python scripts/ci_contract.py checks`).

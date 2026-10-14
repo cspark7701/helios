@@ -103,7 +103,7 @@ include = ["helios*"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra --cov=helios --cov-report=term-missing --cov-fail-under=85"
+addopts = "-ra --cov=helios --cov-report=term-missing --cov-fail-under=100"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 filterwarnings = [
@@ -117,7 +117,7 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 85
+fail_under = 100
 show_missing = true
 
 
