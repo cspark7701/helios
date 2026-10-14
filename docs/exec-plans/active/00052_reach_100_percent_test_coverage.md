@@ -8,7 +8,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
 ## 📋 Task Breakdown
 
 ### Phase 1: Physics Engine & Simulation Subsystems
-- [ ] **T-01: Physics Simulation Engines & Subprocess Verification (`tests/test_coverage_physics_engine.py`)**
+- [x] **T-01: Physics Simulation Engines & Subprocess Verification (`tests/test_coverage_physics_engine.py`)**
   - Cover all execution branches in `helios/physics/engine.py`: `TrackSimulator` (`_parse_beam_file`, `_parse_envelope_file`, subprocess error handling, fallback provenance), `ImpactZSimulator`, `TraceWinSimulator`, and `AnalyticDigitalTwinEngine` (`apply_setpoints`, `estimate_losses`).
 - [ ] **T-02: Advanced Physics Elements, Strippers & Solvers (`tests/test_coverage_physics_elements.py`)**
   - Cover uncovered lines in `helios/physics/elements.py`, `species.py` (multi-charge components and isotopic lookups), `differentiable.py`, `parallel.py`, `halo.py`, `liquid_stripper.py`, `fieldmaps.py`, `vacuum.py`, `converters.py`, `pusher.py`, `beam_dump.py`, `css.py`, `stripper.py`, `surrogate.py`, `equipartition.py`.

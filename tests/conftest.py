@@ -1,5 +1,6 @@
 """Pytest fixtures and configuration for HELIOS test suite."""
 
+import numpy as np
 import pytest
 
 
