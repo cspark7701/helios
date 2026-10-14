@@ -4,10 +4,9 @@ Implements role-based access control (RBAC), write-permission ACLs,
 and Channel Access Security policy verification for accelerator operations.
 """
 
-from enum import Enum
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +29,9 @@ class ControlSecurityPolicy:
     def __init__(
         self,
         default_role: UserRole = UserRole.PHYSICIST,
-        readonly_patterns: Optional[List[str]] = None,
-        admin_patterns: Optional[List[str]] = None,
-        physicist_patterns: Optional[List[str]] = None,
+        readonly_patterns: list[str] | None = None,
+        admin_patterns: list[str] | None = None,
+        physicist_patterns: list[str] | None = None,
     ):
         self.default_role = default_role
         # Regular expressions matching protected PV groups
@@ -101,7 +100,7 @@ class ControlSecurityPolicy:
 class ControlSecurityManager:
     """Manages active session authentication and enforces CAS write boundaries."""
 
-    def __init__(self, policy: Optional[ControlSecurityPolicy] = None):
+    def __init__(self, policy: ControlSecurityPolicy | None = None):
         self.policy = policy or ControlSecurityPolicy()
         self._current_role = self.policy.default_role
 

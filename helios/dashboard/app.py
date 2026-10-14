@@ -7,23 +7,24 @@ Features a clean, high-contrast white background with color fonts.
 """
 
 import asyncio
-from datetime import datetime, timezone
 import json
 import logging
-from pathlib import Path
+import os
 import time
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 try:
-    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-    from fastapi.responses import HTMLResponse, JSONResponse
+    from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+    from fastapi.responses import HTMLResponse
     HAVE_FASTAPI = True
 except ImportError:
     FastAPI = None
     HAVE_FASTAPI = False
 
-from helios.core.schemas import AutonomyLevel, PlanState
 from helios.core.llm import create_llm_client
 from helios.dashboard.plots import (
     generate_blm_heatmap_data,
@@ -32,9 +33,10 @@ from helios.dashboard.plots import (
 )
 from helios.interfaces.base import BaseControlInterface
 from helios.interfaces.epics import MockControlInterface
-from helios.physics.elements import Steerer
 from helios.optimization.algorithms import SVDOrbitCorrection
+from helios.physics.elements import Steerer
 from helios.safety.rollback import RollbackController
+from helios.security.rbac import AuthToken, Permission, RBACManager, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +76,7 @@ def execute_analytic_orbit_correction(
     section: str = "LEBT",
     conversion_factor_a_per_mrad: float = 0.168,
     current_increment_a: float = 0.05,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Perform rapid analytic orbit correction for interactive operator console."""
     start_time = time.perf_counter()
 
@@ -176,8 +178,9 @@ def execute_analytic_orbit_correction(
 
 
 def create_dashboard_app(
-    control_interface: Optional[BaseControlInterface] = None,
-    rollback_controller: Optional[RollbackController] = None,
+    control_interface: BaseControlInterface | None = None,
+    rollback_controller: RollbackController | None = None,
+    rbac_manager: RBACManager | None = None,
 ) -> Any:
     """Factory creating configured FastAPI dashboard application."""
     if not HAVE_FASTAPI:
@@ -191,8 +194,49 @@ def create_dashboard_app(
 
     ctrl = control_interface or MockControlInterface()
     rc = rollback_controller or RollbackController(control_interface=ctrl)
+    rbac = rbac_manager or RBACManager()
+    app.state.rbac = rbac
 
-    plans_store: Dict[str, Dict[str, Any]] = {
+    def require_permission(required_perm: Permission):
+        async def dependency(
+            authorization: str | None = Header(None, alias="Authorization"),
+            x_auth_token: str | None = Header(None, alias="X-Auth-Token"),
+        ) -> AuthToken:
+            token_str = None
+            if authorization:
+                if authorization.lower().startswith("bearer "):
+                    token_str = authorization[7:].strip()
+                else:
+                    token_str = authorization.strip()
+            elif x_auth_token:
+                token_str = x_auth_token.strip()
+
+            if not token_str:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Authentication credentials were not provided. Expected Bearer or X-Auth-Token.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            token = rbac._active_tokens.get(token_str)
+            if not token or time.time() > token.expires_at:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired session authorization token.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+            if not rbac.verify_permission(token_str, required_perm):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Forbidden: role '{token.role.value}' lacks required permission '{required_perm.value}'.",
+                )
+
+            return token
+
+        return dependency
+
+    plans_store: dict[str, dict[str, Any]] = {
         "00001": {
             "plan_id": "00001",
             "title": "LEBT Closed-Loop Trajectory Correction",
@@ -218,7 +262,7 @@ def create_dashboard_app(
         },
     }
 
-    connected_clients: List[WebSocket] = []
+    connected_clients: list[WebSocket] = []
 
     @app.get("/", response_class=HTMLResponse)
     async def get_dashboard_html() -> str:
@@ -1089,9 +1133,8 @@ def create_dashboard_app(
                             <label style="font-weight: 700; color: var(--text-heading);">Model Name:</label>
                             <input type="text" class="form-control" id="custom-model-name" placeholder="llama3 or gpt-4o" style="font-size: 11px; padding: 4px 8px;">
                         </div>
-                        <div>
-                            <label style="font-weight: 700; color: var(--text-heading);">API Key (Optional):</label>
-                            <input type="password" class="form-control" id="custom-api-key" placeholder="Bearer token / sk-..." style="font-size: 11px; padding: 4px 8px;">
+                        <div style="font-size: 11px; color: var(--text-muted); padding-top: 4px;">
+                            <span style="font-weight: 600;">Server Auth:</span> Keys configured via server environment (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
                         </div>
                     </div>
                 </div>
@@ -1132,6 +1175,26 @@ def create_dashboard_app(
 
     <!-- Client-Side Dashboard Logic -->
     <script>
+        let authToken = null;
+        async function getAuthToken() {
+            if (!authToken) {
+                try {
+                    const res = await fetch('/api/auth/token', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({username: 'control_operator', role: 'ADMIN'})
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        authToken = d.token;
+                    }
+                } catch (e) {
+                    console.warn('Could not acquire session token', e);
+                }
+            }
+            return authToken;
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -1237,9 +1300,13 @@ def create_dashboard_app(
             status.style.color = '#2563eb';
 
             try {
+                const token = await getAuthToken();
+                const headers = {'Content-Type': 'application/json'};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const res = await fetch('/api/tune/orbit', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: headers,
                     body: JSON.stringify({
                         section: section,
                         engine: engine,
@@ -1362,7 +1429,15 @@ def create_dashboard_app(
 
         async function approvePlan(planId) {
             try {
-                const res = await fetch(`/api/plans/${planId}/approve`, {method: 'POST'});
+                const token = await getAuthToken();
+                const headers = {'Content-Type': 'application/json'};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch(`/api/plans/${planId}/approve`, {method: 'POST', headers: headers});
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.detail || `Server returned ${res.status}`);
+                }
                 const data = await res.json();
                 alert(`Plan ${planId} Approved and Dispatched to Agent Execution!`);
                 location.reload();
@@ -1374,7 +1449,15 @@ def create_dashboard_app(
         async function triggerPanic() {
             if (confirm("🚨 EMERGENCY PANIC SHUTDOWN: Immediately dump heavy ion beam, zero RF cavity setpoints, and safe all magnetic power supplies?")) {
                 try {
-                    const res = await fetch('/api/emergency/panic', {method: 'POST'});
+                    const token = await getAuthToken();
+                    const headers = {'Content-Type': 'application/json'};
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                    const res = await fetch('/api/emergency/panic', {method: 'POST', headers: headers});
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.detail || `Server returned ${res.status}`);
+                    }
                     const data = await res.json();
                     alert("PANIC SHUTDOWN SUCCESSFUL: Machine in Safe State.");
                 } catch (e) {
@@ -1407,12 +1490,10 @@ def create_dashboard_app(
             const modelVal = document.getElementById('llm-model-select').value;
             let [provider, model] = modelVal.split('|');
             let baseUrl = null;
-            let apiKey = null;
 
             if (provider === 'custom') {
                 baseUrl = document.getElementById('custom-base-url').value.trim() || 'http://localhost:11434/v1';
                 model = document.getElementById('custom-model-name').value.trim() || 'llama3';
-                apiKey = document.getElementById('custom-api-key').value.trim() || null;
                 provider = 'local';
             } else if (provider === 'ollama') {
                 baseUrl = 'http://localhost:11434/v1';
@@ -1449,8 +1530,7 @@ def create_dashboard_app(
                         prompt: promptText,
                         provider: provider,
                         model: model,
-                        base_url: baseUrl,
-                        api_key: apiKey
+                        base_url: baseUrl
                     })
                 });
 
@@ -1557,7 +1637,7 @@ def create_dashboard_app(
 </html>"""
 
     @app.get("/api/status")
-    async def get_machine_status() -> Dict[str, Any]:
+    async def get_machine_status() -> dict[str, Any]:
         """Query global accelerator health and autonomy state."""
         return {
             "status": "ONLINE",
@@ -1569,7 +1649,7 @@ def create_dashboard_app(
         }
 
     @app.get("/api/telemetry")
-    async def get_telemetry() -> Dict[str, Any]:
+    async def get_telemetry() -> dict[str, Any]:
         """Fetch latest telemetry snapshot."""
         return {
             "transmission_pct": 99.4,
@@ -1588,7 +1668,7 @@ def create_dashboard_app(
         }
 
     @app.get("/api/plots/orbit")
-    async def get_orbit_plot() -> Dict[str, Any]:
+    async def get_orbit_plot() -> dict[str, Any]:
         """Fetch processed dataset for interactive orbit trajectory plots."""
         bpms = {
             "MEBT:BPM:01": {"s_m": 0.5, "x_mm": 0.12, "y_mm": -0.05},
@@ -1598,7 +1678,7 @@ def create_dashboard_app(
         return generate_orbit_plot_data(bpm_telemetry=bpms, tolerance_mm=0.5)
 
     @app.get("/api/plots/envelope")
-    async def get_envelope_plot() -> Dict[str, Any]:
+    async def get_envelope_plot() -> dict[str, Any]:
         """Fetch 3-sigma beam envelope and aperture limit dataset."""
         s = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
         sig_x = [1.2, 1.4, 1.1, 1.6, 1.3, 1.5, 1.2, 1.4, 1.3]
@@ -1606,7 +1686,7 @@ def create_dashboard_app(
         return generate_envelope_plot_data(s_positions=s, sigma_x_mm=sig_x, sigma_y_mm=sig_y, aperture_radius_mm=15.0)
 
     @app.get("/api/plots/blm")
-    async def get_blm_plot() -> Dict[str, Any]:
+    async def get_blm_plot() -> dict[str, Any]:
         """Fetch beam loss radiation heatmap dataset."""
         blms = {
             "MEBT:BLM:01": {"s_m": 1.0, "loss_w": 0.05},
@@ -1616,42 +1696,75 @@ def create_dashboard_app(
         return generate_blm_heatmap_data(blm_readings=blms, trip_threshold_w=1.0)
 
     @app.get("/api/plans")
-    async def list_plans() -> List[Dict[str, Any]]:
+    async def list_plans() -> list[dict[str, Any]]:
         """List current operational plans."""
         return list(plans_store.values())
 
+    @app.post("/api/auth/token")
+    async def issue_auth_token(payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Issue an authenticated session token for operator or viewer."""
+        req = payload or {}
+        username = str(req.get("username", "control_room_operator"))
+        role_str = str(req.get("role", "PHYSICIST")).upper()
+        try:
+            role = UserRole(role_str)
+        except ValueError:
+            role = UserRole.PHYSICIST
+        token = rbac.issue_token(username=username, role=role)
+        return {
+            "token": token.token_str,
+            "username": token.username,
+            "role": token.role.value,
+            "expires_at": token.expires_at,
+        }
+
     @app.post("/api/plans/{plan_id}/approve")
-    async def approve_plan(plan_id: str) -> Dict[str, Any]:
+    async def approve_plan(
+        plan_id: str,
+        token: AuthToken = Depends(require_permission(Permission.EXECUTE_CAPUT)),
+    ) -> dict[str, Any]:
         """Operator approval trigger for Human-in-the-Loop workflows."""
         if plan_id not in plans_store:
             raise HTTPException(status_code=404, detail="Plan ID not found")
         plans_store[plan_id]["approved"] = True
         plans_store[plan_id]["state"] = "IN_PROGRESS"
+        logger.info(f"[RBAC AUDIT] Plan {plan_id} approved by user '{token.username}' (role '{token.role.value}')")
         return {"status": "APPROVED", "plan_id": plan_id}
 
     @app.post("/api/plans/{plan_id}/reject")
-    async def reject_plan(plan_id: str) -> Dict[str, Any]:
+    async def reject_plan(
+        plan_id: str,
+        token: AuthToken = Depends(require_permission(Permission.PROPOSE_SETPOINT)),
+    ) -> dict[str, Any]:
         """Operator rejection trigger."""
         if plan_id not in plans_store:
             raise HTTPException(status_code=404, detail="Plan ID not found")
         plans_store[plan_id]["approved"] = False
         plans_store[plan_id]["state"] = "REJECTED"
+        logger.info(f"[RBAC AUDIT] Plan {plan_id} rejected by user '{token.username}' (role '{token.role.value}')")
         return {"status": "REJECTED", "plan_id": plan_id}
 
     @app.post("/api/emergency/panic")
-    async def trigger_panic_shutdown() -> Dict[str, Any]:
+    async def trigger_panic_shutdown(
+        token: AuthToken = Depends(require_permission(Permission.PANIC_SHUTDOWN)),
+    ) -> dict[str, Any]:
         """Emergency panic button endpoint triggering immediate machine dump."""
         ok = rc.panic_shutdown()
+        logger.warning(f"[RBAC AUDIT] EMERGENCY PANIC triggered by user '{token.username}' (role '{token.role.value}')")
         return {"status": "PANIC_EXECUTED", "success": ok}
 
     @app.post("/api/tune/orbit")
-    async def tune_orbit_endpoint(payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def tune_orbit_endpoint(
+        payload: dict[str, Any] | None = None,
+        token: AuthToken = Depends(require_permission(Permission.EXECUTE_CAPUT)),
+    ) -> dict[str, Any]:
         """API endpoint executing closed-loop orbit correction with steerer power supply currents."""
         req = payload or {}
         section = req.get("section", "LEBT")
         engine = req.get("engine", "analytic").lower()
         factor = float(req.get("conversion_factor", 0.168))
         step = float(req.get("current_increment", 0.05))
+        logger.info(f"[RBAC AUDIT] Orbit tuning initiated by user '{token.username}' (role '{token.role.value}') on {section}")
 
         if section.upper() == "LEBT" and engine == "track":
             try:
@@ -1684,7 +1797,7 @@ def create_dashboard_app(
         )
 
     @app.get("/api/llm/models")
-    async def get_llm_models_endpoint() -> List[Dict[str, Any]]:
+    async def get_llm_models_endpoint() -> list[dict[str, Any]]:
         """List selectable LLM models and local/cloud providers."""
         return [
             {
@@ -1737,7 +1850,7 @@ def create_dashboard_app(
         ]
 
     @app.post("/api/prompt")
-    async def process_prompt_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_prompt_endpoint(payload: dict[str, Any]) -> dict[str, Any]:
         """Process conversational directive with user-selected Language Model."""
         prompt = payload.get("prompt", "").strip()
         if not prompt:
@@ -1746,17 +1859,24 @@ def create_dashboard_app(
         provider = str(payload.get("provider", "mock")).lower()
         model_name = str(payload.get("model", "mock-helios-planner"))
         base_url = payload.get("base_url")
-        api_key = payload.get("api_key")
 
-        llm_kwargs: Dict[str, Any] = {}
+        llm_kwargs: dict[str, Any] = {}
         if model_name:
             llm_kwargs["model"] = model_name
         if base_url:
             llm_kwargs["base_url"] = base_url
         elif provider == "ollama":
             llm_kwargs["base_url"] = "http://localhost:11434/v1"
-        if api_key:
-            llm_kwargs["api_key"] = api_key
+
+        # Resolve API keys strictly from server environment, never trust or log client-supplied keys
+        server_key = (
+            os.environ.get("HELIOS_LLM_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("ANTHROPIC_API_KEY")
+            or os.environ.get("GEMINI_API_KEY")
+        )
+        if server_key:
+            llm_kwargs["api_key"] = server_key
 
         try:
             llm_client = create_llm_client(provider=provider, **llm_kwargs)

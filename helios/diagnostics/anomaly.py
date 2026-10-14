@@ -5,7 +5,6 @@ from real-time accelerator telemetry, producing structured AnomalyReport objects
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
 
 from helios.core.schemas import AnomalyReport, AnomalySeverity, TelemetrySnapshot
 
@@ -23,9 +22,9 @@ class LinacAnomalyDetector:
         self.min_transmission_pct = min_transmission_pct
         self.max_blm_dose = max_blm_dose
 
-    def inspect_telemetry(self, telemetry: TelemetrySnapshot) -> List[AnomalyReport]:
+    def inspect_telemetry(self, telemetry: TelemetrySnapshot) -> list[AnomalyReport]:
         """Perform anomaly checks across BPM, BLM, and transmission channels."""
-        reports: List[AnomalyReport] = []
+        reports: list[AnomalyReport] = []
 
         # 1. Transmission Check
         if telemetry.transmission_pct < self.min_transmission_pct:
@@ -77,7 +76,7 @@ class LinacAnomalyDetector:
         amp_set: float,
         amp_act: float,
         interlock_tripped: bool,
-    ) -> Optional[AnomalyReport]:
+    ) -> AnomalyReport | None:
         """Inspect cavity RF station status for trip or power loss."""
         if interlock_tripped:
             return AnomalyReport(

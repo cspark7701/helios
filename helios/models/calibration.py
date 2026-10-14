@@ -4,9 +4,9 @@ Calibrates digital twin and neural surrogate model parameters against live machi
 telemetry (BPM orbits, beam sizes) using constrained least-squares / Bayesian optimization.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Callable, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.optimize import minimize
 
@@ -21,7 +21,7 @@ class CalibrationResult:
     success: bool
     initial_rms_error_mm: float
     final_rms_error_mm: float
-    calibrated_factors: Dict[str, float]
+    calibrated_factors: dict[str, float]
     iterations: int
     message: str
 
@@ -29,14 +29,14 @@ class CalibrationResult:
 class OnlineModelCalibrator:
     """Calibrates model parameters (effective quadrupole calibrations and initial Twiss)."""
 
-    def __init__(self, surrogate: Optional[NeuralLinacSurrogate] = None):
+    def __init__(self, surrogate: NeuralLinacSurrogate | None = None):
         self.surrogate = surrogate or NeuralLinacSurrogate()
 
     def calibrate_quadrupole_factors(
         self,
-        measured_orbit_mm: Dict[str, float],
-        active_setpoints: Dict[str, float],
-        adjustable_quads: Optional[List[str]] = None,
+        measured_orbit_mm: dict[str, float],
+        active_setpoints: dict[str, float],
+        adjustable_quads: list[str] | None = None,
     ) -> CalibrationResult:
         """Calibrate effective quadrupole scaling factors against measured BPM orbit.
 
@@ -45,12 +45,25 @@ class OnlineModelCalibrator:
             active_setpoints: Current magnet and RF setpoints
             adjustable_quads: List of quadrupole PV names to calibrate
         """
-        quads = adjustable_quads or [
-            "MEBT:QUAD:01:B_SET",
-            "MEBT:QUAD:02:B_SET",
-            "MEBT:QUAD:03:B_SET",
-            "MEBT:QUAD:04:B_SET",
-        ]
+        if adjustable_quads is not None:
+            quads = adjustable_quads
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                quads = cfg.quadrupoles if cfg.quadrupoles else [
+                    "MEBT:QUAD:01:B_SET",
+                    "MEBT:QUAD:02:B_SET",
+                    "MEBT:QUAD:03:B_SET",
+                    "MEBT:QUAD:04:B_SET",
+                ]
+            except Exception:
+                quads = [
+                    "MEBT:QUAD:01:B_SET",
+                    "MEBT:QUAD:02:B_SET",
+                    "MEBT:QUAD:03:B_SET",
+                    "MEBT:QUAD:04:B_SET",
+                ]
 
         bpm_keys = list(measured_orbit_mm.keys())
         y_meas = np.array([measured_orbit_mm[k] for k in bpm_keys])

@@ -70,3 +70,30 @@ def test_cross_code_benchmarks_runner():
     assert report.fastest_code is not None
     assert report.envelope_discrepancy_pct >= 0.0
     assert isinstance(report.consistency_passed, bool)
+
+
+def test_facility_config_mebt_and_lebt():
+    """Verify FacilityConfig loading from YAML files under configs/."""
+    from helios.core.facility_config import FacilityConfig
+
+    # MEBT
+    cfg_mebt = FacilityConfig.load_default("MEBT")
+    assert cfg_mebt.section == "MEBT"
+    assert len(cfg_mebt.steerers) >= 2
+    assert len(cfg_mebt.bpms) >= 2
+    assert len(cfg_mebt.panic_pvs) >= 4
+    assert len(cfg_mebt.devices) >= 5
+
+    ch_mgr = cfg_mebt.to_channel_manager()
+    assert ch_mgr.get_device("MEBT", "CH01") is not None
+    assert ch_mgr.get_device("MEBT", "BPM01") is not None
+
+    # LEBT
+    cfg_lebt = FacilityConfig.load_default("LEBT")
+    assert cfg_lebt.section == "LEBT"
+    assert len(cfg_lebt.steerers) >= 2
+    assert len(cfg_lebt.panic_pvs) >= 2
+
+    # Nonexistent file error
+    with pytest.raises(FileNotFoundError):
+        FacilityConfig.from_yaml("configs/nonexistent_facility_xyz.yaml")

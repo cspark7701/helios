@@ -1,0 +1,56 @@
+# HELIOS Facility Configuration: LEBT
+name: "RAON_LEBT"
+section: "LEBT"
+description: "Low Energy Beam Transport section configuration"
+
+steerers:
+  - "LEBT:PSC:CH01:CurrentSet"
+  - "LEBT:PSC:CV01:CurrentSet"
+  - "LEBT:PSC:CH02:CurrentSet"
+  - "LEBT:PSC:CV02:CurrentSet"
+
+bpms:
+  - "LEBT:DIAG:BPM01:X_POS"
+  - "LEBT:DIAG:BPM02:X_POS"
+
+quadrupoles:
+  - "LEBT:PSC:SOL01:CurrentSet"
+  - "LEBT:PSC:SOL02:CurrentSet"
+
+cavities: []
+
+panic_pvs:
+  - "LEBT:PSC:CH01:CurrentSet"
+  - "LEBT:PSC:CV01:CurrentSet"
+  - "LEBT:PSC:CH02:CurrentSet"
+  - "LEBT:PSC:CV02:CurrentSet"
+  - "LEBT:PSC:SOL01:CurrentSet"
+  - "LEBT:PSC:SOL02:CurrentSet"
+
+conversion_factor_a_per_mrad: 0.168
+current_increment_a: 0.05
+
+devices:
+  - section: LEBT
+    name: CH01
+    device_type: STEERER_H
+    z_position_m: 0.50
+    setpoint_pv: "LEBT:PSC:CH01:CurrentSet"
+    readback_pv: "LEBT:PSC:CH01:CurrentAct"
+    limits:
+      min_val: -10.0
+      max_val: 10.0
+      max_slew_rate: 2.0
+      units: "A"
+
+  - section: LEBT
+    name: CV01
+    device_type: STEERER_V
+    z_position_m: 0.50
+    setpoint_pv: "LEBT:PSC:CV01:CurrentSet"
+    readback_pv: "LEBT:PSC:CV01:CurrentAct"
+    limits:
+      min_val: -10.0
+      max_val: 10.0
+      max_slew_rate: 2.0
+      units: "A"

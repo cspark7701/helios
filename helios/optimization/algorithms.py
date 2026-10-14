@@ -7,7 +7,7 @@ Includes:
 """
 
 import math
-from typing import Callable, Dict, List, Optional, Tuple
+
 import numpy as np
 
 
@@ -18,10 +18,10 @@ class SVDOrbitCorrection:
     def calculate_correction(
         response_matrix: np.ndarray,
         measured_offsets_mm: np.ndarray,
-        target_offsets_mm: Optional[np.ndarray] = None,
+        target_offsets_mm: np.ndarray | None = None,
         singular_value_cutoff: float = 1e-4,
         tikhonov_regularization: float = 0.0,
-    ) -> Tuple[np.ndarray, Dict[str, float]]:
+    ) -> tuple[np.ndarray, dict[str, float]]:
         """Compute delta steerer kicks (mrad).
 
         Args:
@@ -122,22 +122,22 @@ class BayesianOptimizer:
 
     def __init__(
         self,
-        param_bounds: Dict[str, Tuple[float, float]],
+        param_bounds: dict[str, tuple[float, float]],
         maximize: bool = True,
     ):
         self.bounds = param_bounds
         self.param_names = list(param_bounds.keys())
         self.maximize = maximize
-        self.history_x: List[np.ndarray] = []
-        self.history_y: List[float] = []
+        self.history_x: list[np.ndarray] = []
+        self.history_y: list[float] = []
 
-    def record_observation(self, params: Dict[str, float], score: float) -> None:
+    def record_observation(self, params: dict[str, float], score: float) -> None:
         """Record evaluation point."""
         x = np.array([params[name] for name in self.param_names])
         self.history_x.append(x)
         self.history_y.append(score if self.maximize else -score)
 
-    def suggest_next_candidate(self) -> Dict[str, float]:
+    def suggest_next_candidate(self) -> dict[str, float]:
         """Propose next candidate setpoint vector using exploration/exploitation trade-off."""
         if len(self.history_x) < 3:
             # Random initial exploration within bounds

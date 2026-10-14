@@ -4,10 +4,10 @@ Implements PyTorch-based residual surrogate networks for millisecond-scale predi
 of beam envelopes, centroid orbits, and beam loss projections.
 """
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+
 import numpy as np
 
 try:
@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SurrogatePrediction:
     """Predicted beam dynamics state from neural surrogate."""
-    s_positions_m: List[float]
-    sigma_x_mm: List[float]
-    sigma_y_mm: List[float]
-    centroid_x_mm: List[float]
-    centroid_y_mm: List[float]
+    s_positions_m: list[float]
+    sigma_x_mm: list[float]
+    sigma_y_mm: list[float]
+    centroid_x_mm: list[float]
+    centroid_y_mm: list[float]
     transmission: float
     max_loss_location_m: float
     confidence_score: float
@@ -78,7 +78,7 @@ if HAVE_TORCH:
                 nn.Sigmoid(),
             )
 
-        def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
             h = self.in_proj(x)
             h = self.res1(h)
             h = self.res2(h)
@@ -95,17 +95,31 @@ class NeuralLinacSurrogate:
 
     def __init__(
         self,
-        input_keys: Optional[List[str]] = None,
-        s_positions_m: Optional[List[float]] = None,
+        input_keys: list[str] | None = None,
+        s_positions_m: list[float] | None = None,
         hidden_dim: int = 64,
         device: str = "cpu",
     ):
-        self.input_keys = input_keys or [
-            "MEBT:QUAD:01:B_SET", "MEBT:QUAD:02:B_SET", "MEBT:QUAD:03:B_SET",
-            "MEBT:QUAD:04:B_SET", "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
-            "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET", "MEBT:CAV:01:AMP_SET",
-            "MEBT:CAV:01:PHASE_SET", "MEBT:CAV:02:AMP_SET", "MEBT:CAV:02:PHASE_SET",
-        ]
+        if input_keys is not None:
+            self.input_keys = input_keys
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                combined = cfg.quadrupoles + cfg.steerers + cfg.cavities
+                self.input_keys = combined if combined else [
+                    "MEBT:QUAD:01:B_SET", "MEBT:QUAD:02:B_SET", "MEBT:QUAD:03:B_SET",
+                    "MEBT:QUAD:04:B_SET", "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET", "MEBT:CAV:01:AMP_SET",
+                    "MEBT:CAV:01:PHASE_SET", "MEBT:CAV:02:AMP_SET", "MEBT:CAV:02:PHASE_SET",
+                ]
+            except Exception:
+                self.input_keys = [
+                    "MEBT:QUAD:01:B_SET", "MEBT:QUAD:02:B_SET", "MEBT:QUAD:03:B_SET",
+                    "MEBT:QUAD:04:B_SET", "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET", "MEBT:CAV:01:AMP_SET",
+                    "MEBT:CAV:01:PHASE_SET", "MEBT:CAV:02:AMP_SET", "MEBT:CAV:02:PHASE_SET",
+                ]
         self.s_positions = s_positions_m or [float(i * 0.2) for i in range(20)]
         self.num_locations = len(self.s_positions)
         self.device = device
@@ -121,7 +135,7 @@ class NeuralLinacSurrogate:
         else:
             self.model = None
 
-    def predict(self, parameter_dict: Dict[str, float]) -> SurrogatePrediction:
+    def predict(self, parameter_dict: dict[str, float]) -> SurrogatePrediction:
         """Perform fast neural surrogate prediction for given setpoints."""
         # Convert parameter dict to normalized feature vector
         features = [float(parameter_dict.get(k, 0.0)) for k in self.input_keys]
@@ -144,7 +158,7 @@ class NeuralLinacSurrogate:
             cent_y = tracking[:, 3]
 
             # Loss hotspot detection where envelope approaches typical aperture (15 mm)
-            aperture_mm = 15.0
+            _aperture_mm = 15.0
             max_env = np.maximum(sigma_x + np.abs(cent_x), sigma_y + np.abs(cent_y))
             hotspot_idx = int(np.argmax(max_env))
             hotspot_s = self.s_positions[hotspot_idx]
@@ -160,7 +174,7 @@ class NeuralLinacSurrogate:
                 confidence_score=0.95,
             )
 
-    def _analytic_fallback_predict(self, features: List[float]) -> SurrogatePrediction:
+    def _analytic_fallback_predict(self, features: list[float]) -> SurrogatePrediction:
         """Heuristic calculation when PyTorch is not loaded."""
         arr = np.array(features)
         base_sigma = 1.0 + 0.1 * np.sum(np.abs(arr))

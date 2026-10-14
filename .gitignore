@@ -46,6 +46,8 @@ venv.bak/
 *.sqlite3
 
 # Accelerator simulation outputs / temporary files
+.coverage
+.coverage.*
 *.tws
 *.out
 *.dat
@@ -54,6 +56,7 @@ partran*
 dst_*.dat
 trace.log
 tmp_track_run/
+tmp_impactz_run/
 
 # Epics / Archiver dumps
 *.caput

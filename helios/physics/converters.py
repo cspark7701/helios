@@ -5,8 +5,14 @@ and standard CERN MAD-X and APS Elegant beamline definition formats.
 """
 
 import re
-from typing import List, Optional
-from helios.physics.elements import DiagnosticElement, Drift, Quadrupole, RFCavity, Steerer
+
+from helios.physics.elements import (
+    DiagnosticElement,
+    Drift,
+    Quadrupole,
+    RFCavity,
+    Steerer,
+)
 from helios.physics.lattice import Lattice
 
 

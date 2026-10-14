@@ -5,13 +5,12 @@ Provides non-interceptive virtual instrumentation:
 2. VirtualBeamLossMonitor: predicts beam halo scraping and loss radiation hotspots along the linac.
 """
 
-from dataclasses import dataclass
 import logging
-import math
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
-from helios.models.surrogate import NeuralLinacSurrogate, SurrogatePrediction
+from helios.models.surrogate import NeuralLinacSurrogate
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +25,17 @@ class VirtualProfile:
     centroid_y_mm: float
     emittance_x_um: float
     emittance_y_um: float
-    coords_mm: List[float]
-    intensity_x: List[float]
-    intensity_y: List[float]
+    coords_mm: list[float]
+    intensity_x: list[float]
+    intensity_y: list[float]
 
 
 @dataclass
 class VirtualLossMap:
     """Predicted radiation and scraping loss map along the accelerator."""
-    s_positions_m: List[float]
-    loss_fraction_per_m: List[float]
-    beam_power_w_per_m: List[float]
+    s_positions_m: list[float]
+    loss_fraction_per_m: list[float]
+    beam_power_w_per_m: list[float]
     aperture_limit_mm: float
     tripped: bool
     hotspot_location_m: float
@@ -46,13 +45,13 @@ class VirtualLossMap:
 class VirtualWireScanner:
     """Non-interceptive virtual wire scanner reconstructing transverse profiles."""
 
-    def __init__(self, surrogate: Optional[NeuralLinacSurrogate] = None):
+    def __init__(self, surrogate: NeuralLinacSurrogate | None = None):
         self.surrogate = surrogate or NeuralLinacSurrogate()
 
     def predict_profile(
         self,
         location_s_m: float,
-        setpoints: Dict[str, float],
+        setpoints: dict[str, float],
         grid_range_mm: float = 10.0,
         grid_points: int = 100,
     ) -> VirtualProfile:
@@ -99,7 +98,7 @@ class VirtualBeamLossMonitor:
 
     def __init__(
         self,
-        surrogate: Optional[NeuralLinacSurrogate] = None,
+        surrogate: NeuralLinacSurrogate | None = None,
         aperture_radius_mm: float = 15.0,
         beam_current_ma: float = 5.0,
         energy_mev_u: float = 0.5,
@@ -111,7 +110,7 @@ class VirtualBeamLossMonitor:
         self.energy_mev_u = energy_mev_u
         self.loss_trip_threshold_w_per_m = loss_trip_threshold_w_per_m
 
-    def predict_losses(self, setpoints: Dict[str, float]) -> VirtualLossMap:
+    def predict_losses(self, setpoints: dict[str, float]) -> VirtualLossMap:
         """Compute projected scraping along the vacuum chamber."""
         pred = self.surrogate.predict(setpoints)
         s_arr = pred.s_positions_m

@@ -6,8 +6,13 @@ Provides verified heavy-ion linac lattice models for:
 3. GSI / FAIR (Germany) - UNILAC High-Charge State Linac
 """
 
-from typing import List, Optional
-from helios.physics.elements import DiagnosticElement, Drift, Quadrupole, RFCavity, Steerer
+from helios.physics.elements import (
+    DiagnosticElement,
+    Drift,
+    Quadrupole,
+    RFCavity,
+    Steerer,
+)
 from helios.physics.lattice import Lattice
 
 

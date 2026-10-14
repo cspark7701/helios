@@ -5,15 +5,12 @@ Implements high-level multi-step commissioning and tuning routines:
 2. RF Cavity Phase and Amplitude Calibration Scan Workflow.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from helios.core.schemas import (
     AutonomyLevel,
     ExecutionPlan,
     PlanStep,
-    SetpointBatch,
-    SetpointTarget,
 )
 from helios.interfaces.channel_map import ChannelManager
 from helios.optimization.algorithms import SVDOrbitCorrection
@@ -31,12 +28,12 @@ class OrbitCorrectionWorkflow:
         self,
         plan_id: str,
         section: str,
-        steerer_names: List[str],
-        bpm_names: List[str],
-        measured_bpm_x: Dict[str, float],
-        measured_bpm_y: Dict[str, float],
+        steerer_names: list[str],
+        bpm_names: list[str],
+        measured_bpm_x: dict[str, float],
+        measured_bpm_y: dict[str, float],
         singular_cutoff: float = 0.05,
-    ) -> Tuple[ExecutionPlan, Dict[str, float]]:
+    ) -> tuple[ExecutionPlan, dict[str, float]]:
         """Synthesize a complete Plan-First ExecutionPlan for orbit flattening."""
         # Compute ORM
         Rx, Ry = self.lattice.compute_orbit_response_matrix(
@@ -52,8 +49,8 @@ class OrbitCorrectionWorkflow:
         delta_kx, stats_x = SVDOrbitCorrection.calculate_correction(Rx, x_meas, singular_value_cutoff=singular_cutoff)
         delta_ky, stats_y = SVDOrbitCorrection.calculate_correction(Ry, y_meas, singular_value_cutoff=singular_cutoff)
 
-        proposed_setpoints: Dict[str, float] = {}
-        plan_steps: List[PlanStep] = []
+        proposed_setpoints: dict[str, float] = {}
+        plan_steps: list[PlanStep] = []
 
         # Convert kicks to current setpoints (using ~ 1 A per 2 mrad conversion factor for low energy steerer)
         for j, s_name in enumerate(steerer_names):
@@ -95,12 +92,12 @@ class RFPhaseScanWorkflow:
     """Automated RF cavity phase scan for finding synchronous phase."""
 
     @staticmethod
-    def generate_phase_grid(start_deg: float = -180.0, stop_deg: float = 180.0, step_deg: float = 30.0) -> List[float]:
+    def generate_phase_grid(start_deg: float = -180.0, stop_deg: float = 180.0, step_deg: float = 30.0) -> list[float]:
         """Generate list of discrete phase angles to scan."""
         return list(np.arange(start_deg, stop_deg + step_deg / 2, step_deg))
 
     @staticmethod
-    def fit_synchronous_phase(phase_readings: Dict[float, float]) -> Tuple[float, float]:
+    def fit_synchronous_phase(phase_readings: dict[float, float]) -> tuple[float, float]:
         """Fit phase vs beam energy or transmission to locate maximum gain point.
 
         Returns:

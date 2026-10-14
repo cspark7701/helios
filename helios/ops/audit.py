@@ -4,14 +4,12 @@ Maintains a tamper-evident, SHA-256 hash-chained ledger of all Process Variable
 actuations, safety validations, and operator authorizations.
 """
 
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 import hashlib
-import json
 import logging
-from pathlib import Path
 import sqlite3
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +41,9 @@ class AuditEntry:
 class AuditTrailLogger:
     """Manages hash-chained audit logging ensuring regulatory compliance and non-repudiation."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path
-        self._entries: List[AuditEntry] = []
+        self._entries: list[AuditEntry] = []
         if self.db_path:
             self.db_path.parent.mkdir(parents=True, exist_ok=True)
             self._init_sqlite()
@@ -142,7 +140,7 @@ class AuditTrailLogger:
         logger.info(f"AUDIT LOG [{entry.entry_id}]: {operator_id} {action} {pv_name} -> {new_value:.4f}")
         return entry
 
-    def verify_integrity(self) -> Tuple[bool, Optional[str]]:
+    def verify_integrity(self) -> tuple[bool, str | None]:
         """Verify the complete hash chain from genesis to head."""
         if not self._entries:
             return True, None
@@ -162,6 +160,6 @@ class AuditTrailLogger:
 
         return True, None
 
-    def get_entries(self) -> List[AuditEntry]:
+    def get_entries(self) -> list[AuditEntry]:
         """Return full ledger history."""
         return list(self._entries)

@@ -5,9 +5,8 @@ cavity accelerating gradient quench limits, reflected RF power ratio trips,
 and multipacting resonance barrier avoidance.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
 
 from helios.core.schemas import ValidationCheck, ValidationResult
 
@@ -23,7 +22,7 @@ class SRFCavityLimits:
     max_cryo_temp_k: float = 2.10          # Sub-atmospheric 2K helium bath limit
     min_helium_level_pct: float = 75.0     # Minimum liquid helium inventory
     max_reflected_power_ratio: float = 0.20 # Max Pref / Pfwd before trip
-    multipacting_zones: List[Tuple[float, float]] = field(
+    multipacting_zones: list[tuple[float, float]] = field(
         default_factory=lambda: [(1.5, 2.2), (3.8, 4.4)]
     )  # Forbidden gradient bands where resonant electron emission causes arcing
 
@@ -31,12 +30,25 @@ class SRFCavityLimits:
 class SRFProtectionMonitor:
     """Validates cavity setpoints and evaluates live cryogenic health telemetry."""
 
-    def __init__(self, cavity_limits: Optional[Dict[str, SRFCavityLimits]] = None):
-        self.limits: Dict[str, SRFCavityLimits] = cavity_limits or {
-            "MEBT:CAV:01": SRFCavityLimits(cavity_id="MEBT:CAV:01", max_gradient_mv_m=12.0),
-            "MEBT:CAV:02": SRFCavityLimits(cavity_id="MEBT:CAV:02", max_gradient_mv_m=12.0),
-            "SCL:CAV:01": SRFCavityLimits(cavity_id="SCL:CAV:01", max_gradient_mv_m=18.0),
-        }
+    def __init__(self, cavity_limits: dict[str, SRFCavityLimits] | None = None):
+        if cavity_limits is not None:
+            self.limits = cavity_limits
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                default_limits = {
+                    f"{cfg.section}:CAV:01": SRFCavityLimits(cavity_id=f"{cfg.section}:CAV:01", max_gradient_mv_m=12.0),
+                    f"{cfg.section}:CAV:02": SRFCavityLimits(cavity_id=f"{cfg.section}:CAV:02", max_gradient_mv_m=12.0),
+                    "SCL:CAV:01": SRFCavityLimits(cavity_id="SCL:CAV:01", max_gradient_mv_m=18.0),
+                }
+                self.limits = default_limits
+            except Exception:
+                self.limits = {
+                    "MEBT:CAV:01": SRFCavityLimits(cavity_id="MEBT:CAV:01", max_gradient_mv_m=12.0),
+                    "MEBT:CAV:02": SRFCavityLimits(cavity_id="MEBT:CAV:02", max_gradient_mv_m=12.0),
+                    "SCL:CAV:01": SRFCavityLimits(cavity_id="SCL:CAV:01", max_gradient_mv_m=18.0),
+                }
 
     def register_cavity_limits(self, limits: SRFCavityLimits) -> None:
         """Register or update limits for a specific SRF cavity."""
@@ -53,9 +65,9 @@ class SRFProtectionMonitor:
     ) -> ValidationResult:
         """Evaluate candidate cavity setpoint and live cryo telemetry against quench thresholds."""
         lim = self.limits.get(cavity_id, SRFCavityLimits(cavity_id=cavity_id))
-        checks: List[ValidationCheck] = []
-        errors: List[str] = []
-        warnings: List[str] = []
+        checks: list[ValidationCheck] = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # 1. Accelerating Gradient Quench Check
         gradient_safe = gradient_mv_m <= lim.max_gradient_mv_m

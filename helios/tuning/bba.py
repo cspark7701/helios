@@ -6,9 +6,9 @@ Implements:
 3. Automated alignment solver with error covariance minimization.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class BBAQuadResult:
 class DFSResult:
     """Outcome of Dispersion-Free Steering optimization."""
     success: bool
-    steerer_corrections: Dict[str, float]
+    steerer_corrections: dict[str, float]
     initial_orbit_rms_mm: float
     final_orbit_rms_mm: float
     initial_dispersion_rms_m: float
@@ -111,7 +111,7 @@ class DispersionFreeSteeringSolver:
         response_dispersion: np.ndarray,
         current_orbit_mm: np.ndarray,
         current_dispersion_m: np.ndarray,
-        steerer_names: List[str],
+        steerer_names: list[str],
         dispersion_weight: float = 1.0,
         svd_cutoff: float = 1e-4,
     ) -> DFSResult:

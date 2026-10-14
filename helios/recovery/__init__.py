@@ -9,8 +9,8 @@ from helios.recovery.magnet_recovery import (
     MagnetRecoveryResult,
 )
 from helios.recovery.rf_rematch import (
-    RFCavityRematchResult,
     RFCavityRematcher,
+    RFCavityRematchResult,
 )
 
 __all__ = [

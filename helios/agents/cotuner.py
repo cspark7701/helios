@@ -5,10 +5,8 @@ Implements:
 2. Conflict resolution and priority arbitration for overlapping hardware setpoints.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Any, Dict, List, Optional, Tuple
-import numpy as np
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +16,7 @@ class ProposedSubsystemActuation:
     """An individual tuning agent's proposed hardware setpoint modifications."""
     agent_id: str
     subsystem: str
-    proposed_setpoints: Dict[str, float]
+    proposed_setpoints: dict[str, float]
     priority: int  # Higher number = higher operational priority (e.g. Safety=10, Optics=5)
     expected_gain_pct: float
     rationale: str
@@ -27,10 +25,10 @@ class ProposedSubsystemActuation:
 @dataclass
 class ArbitrationResolution:
     """Outcome of resolving multi-agent hardware conflicts."""
-    approved_setpoints: Dict[str, float]
+    approved_setpoints: dict[str, float]
     conflicts_detected: int
-    compromises_made: List[str]
-    rejected_proposals: List[str]
+    compromises_made: list[str]
+    rejected_proposals: list[str]
 
 
 class GameTheoreticCoTuner:
@@ -38,7 +36,7 @@ class GameTheoreticCoTuner:
 
     @staticmethod
     def arbitrate_conflicts(
-        proposals: List[ProposedSubsystemActuation],
+        proposals: list[ProposedSubsystemActuation],
     ) -> ArbitrationResolution:
         """Resolve competing setpoint proposals for identical Process Variables.
 
@@ -48,16 +46,16 @@ class GameTheoreticCoTuner:
            - Priority-weighted compromise if parameters are continuous (e.g., matching interface quads).
            - High-priority agent wins if priority differential is significant (e.g., Safety overrides Optics).
         """
-        all_pvs: Dict[str, List[ProposedSubsystemActuation]] = {}
+        all_pvs: dict[str, list[ProposedSubsystemActuation]] = {}
         for p in proposals:
             for pv in p.proposed_setpoints.keys():
                 if pv not in all_pvs:
                     all_pvs[pv] = []
                 all_pvs[pv].append(p)
 
-        approved: Dict[str, float] = {}
-        compromises: List[str] = []
-        rejected: List[str] = []
+        approved: dict[str, float] = {}
+        compromises: list[str] = []
+        rejected: list[str] = []
         conflicts = 0
 
         for pv, agents in all_pvs.items():

@@ -7,17 +7,16 @@ Provides:
    cold start, orbit flattening, BBA calibration, and shift handover reporting.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any
+
 import numpy as np
 
-from helios.core.schemas import AutonomyLevel, ExecutionPlan, PlanState, PlanStep
 from helios.ops.audit import AuditTrailLogger
 from helios.ops.broker import DistributedEventBus
 from helios.ops.reporting import CommissioningReportGenerator, ShiftSummaryData
-from helios.tuning.bba import BeamBasedAlignmentSolver, DispersionFreeSteeringSolver
+from helios.tuning.bba import BeamBasedAlignmentSolver
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class VirtualLinacEPICSMock:
 
     def __init__(self, section_name: str = "SCL1"):
         self.section_name = section_name
-        self.pvs: Dict[str, float] = {
+        self.pvs: dict[str, float] = {
             "SCL1:PS_Q01:I_Set": 15.0,
             "SCL1:PS_Q02:I_Set": 14.5,
             "SCL1:PS_Q03:I_Set": 15.2,
@@ -49,7 +48,7 @@ class VirtualLinacEPICSMock:
             "SCL1:FC02:Current": 2.40,
             "MPS:TripState": 0.0,  # 0 = Nominal, 1 = Tripped
         }
-        self.readbacks: Dict[str, float] = dict(self.pvs)
+        self.readbacks: dict[str, float] = dict(self.pvs)
 
     def caget(self, pv_name: str) -> float:
         """Read simulated PV value with small synthetic measurement noise."""
@@ -77,12 +76,12 @@ class VirtualLinacEPICSMock:
 class EndToEndCommissioningHarness:
     """Executes full autonomous multi-step commissioning workflow."""
 
-    def __init__(self, mock_ioc: Optional[VirtualLinacEPICSMock] = None):
+    def __init__(self, mock_ioc: VirtualLinacEPICSMock | None = None):
         self.ioc = mock_ioc or VirtualLinacEPICSMock()
         self.event_bus = DistributedEventBus()
         self.audit = AuditTrailLogger()
 
-    def run_commissioning_cycle(self) -> Dict[str, Any]:
+    def run_commissioning_cycle(self) -> dict[str, Any]:
         """Execute autonomous commissioning sequence from start to finish."""
         # 1. Telemetry baseline reading
         init_x1 = self.ioc.caget("SCL1:BPM01:X")

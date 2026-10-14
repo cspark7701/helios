@@ -4,18 +4,15 @@ Implements the Osprey-aligned plan lifecycle management, state transitions,
 validation gating, step execution tracking, and artifact persistence.
 """
 
-from datetime import datetime, timezone
-import json
 import logging
-from pathlib import Path
 import re
-from typing import Callable, Dict, List, Optional
+from datetime import datetime, timezone
+from pathlib import Path
 
 from helios.core.schemas import (
     AutonomyLevel,
     ExecutionPlan,
     PlanState,
-    PlanStep,
     StepStatus,
     ValidationResult,
 )
@@ -30,7 +27,7 @@ class PlanTransitionError(Exception):
 class PlanLifecycleManager:
     """Manages state transitions and validation gates for ExecutionPlan instances."""
 
-    VALID_TRANSITIONS: Dict[PlanState, List[PlanState]] = {
+    VALID_TRANSITIONS: dict[PlanState, list[PlanState]] = {
         PlanState.DRAFT: [PlanState.SIMULATION_VERIFIED, PlanState.FAILED],
         PlanState.SIMULATION_VERIFIED: [PlanState.SAFETY_APPROVED, PlanState.FAILED, PlanState.DRAFT],
         PlanState.SAFETY_APPROVED: [PlanState.EXECUTING, PlanState.FAILED, PlanState.DRAFT],

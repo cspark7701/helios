@@ -4,13 +4,13 @@ Models magnetic dispersion chicanes, charge state spatial separation,
 and autonomous slit tuning for charge purity optimization and loss prevention.
 """
 
-from dataclasses import dataclass
 import logging
 import math
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
-from helios.physics.species import MultiChargeBeam, MultiChargeComponent
+from helios.physics.species import MultiChargeBeam
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class CSSTransmissionReport:
     target_transmission_pct: float
     total_transmitted_current_ma: float
     charge_purity_pct: float
-    component_transmissions: Dict[int, float]
+    component_transmissions: dict[int, float]
     slit_gap_mm: float
     slit_center_mm: float
     dipole_field_t: float
@@ -44,10 +44,10 @@ class ChargeStateSeparator:
         self.slit_gap_mm = default_slit_gap_mm
         self.slit_center_mm = 0.0
 
-    def calculate_charge_positions_mm(self, beam: MultiChargeBeam) -> Dict[int, float]:
+    def calculate_charge_positions_mm(self, beam: MultiChargeBeam) -> dict[int, float]:
         """Compute horizontal coordinate x (mm) of each charge state at slit plane."""
         ref_brho = beam.reference_species.magnetic_rigidity_t_m
-        positions: Dict[int, float] = {}
+        positions: dict[int, float] = {}
 
         for comp in beam.components:
             q = comp.species.charge_state_q
@@ -63,9 +63,9 @@ class ChargeStateSeparator:
     def evaluate_transmission(
         self,
         beam: MultiChargeBeam,
-        slit_center_mm: Optional[float] = None,
-        slit_gap_mm: Optional[float] = None,
-        target_charge_q: Optional[int] = None,
+        slit_center_mm: float | None = None,
+        slit_gap_mm: float | None = None,
+        target_charge_q: int | None = None,
     ) -> CSSTransmissionReport:
         """Evaluate charge selection transmission and purity."""
         gap = slit_gap_mm if slit_gap_mm is not None else self.slit_gap_mm

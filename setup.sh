@@ -18,11 +18,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export HELIOS_ROOT="${SCRIPT_DIR}"
 export PROJECT_ROOT="${SCRIPT_DIR}"
-export TRACK_ROOT="${TRACK_ROOT:-/home/cspark/Work/simulation_codes-working/track}"
-export TRACK_EXE_PATH="${TRACK_EXE_PATH:-${TRACK_ROOT}/TRACKv39C.exe}"
+export TRACK_ROOT="${TRACK_ROOT:-}"
+if [[ -n "${TRACK_ROOT}" ]]; then
+    export TRACK_EXE_PATH="${TRACK_EXE_PATH:-${TRACK_ROOT}/TRACKv39C.exe}"
+    export PATH="${TRACK_ROOT}:${PATH}"
+fi
 
 # Prepend project directories and simulation tools to PATH & PYTHONPATH
-export PATH="${TRACK_ROOT}:${HELIOS_ROOT}/bin:${PATH}"
+export PATH="${HELIOS_ROOT}/bin:${PATH}"
 export PYTHONPATH="${HELIOS_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 
 # ------------------------------------------------------------------------------
@@ -34,9 +37,9 @@ HELIOS_ENV_ACTIVATED=0
 
 # Check common Miniforge/Conda root locations
 CONDA_ROOT_CANDIDATES=(
+    "${CONDA_PREFIX}"
     "${CONDA_PREFIX_1}"
     "${CONDA_ROOT}"
-    "/home/cspark/Work/simulation_codes-working/miniforge3"
     "${HOME}/miniforge3"
     "${HOME}/miniconda3"
     "${HOME}/anaconda3"

@@ -4,18 +4,22 @@ Provides high-performance structured normative types (NTTable, NTNDArray, NTScal
 multi-BPM vector orbits, profile monitor camera matrices, and Channel Access Security enforcement.
 """
 
-from datetime import datetime, timezone
 import logging
-import time
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 
-from helios.interfaces.base import BaseControlInterface, ControlInterfaceError
-from helios.interfaces.security import ControlSecurityManager, SecurityViolationError
+from helios.interfaces.base import (
+    BaseControlInterface,
+    ControlInterfaceError,
+    InMemoryPVStore,
+)
+from helios.interfaces.security import ControlSecurityManager
 
 try:
     from p4p.client.thread import Context as PvaContext
-    from p4p.nt import NTTable, NTNDArray, NTScalar
+    from p4p.nt import NTNDArray, NTScalar, NTTable
     HAVE_P4P = True
 except ImportError:
     PvaContext = None
@@ -32,82 +36,89 @@ class PVAccessInterface(BaseControlInterface):
 
     def __init__(
         self,
-        security_manager: Optional[ControlSecurityManager] = None,
+        security_manager: ControlSecurityManager | None = None,
         use_mock: bool = False,
     ):
         self.security_manager = security_manager or ControlSecurityManager()
-        self.use_mock = use_mock or (not HAVE_P4P)
-        self._mock_pvs: Dict[str, Any] = {}
-        self._mock_subscribers: Dict[str, List[Callable[[str, Any], None]]] = {}
-
+        self.use_mock = use_mock
+        self._store: InMemoryPVStore | None = InMemoryPVStore() if use_mock else None
         self.pva_ctxt = None
-        if not self.use_mock and HAVE_P4P:
+
+        if not self.use_mock:
+            if not HAVE_P4P:
+                raise ControlInterfaceError("p4p package is not installed. Pass use_mock=True or install p4p.")
             try:
                 self.pva_ctxt = PvaContext("pva")
             except Exception as e:
-                logger.warning(f"Failed to initialize p4p PVA context ({e}); falling back to mock PVA.")
-                self.use_mock = True
+                raise ControlInterfaceError(f"Failed to initialize p4p PVA context: {e}") from e
 
     def get(self, pv_name: str) -> Any:
         """Synchronously read a PV value via pvAccess."""
-        if not self.use_mock and self.pva_ctxt is not None:
-            try:
-                val = self.pva_ctxt.get(pv_name)
-                # Unwrap p4p Value or NTScalar if applicable
-                if hasattr(val, "raw"):
-                    return getattr(val, "value", val)
-                return val
-            except Exception as e:
-                logger.warning(f"PVA get('{pv_name}') failed: {e}; attempting mock store.")
+        if self.use_mock:
+            if self._store is None:
+                raise ControlInterfaceError("Mock store not initialized")
+            return self._store.get(pv_name)
 
-        return self._mock_pvs.get(pv_name)
+        if self.pva_ctxt is None:
+            raise ControlInterfaceError("PVA context is not initialized")
+        try:
+            val = self.pva_ctxt.get(pv_name)
+            # Unwrap p4p Value or NTScalar if applicable
+            if hasattr(val, "raw"):
+                return getattr(val, "value", val)
+            return val
+        except Exception as e:
+            logger.error(f"PVA get('{pv_name}') failed: {e}")
+            raise ControlInterfaceError(f"PVA get failed for '{pv_name}': {e}") from e
 
     def put(self, pv_name: str, value: Any, wait: bool = True, timeout: float = 5.0) -> bool:
         """Write a value to a PV via pvAccess after CAS security validation."""
         # 1. Security enforcement
         self.security_manager.check_permission(pv_name)
 
-        if not self.use_mock and self.pva_ctxt is not None:
-            try:
-                self.pva_ctxt.put(pv_name, value, timeout=timeout)
-                return True
-            except Exception as e:
-                logger.warning(f"PVA put('{pv_name}', {value}) failed: {e}; falling back to mock store.")
+        if self.use_mock:
+            if self._store is None:
+                raise ControlInterfaceError("Mock store not initialized")
+            return self._store.put(pv_name, value)
 
-        self._mock_pvs[pv_name] = value
-        # Trigger any registered callbacks
-        if pv_name in self._mock_subscribers:
-            for cb in self._mock_subscribers[pv_name]:
-                try:
-                    cb(pv_name, value)
-                except Exception as cb_err:
-                    logger.error(f"Error in PVA monitor callback for {pv_name}: {cb_err}")
-        return True
-
-    def get_many(self, pv_names: List[str]) -> Dict[str, Any]:
-        """Read multiple Process Variables in batch."""
-        return {pv: self.get(pv) for pv in pv_names}
-
-    def put_many(self, setpoints: Dict[str, Any], wait: bool = True, timeout: float = 5.0) -> Dict[str, bool]:
-        """Write multiple Process Variables in batch."""
-        results = {}
-        for pv, val in setpoints.items():
-            results[pv] = self.put(pv, val, wait=wait, timeout=timeout)
-        return results
+        if self.pva_ctxt is None:
+            raise ControlInterfaceError("PVA context is not initialized")
+        try:
+            self.pva_ctxt.put(pv_name, value, timeout=timeout)
+            return True
+        except Exception as e:
+            logger.error(f"PVA put('{pv_name}', {value}) failed: {e}")
+            raise ControlInterfaceError(f"PVA put failed for '{pv_name}': {e}") from e
 
     def subscribe(self, pv_name: str, callback: Callable[[str, Any], None]) -> None:
         """Subscribe to value change monitor events on a PV."""
-        if pv_name not in self._mock_subscribers:
-            self._mock_subscribers[pv_name] = []
-        self._mock_subscribers[pv_name].append(callback)
+        if self.use_mock:
+            if self._store is None:
+                raise ControlInterfaceError("Mock store not initialized")
+            self._store.subscribe(pv_name, callback)
+            return
+
+        if self.pva_ctxt is None:
+            raise ControlInterfaceError("PVA context is not initialized")
+
+        def _handler(val):
+            if hasattr(val, "raw"):
+                val = getattr(val, "value", val)
+            callback(pv_name, val)
+
+        self.pva_ctxt.monitor(pv_name, _handler)
 
     def unsubscribe(self, pv_name: str) -> None:
         """Unsubscribe from a monitored PV."""
-        self._mock_subscribers.pop(pv_name, None)
+        if self.use_mock:
+            if self._store is not None:
+                self._store.unsubscribe(pv_name)
+            return
+        # Live PVA subscriptions are managed by context close/unsubscribe handle
 
     # ---------------- Normative Type Specialized Operations ---------------- #
 
-    def get_nt_table(self, pv_name: str) -> Dict[str, List[Any]]:
+    def get_nt_table(self, pv_name: str) -> dict[str, list[Any]]:
         """Retrieve structured NTTable (e.g., Linac Multi-BPM orbit table).
 
         Returns:
@@ -124,7 +135,7 @@ class PVAccessInterface(BaseControlInterface):
         # Default empty table
         return {}
 
-    def put_nt_table(self, pv_name: str, table_data: Dict[str, List[Any]]) -> bool:
+    def put_nt_table(self, pv_name: str, table_data: dict[str, list[Any]]) -> bool:
         """Publish structured NTTable to a pvAccess channel."""
         self.security_manager.check_permission(pv_name)
         return self.put(pv_name, table_data)

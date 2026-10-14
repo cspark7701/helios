@@ -4,10 +4,10 @@ Autonomously recalculates downstream RF cavity amplitudes and synchronous phases
 when an SRF cavity trips, preserving beam energy and arrival time without beam interruption.
 """
 
-from dataclasses import dataclass
 import logging
 import math
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.optimize import minimize
 
@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 class RFCavityRematchResult:
     """Outcome of local downstream RF cavity rematching."""
     tripped_cavity_id: str
-    compensated_cavities: List[str]
-    new_setpoints: Dict[str, float]
+    compensated_cavities: list[str]
+    new_setpoints: dict[str, float]
     energy_recovery_pct: float
     residual_energy_error_mev: float
     synchronous_phase_margin_deg: float
@@ -43,9 +43,9 @@ class RFCavityRematcher:
     def rematch_downstream_cavities(
         self,
         tripped_cavity_id: str,
-        downstream_cavities: List[str],
-        active_voltages_kv: Dict[str, float],
-        active_phases_deg: Dict[str, float],
+        downstream_cavities: list[str],
+        active_voltages_kv: dict[str, float],
+        active_phases_deg: dict[str, float],
         nominal_voltage_tripped_kv: float = 800.0,
         nominal_phase_tripped_deg: float = -25.0,
         charge_q: float = 33.0,
@@ -108,7 +108,7 @@ class RFCavityRematcher:
         recovery_pct = min(100.0, max(0.0, (recovered_energy / max(1e-6, target_energy_loss_mev)) * 100.0))
         residual_err = abs(achieved_gain - required_total_gain_mev)
 
-        new_setpoints: Dict[str, float] = {}
+        new_setpoints: dict[str, float] = {}
         for cid, v, p in zip(downstream_cavities, best_v, best_phi):
             new_setpoints[f"{cid}:VOLT_SET"] = float(v)
             new_setpoints[f"{cid}:PHASE_SET"] = float(p)

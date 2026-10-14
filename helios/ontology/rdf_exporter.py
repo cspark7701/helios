@@ -4,10 +4,9 @@ Serializes LinkML-governed linac configurations, beamline topologies,
 and device states into standard Semantic Web Knowledge Graph representations.
 """
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-import rdflib
-from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef
+from typing import Any
+
+from rdflib import RDF, RDFS, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import XSD
 
 logger = logging = __import__("logging").getLogger(__name__)
@@ -27,13 +26,13 @@ class RDFOntologyExporter:
         self.graph.bind("unit", UNIT_NS)
         self.graph.bind("rdfs", RDFS)
 
-    def export_elements_to_graph(self, elements: List[Dict[str, Any]], lattice_name: str = "HELIOS_Linac") -> Graph:
+    def export_elements_to_graph(self, elements: list[dict[str, Any]], lattice_name: str = "HELIOS_Linac") -> Graph:
         """Populate RDF knowledge graph with beamline elements and topology connections."""
         lattice_uri = URIRef(f"https://w3id.org/helios/lattice/{lattice_name}")
         self.graph.add((lattice_uri, RDF.type, HELIOS_NS.LinacLatticeModel))
         self.graph.add((lattice_uri, RDFS.label, Literal(lattice_name, datatype=XSD.string)))
 
-        prev_element_uri: Optional[URIRef] = None
+        prev_element_uri: URIRef | None = None
 
         for elem in elements:
             elem_id = elem.get("id") or f"{elem.get('section', 'LINAC')}:{elem['name']}"

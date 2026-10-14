@@ -4,15 +4,16 @@ Provides structured time-series retrieval, golden baseline snapshot extraction,
 and statistics aggregations from EPICS Archiver Appliance (PB/JSON endpoints).
 """
 
-from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any
+
 import numpy as np
 
 try:
     import requests
 except ImportError:
-    requests = None
+    requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +34,9 @@ class ArchiverApplianceClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.mock_mode = mock_mode
-        self._mock_data_store: Dict[str, List[Dict[str, Any]]] = {}
+        self._mock_data_store: dict[str, list[dict[str, Any]]] = {}
 
-    def register_mock_history(self, pv_name: str, samples: List[Dict[str, Any]]) -> None:
+    def register_mock_history(self, pv_name: str, samples: list[dict[str, Any]]) -> None:
         """Register synthetic historical points for testing or offline simulations."""
         self._mock_data_store[pv_name] = samples
 
@@ -45,7 +46,7 @@ class ArchiverApplianceClient:
         start_time: datetime,
         end_time: datetime,
         limit: int = 2000,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Retrieve time-series data for a Process Variable between start_time and end_time.
 
         Returns a list of dicts: [{'val': float, 'secs': int, 'nanos': int, 'severity': int, ...}]
@@ -66,7 +67,7 @@ class ArchiverApplianceClient:
         }
 
         try:
-            resp = requests.get(url, params=params, timeout=self.timeout)
+            resp = requests.get(url, params=params, timeout=self.timeout)  # type: ignore[arg-type]
             resp.raise_for_status()
             data = resp.json()
             if not data or not isinstance(data, list):
@@ -83,7 +84,7 @@ class ArchiverApplianceClient:
         pv_name: str,
         start_time: datetime,
         end_time: datetime,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query synthetic mock historical points."""
         stored = self._mock_data_store.get(pv_name)
         if stored:
@@ -109,12 +110,12 @@ class ArchiverApplianceClient:
 
     def get_golden_baseline(
         self,
-        pv_names: List[str],
+        pv_names: list[str],
         timestamp: datetime,
         window_seconds: int = 60,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Extract snapshot golden setpoints for a list of PVs around a designated timestamp."""
-        baseline: Dict[str, float] = {}
+        baseline: dict[str, float] = {}
         t_start = datetime.fromtimestamp(timestamp.timestamp() - window_seconds, tz=timezone.utc)
         t_end = datetime.fromtimestamp(timestamp.timestamp() + window_seconds, tz=timezone.utc)
 
@@ -137,7 +138,7 @@ class ArchiverApplianceClient:
         pv_name: str,
         start_time: datetime,
         end_time: datetime,
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """Compute summary statistics (mean, std, min, max, drift_per_min) over a time window."""
         points = self.get_data(pv_name, start_time, end_time)
         vals = [p["val"] for p in points if isinstance(p.get("val"), (int, float))]

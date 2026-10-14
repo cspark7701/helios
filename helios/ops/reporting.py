@@ -4,11 +4,9 @@ Compiles executed plans, orbit improvements, beam transmission statistics,
 and anomaly events into Markdown and LaTeX reports for accelerator logbooks.
 """
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import json
-import logging
-from typing import Any, Dict, List, Optional
 
 from helios.core.schemas import ExecutionPlan
 
@@ -39,7 +37,7 @@ class CommissioningReportGenerator:
     @staticmethod
     def generate_markdown_report(
         data: ShiftSummaryData,
-        plans: Optional[List[ExecutionPlan]] = None,
+        plans: list[ExecutionPlan] | None = None,
     ) -> str:
         """Render commissioning shift handover report in GitHub-flavored Markdown."""
         orbit_improvement = (

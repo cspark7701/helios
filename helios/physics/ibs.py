@@ -6,9 +6,9 @@ Implements:
 3. Microbunching gain estimations across superconducting linac cryomodules.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -61,8 +61,8 @@ class IntraBeamScatteringEngine:
         # Beam sizes in meters
         eps_x = (norm_emittance_x_um * 1e-6) / (beta * gamma)
         eps_y = (norm_emittance_y_um * 1e-6) / (beta * gamma)
-        sigma_x = np.sqrt(eps_x * beta_x_m)
-        sigma_y = np.sqrt(eps_y * beta_y_m)
+        _sigma_x = np.sqrt(eps_x * beta_x_m)
+        _sigma_y = np.sqrt(eps_y * beta_y_m)
         sigma_z = bunch_length_rms_mm * 1e-3
 
         # Coulomb logarithm (typically ~ 15-20 in high energy linacs)

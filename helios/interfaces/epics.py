@@ -4,16 +4,16 @@ Provides real EPICS Channel Access connectivity via pyepics and an in-memory
 MockControlInterface for simulation, continuous integration, and digital twin testing.
 """
 
-from collections import defaultdict
 import logging
 import random
 import time
-from typing import Any, Callable, Dict, List, Optional
+from collections import defaultdict
+from collections.abc import Callable
+from typing import Any
 
 from helios.interfaces.base import (
     BaseControlInterface,
     ControlInterfaceError,
-    ReadbackTimeoutError,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,8 +25,8 @@ class MockControlInterface(BaseControlInterface):
     def __init__(self, response_lag_s: float = 0.01, readback_noise_std: float = 0.0):
         self.response_lag_s = response_lag_s
         self.readback_noise_std = readback_noise_std
-        self._pvs: Dict[str, Any] = {}
-        self._subscribers: Dict[str, List[Callable[[str, Any], None]]] = defaultdict(list)
+        self._pvs: dict[str, Any] = {}
+        self._subscribers: dict[str, list[Callable[[str, Any], None]]] = defaultdict(list)
 
     def set_initial_pv(self, pv_name: str, value: Any) -> None:
         """Pre-populate a PV value directly."""
@@ -64,15 +64,6 @@ class MockControlInterface(BaseControlInterface):
 
         return True
 
-    def get_many(self, pv_names: List[str]) -> Dict[str, Any]:
-        return {pv: self.get(pv) for pv in pv_names}
-
-    def put_many(self, setpoints: Dict[str, Any], wait: bool = True, timeout: float = 5.0) -> Dict[str, bool]:
-        results = {}
-        for pv, val in setpoints.items():
-            results[pv] = self.put(pv, val, wait=wait, timeout=timeout)
-        return results
-
     def subscribe(self, pv_name: str, callback: Callable[[str, Any], None]) -> None:
         self._subscribers[pv_name].append(callback)
 
@@ -86,7 +77,7 @@ class EPICSInterface(BaseControlInterface):
 
     def __init__(self, default_timeout: float = 5.0):
         self.default_timeout = default_timeout
-        self._pv_cache: Dict[str, Any] = {}
+        self._pv_cache: dict[str, Any] = {}
         self._check_epics_availability()
 
     def _check_epics_availability(self) -> None:
@@ -112,17 +103,11 @@ class EPICSInterface(BaseControlInterface):
         status = epics.caput(pv_name, value, wait=wait, timeout=timeout)
         return status == 1
 
-    def get_many(self, pv_names: List[str]) -> Dict[str, Any]:
+    def get_many(self, pv_names: list[str]) -> dict[str, Any]:
         self._ensure_epics()
         import epics
         values = epics.caget_many(pv_names, timeout=self.default_timeout)
         return dict(zip(pv_names, values))
-
-    def put_many(self, setpoints: Dict[str, Any], wait: bool = True, timeout: float = 5.0) -> Dict[str, bool]:
-        results = {}
-        for pv, val in setpoints.items():
-            results[pv] = self.put(pv, val, wait=wait, timeout=timeout)
-        return results
 
     def subscribe(self, pv_name: str, callback: Callable[[str, Any], None]) -> None:
         self._ensure_epics()

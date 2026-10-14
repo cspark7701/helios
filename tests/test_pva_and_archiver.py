@@ -105,6 +105,30 @@ def test_pvaccess_subscription_monitor():
     assert len(events) == 2
 
 
+def test_pvaccess_live_failure_raises_and_never_falls_back_to_mock():
+    """R-01 regression: Live PVA put/get failure must raise ControlInterfaceError and never write to mock store."""
+    from unittest.mock import MagicMock
+    from helios.interfaces.base import ControlInterfaceError
+
+    pva = PVAccessInterface(use_mock=True)
+    pva.use_mock = False
+    mock_ctxt = MagicMock()
+    mock_ctxt.put.side_effect = RuntimeError("Channel Access link timeout")
+    mock_ctxt.get.side_effect = RuntimeError("Channel Access disconnected")
+    pva.pva_ctxt = mock_ctxt
+
+    with pytest.raises(ControlInterfaceError) as exc_put:
+        pva.put("MEBT:DCH:01:I_SET", 12.5)
+    assert "PVA put failed" in str(exc_put.value)
+    # Ensure mock store did NOT get populated
+    assert pva._store is not None
+    assert pva._store.get("MEBT:DCH:01:I_SET") is None
+
+    with pytest.raises(ControlInterfaceError) as exc_get:
+        pva.get("MEBT:DCH:01:I_SET")
+    assert "PVA get failed" in str(exc_get.value)
+
+
 def test_archiver_appliance_client():
     """Verify ArchiverApplianceClient historical queries and baseline calculations."""
     client = ArchiverApplianceClient(mock_mode=True)

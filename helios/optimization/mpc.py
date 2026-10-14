@@ -4,9 +4,9 @@ Optimizes receding-horizon actuator trajectories using fast neural surrogate mod
 to compensate for slow thermal drift, cryogenic pressure variations, and 60 Hz mains jitter.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 from scipy.optimize import minimize
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MPCStepResult:
     """Outcome of receding-horizon MPC optimization step."""
-    optimal_action: Dict[str, float]
+    optimal_action: dict[str, float]
     predicted_horizon_cost: float
     predicted_rms_error_mm: float
     iterations: int
@@ -30,20 +30,33 @@ class NeuralMPCController:
 
     def __init__(
         self,
-        surrogate: Optional[NeuralLinacSurrogate] = None,
-        actuator_keys: Optional[List[str]] = None,
+        surrogate: NeuralLinacSurrogate | None = None,
+        actuator_keys: list[str] | None = None,
         horizon_steps: int = 4,
         weight_tracking: float = 1.0,
         weight_actuation: float = 0.05,
         weight_slew: float = 0.10,
     ):
         self.surrogate = surrogate or NeuralLinacSurrogate()
-        self.actuator_keys = actuator_keys or [
-            "MEBT:DCH:01:I_SET",
-            "MEBT:DCV:01:I_SET",
-            "MEBT:DCH:02:I_SET",
-            "MEBT:DCV:02:I_SET",
-        ]
+        if actuator_keys is not None:
+            self.actuator_keys = actuator_keys
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                self.actuator_keys = cfg.steerers if cfg.steerers else [
+                    "MEBT:DCH:01:I_SET",
+                    "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET",
+                    "MEBT:DCV:02:I_SET",
+                ]
+            except Exception:
+                self.actuator_keys = [
+                    "MEBT:DCH:01:I_SET",
+                    "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET",
+                    "MEBT:DCV:02:I_SET",
+                ]
         self.horizon_steps = horizon_steps
         self.w_track = weight_tracking
         self.w_act = weight_actuation
@@ -52,8 +65,8 @@ class NeuralMPCController:
 
     def optimize_action(
         self,
-        current_setpoints: Dict[str, float],
-        target_orbit_mm: Optional[Dict[str, float]] = None,
+        current_setpoints: dict[str, float],
+        target_orbit_mm: dict[str, float] | None = None,
         estimated_drift_rate_mm_per_step: float = 0.0,
     ) -> MPCStepResult:
         """Calculate optimal next actuator setpoint adjustment using receding horizon."""

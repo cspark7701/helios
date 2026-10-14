@@ -5,11 +5,10 @@ SRF coaxial power couplers / cavities (QWR/HWR) and calculates Fowler-Nordheim
 electron field emission dark currents and bremsstrahlung radiation dose rates.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
-from enum import Enum
 import math
-import numpy as np
-from pydantic import BaseModel, Field
+from enum import Enum
+
+from pydantic import BaseModel
 
 
 class SurfaceMaterial(str, Enum):
@@ -23,10 +22,10 @@ class MultipactorBarriersResult(BaseModel):
     material: SurfaceMaterial
     frequency_MHz: float
     gap_distance_mm: float
-    dangerous_sey_energy_range_eV: Tuple[float, float]
+    dangerous_sey_energy_range_eV: tuple[float, float]
     resonant_order_1_voltage_kV: float
     resonant_order_2_voltage_kV: float
-    barrier_voltage_bands_kV: List[Tuple[float, float]]
+    barrier_voltage_bands_kV: list[tuple[float, float]]
     active_in_barrier: bool
     secondary_emission_yield: float
     risk_level: str  # SAFE, MULTIPACTORING_ALERT, SEVERE_DISCHARGE

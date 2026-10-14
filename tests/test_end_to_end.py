@@ -55,11 +55,20 @@ def test_end_to_end_orbit_correction_success(tmp_path: Path):
 def test_end_to_end_permission_withheld(tmp_path: Path):
     """Verify plan stops and waits when operator confirmation is withheld."""
     ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:X_POS", 0.5)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM01:Y_POS", -0.2)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:X_POS", 0.8)
+    ctrl.set_initial_pv("MEBT:DIAG:BPM02:Y_POS", -0.3)
+    ctrl.set_initial_pv("MEBT:PSC:CH01:CurrentSet", 0.0)
+    ctrl.set_initial_pv("MEBT:PSC:CH01:CurrentAct", 0.0)
+
     orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
 
     plan = orch.run_orbit_correction_loop(
         plan_id="00051",
         section="MEBT",
+        steerers=["MEBT_CH01"],
+        bpms=["MEBT_BPM01", "MEBT_BPM02"],
         autonomy_level=AutonomyLevel.SUPERVISED,
         operator_confirmed=False,  # Denied!
     )
@@ -67,3 +76,26 @@ def test_end_to_end_permission_withheld(tmp_path: Path):
     # Should remain in SAFETY_APPROVED and NOT execute
     assert plan.state == PlanState.SAFETY_APPROVED
     assert all(s.status == StepStatus.PENDING for s in plan.steps)
+
+
+def test_unreadable_bpm_aborts_without_actuation(tmp_path: Path):
+    """R-02 regression: When BPM telemetry is unreadable (None), abort plan before actuation."""
+    from helios.interfaces.base import MissingReadbackError
+
+    ctrl = MockControlInterface()
+    # Leave BPM PVs unset (None)
+    orch = HeliosOrchestrator(control_interface=ctrl, base_dir=tmp_path)
+
+    with pytest.raises(MissingReadbackError) as exc_info:
+        orch.run_orbit_correction_loop(
+            plan_id="00052",
+            section="MEBT",
+            steerers=["MEBT_CH01"],
+            bpms=["MEBT_BPM01", "MEBT_BPM02"],
+            autonomy_level=AutonomyLevel.BOUNDED_AUTONOMOUS,
+            operator_confirmed=True,
+        )
+
+    assert "Diagnostics BPM telemetry unreadable" in str(exc_info.value)
+    # Ensure steerer was never actuated
+    assert ctrl.get("MEBT:PSC:CH01:CurrentSet") is None

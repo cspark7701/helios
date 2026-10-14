@@ -7,18 +7,19 @@ Provides:
 3. Fast JSON-Schema export for LLM function calling.
 """
 
-from dataclasses import dataclass, field
 import json
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
-import yaml
+from typing import Any
 
-from linkml_runtime.utils.schemaview import SchemaView
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
+from linkml_runtime.utils.schemaview import SchemaView
 
-from helios.interfaces.channel_map import ChannelLimits, DeviceType, LinacDevice
-from helios.physics.lattice import Drift, Element, Lattice, Quadrupole as PhysicsQuad, RFCavity as PhysicsCavity
+from helios.interfaces.channel_map import DeviceType, LinacDevice
+from helios.physics.lattice import Drift, Element
+from helios.physics.lattice import Quadrupole as PhysicsQuad
+from helios.physics.lattice import RFCavity as PhysicsCavity
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +32,31 @@ class LinkMLValidationResult:
     is_valid: bool
     schema_name: str
     target_class: str
-    errors: List[str] = field(default_factory=list)
-    parsed_data: Optional[Dict[str, Any]] = None
+    errors: list[str] = field(default_factory=list)
+    parsed_data: dict[str, Any] | None = None
 
 
 class LinkMLOntologyManager:
     """Manages the canonical LinkML accelerator ontology and schema operations."""
 
-    def __init__(self, schema_path: Optional[Union[str, Path]] = None):
+    def __init__(self, schema_path: str | Path | None = None):
         self.schema_path = Path(schema_path or DEFAULT_SCHEMA_PATH)
         if not self.schema_path.exists():
             raise FileNotFoundError(f"LinkML schema file not found at {self.schema_path}")
         self.schema_view = SchemaView(str(self.schema_path))
 
-    def get_classes(self) -> List[str]:
+    def get_classes(self) -> list[str]:
         """Return list of all classes declared in the LinkML ontology."""
         return list(self.schema_view.all_classes().keys())
 
-    def get_slots_for_class(self, class_name: str) -> List[str]:
+    def get_slots_for_class(self, class_name: str) -> list[str]:
         """Return all slot/field names associated with a class."""
         cls_def = self.schema_view.get_class(class_name)
         if not cls_def:
             raise KeyError(f"Class '{class_name}' does not exist in LinkML schema")
         return list(self.schema_view.class_slots(class_name))
 
-    def generate_json_schema(self, target_class: Optional[str] = None) -> Dict[str, Any]:
+    def generate_json_schema(self, target_class: str | None = None) -> dict[str, Any]:
         """Generate JSON-Schema specification for LLM tool calling and API endpoints."""
         generator = JsonSchemaGenerator(schema=str(self.schema_path))
         raw_json_schema = generator.serialize()
@@ -64,9 +65,9 @@ class LinkMLOntologyManager:
             return schema_dict.get("$defs", {}).get(target_class, schema_dict)
         return schema_dict
 
-    def validate_dict(self, data: Dict[str, Any], target_class: str = "BeamlineElement") -> LinkMLValidationResult:
+    def validate_dict(self, data: dict[str, Any], target_class: str = "BeamlineElement") -> LinkMLValidationResult:
         """Validate input dictionary against class requirements in the LinkML schema."""
-        errors: List[str] = []
+        errors: list[str] = []
         cls_def = self.schema_view.get_class(target_class)
         if not cls_def:
             return LinkMLValidationResult(
@@ -90,7 +91,7 @@ class LinkMLOntologyManager:
             parsed_data=data if len(errors) == 0 else None,
         )
 
-    def convert_linac_device_to_linkml(self, device: LinacDevice) -> Dict[str, Any]:
+    def convert_linac_device_to_linkml(self, device: LinacDevice) -> dict[str, Any]:
         """Translate a native HELIOS LinacDevice into a LinkML BeamlineElement record."""
         # Map device type to LinkML subclass
         class_mapping = {
@@ -101,9 +102,9 @@ class LinkMLOntologyManager:
             DeviceType.BPM: "BeamPositionMonitor",
             DeviceType.BLM: "BeamLossMonitor",
         }
-        target_cls = class_mapping.get(device.device_type, "BeamlineElement")
+        _target_cls = class_mapping.get(device.device_type, "BeamlineElement")
 
-        linkml_record: Dict[str, Any] = {
+        linkml_record: dict[str, Any] = {
             "id": f"{device.section.upper()}:{device.name.upper()}",
             "name": device.name,
             "section": device.section.upper(),
@@ -125,7 +126,7 @@ class LinkMLOntologyManager:
 
         return linkml_record
 
-    def convert_linkml_to_helios_element(self, linkml_record: Dict[str, Any]) -> Element:
+    def convert_linkml_to_helios_element(self, linkml_record: dict[str, Any]) -> Element:
         """Translate a validated LinkML record into a HELIOS physics simulation element."""
         name = linkml_record["name"]
         length = float(linkml_record.get("length_m", 0.2))

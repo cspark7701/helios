@@ -6,22 +6,31 @@ Provides standardized execution, input deck generation, and output parsing for:
 3. AnalyticDigitalTwinEngine (zero-dependency in-memory linear transport & envelope model).
 """
 
-from abc import ABC, abstractmethod
 import logging
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from typing import Any, Dict, List, Optional, Tuple
-import numpy as np
+from abc import ABC, abstractmethod
+from pathlib import Path
 
-from helios.physics.elements import DiagnosticElement, Drift, Quadrupole, RFCavity, Steerer
-from helios.physics.lattice import Lattice, TrajectoryPoint, create_baseline_mebt_lattice
+from helios.physics.elements import (
+    DiagnosticElement,
+    Drift,
+    Quadrupole,
+    RFCavity,
+    Steerer,
+)
+from helios.physics.lattice import (
+    Lattice,
+    TrajectoryPoint,
+    create_baseline_mebt_lattice,
+)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TRACK_DIR = Path("/home/cspark/Work/simulation_codes-working/track")
+track_env = os.environ.get("TRACK_ROOT")
+DEFAULT_TRACK_DIR = Path(track_env) if track_env else Path("track")
 DEFAULT_TRACK_EXE = DEFAULT_TRACK_DIR / "TRACKv39C.exe"
 
 
@@ -32,15 +41,15 @@ class BeamDynamicsEngine(ABC):
     def run_simulation(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
-    ) -> List[TrajectoryPoint]:
+        setpoints: dict[str, float] | None = None,
+    ) -> list[TrajectoryPoint]:
         """Execute simulation and return longitudinal trajectory points."""
 
     @abstractmethod
     def estimate_losses(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
+        setpoints: dict[str, float] | None = None,
     ) -> float:
         """Estimate total beam loss percentage through lattice."""
 
@@ -48,10 +57,10 @@ class BeamDynamicsEngine(ABC):
 class AnalyticDigitalTwinEngine(BeamDynamicsEngine):
     """In-memory analytic digital twin using linear transport and envelope models."""
 
-    def __init__(self, baseline_lattice: Optional[Lattice] = None):
+    def __init__(self, baseline_lattice: Lattice | None = None):
         self.lattice = baseline_lattice or create_baseline_mebt_lattice()
 
-    def apply_setpoints(self, setpoints: Dict[str, float]) -> None:
+    def apply_setpoints(self, setpoints: dict[str, float]) -> None:
         """Update lattice element parameters from setpoint dictionary."""
         for name, val in setpoints.items():
             elem = self.lattice.get_element(name)
@@ -71,9 +80,9 @@ class AnalyticDigitalTwinEngine(BeamDynamicsEngine):
 
     def run_simulation(
         self,
-        lattice: Optional[Lattice] = None,
-        setpoints: Optional[Dict[str, float]] = None,
-    ) -> List[TrajectoryPoint]:
+        lattice: Lattice | None = None,
+        setpoints: dict[str, float] | None = None,
+    ) -> list[TrajectoryPoint]:
         target_lat = lattice or self.lattice
         if setpoints:
             self.apply_setpoints(setpoints)
@@ -81,8 +90,8 @@ class AnalyticDigitalTwinEngine(BeamDynamicsEngine):
 
     def estimate_losses(
         self,
-        lattice: Optional[Lattice] = None,
-        setpoints: Optional[Dict[str, float]] = None,
+        lattice: Lattice | None = None,
+        setpoints: dict[str, float] | None = None,
     ) -> float:
         traj = self.run_simulation(lattice, setpoints)
         if not traj:
@@ -99,8 +108,8 @@ class TrackSimulator(BeamDynamicsEngine):
 
     def __init__(
         self,
-        track_exe: Optional[Path] = None,
-        work_dir: Optional[Path] = None,
+        track_exe: Path | None = None,
+        work_dir: Path | None = None,
         wine_bin: str = "wine",
     ):
         self.track_exe = track_exe or (DEFAULT_TRACK_EXE if DEFAULT_TRACK_EXE.exists() else Path("TRACKv39C.exe"))
@@ -186,8 +195,8 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
     def run_simulation(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
-    ) -> List[TrajectoryPoint]:
+        setpoints: dict[str, float] | None = None,
+    ) -> list[TrajectoryPoint]:
         """Execute TRACK if available, otherwise cleanly fall back to analytic digital twin."""
         if not self.is_available():
             logger.info("TRACK binary / Wine environment not found or unconfigured; using AnalyticDigitalTwin fallback.")
@@ -210,8 +219,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                 cmd,
                 cwd=self.work_dir,
                 stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 start_new_session=True,
                 timeout=30.0,
             )
@@ -228,15 +236,21 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                     return points
 
             logger.warning(f"TRACK completed with code {res.returncode} but output was empty; using fallback.")
-            return self.analytic_fallback.run_simulation(lattice, setpoints)
-        except Exception as e:
+            fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
+            for p in fallback_points:
+                p.provenance = "fallback"
+            return fallback_points
+        except (subprocess.SubprocessError, FileNotFoundError, OSError, ValueError) as e:
             logger.warning(f"Error running TRACK execution: {e}; falling back to AnalyticDigitalTwin.")
-            return self.analytic_fallback.run_simulation(lattice, setpoints)
+            fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
+            for p in fallback_points:
+                p.provenance = "fallback"
+            return fallback_points
 
-    def _parse_beam_file(self, beam_path: Path, lattice: Optional[Lattice] = None) -> List[TrajectoryPoint]:
+    def _parse_beam_file(self, beam_path: Path, lattice: Lattice | None = None) -> list[TrajectoryPoint]:
         """Parse standard ANL TRACK beam.out file containing centroid and envelope telemetry."""
-        points: List[TrajectoryPoint] = []
-        with open(beam_path, "r", encoding="utf-8") as f:
+        points: list[TrajectoryPoint] = []
+        with open(beam_path, encoding="utf-8") as f:
             for line in f:
                 parts = line.strip().split()
                 if len(parts) >= 35 and parts[0] != "n_el":
@@ -262,6 +276,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                             sigma_x_mm=sig_x,
                             sigma_y_mm=sig_y,
                             loss_fraction=loss_frac,
+                            provenance="track",
                         ))
                     except ValueError:
                         continue
@@ -270,12 +285,12 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
     def run_from_directory(
         self,
         input_dir: Path,
-        steerer_kicks: Optional[Dict[str, Tuple[float, float]]] = None,
-        steerer_currents: Optional[Dict[str, Tuple[float, float]]] = None,
+        steerer_kicks: dict[str, tuple[float, float]] | None = None,
+        steerer_currents: dict[str, tuple[float, float]] | None = None,
         conversion_factor_a_per_mrad: float = 0.168,
         current_increment_a: float = 0.05,
         timeout_seconds: float = 40.0,
-    ) -> List[TrajectoryPoint]:
+    ) -> list[TrajectoryPoint]:
         """Execute TRACK simulation using existing deck files in an input directory (e.g. examples/lebt).
 
         Args:
@@ -331,7 +346,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
                     # Support keys like STM_1 or 1
                     idx_str = stm_key.replace("STM_", "").strip()
                     pattern = f"stM      {idx_str}"
-                    if pattern in line or f"corr" in line and f"STM_{idx_str}" in line:
+                    if pattern in line or "corr" in line and f"STM_{idx_str}" in line:
                         # Replace commented or uncommented stM line with active corr element (no trailing comments!)
                         new_lines.append(f"0    corr     0.0   0.0   0.0   6.0   0   {kx:.4f}   {ky:.4f}")
                         matched = True
@@ -346,8 +361,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
             cmd,
             cwd=self.work_dir,
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             start_new_session=True,
             timeout=timeout_seconds,
         )
@@ -361,10 +375,10 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
 
         raise RuntimeError(f"TRACK run failed in {self.work_dir} with code {res.returncode}: {res.stderr.decode('utf-8', errors='replace')}")
 
-    def _parse_envelope_file(self, env_path: Path, lattice: Optional[Lattice] = None) -> List[TrajectoryPoint]:
+    def _parse_envelope_file(self, env_path: Path, lattice: Lattice | None = None) -> list[TrajectoryPoint]:
         """Parse TRACK envelop.out file."""
-        points: List[TrajectoryPoint] = []
-        with open(env_path, "r", encoding="utf-8") as f:
+        points: list[TrajectoryPoint] = []
+        with open(env_path, encoding="utf-8") as f:
             for line in f:
                 parts = line.strip().split()
                 if len(parts) >= 6:
@@ -391,7 +405,7 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
     def estimate_losses(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
+        setpoints: dict[str, float] | None = None,
     ) -> float:
         traj = self.run_simulation(lattice, setpoints)
         return traj[-1].loss_fraction * 100.0 if traj else 0.0
@@ -400,15 +414,15 @@ iflag_corr   =  0,          nrz_min      =  1,          iflag_optim  =  0,      
 class ImpactZSimulator(BeamDynamicsEngine):
     """LBNL IMPACT-Z 3D space-charge PIC simulator powered by lume-impact."""
 
-    def __init__(self, work_dir: Optional[Path] = None):
-        self.work_dir = work_dir or Path("./tmp_impactz_run")
+    def __init__(self, work_dir: Path | None = None):
+        self.work_dir = work_dir or Path(os.environ.get("HELIOS_WORKDIR", "./tmp_impactz_run"))
         self.analytic_fallback = AnalyticDigitalTwinEngine()
         self._check_lume_impact()
 
     def _check_lume_impact(self) -> None:
         try:
-            import impact
-            from impact import ImpactZ
+            import impact  # noqa: F401
+            from impact import ImpactZ  # noqa: F401
             self._has_lume_impact = True
         except ImportError:
             self._has_lume_impact = False
@@ -419,29 +433,37 @@ class ImpactZSimulator(BeamDynamicsEngine):
     def run_simulation(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
-    ) -> List[TrajectoryPoint]:
+        setpoints: dict[str, float] | None = None,
+    ) -> list[TrajectoryPoint]:
         """Run IMPACT-Z via lume-impact or fallback cleanly."""
         if not self.is_available():
             logger.info("lume-impact not available; using AnalyticDigitalTwin fallback.")
-            return self.analytic_fallback.run_simulation(lattice, setpoints)
+            fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
+            for p in fallback_points:
+                p.provenance = "fallback"
+            return fallback_points
 
         try:
-            from impact import ImpactZ
             self.work_dir.mkdir(parents=True, exist_ok=True)
             # When full ImpactZ input deck is provided, lume-impact tracks full space charge:
             # impact_obj = ImpactZ(workdir=str(self.work_dir))
             # impact_obj.run()
             # Return parsed trajectory points
-            return self.analytic_fallback.run_simulation(lattice, setpoints)
-        except Exception as e:
+            fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
+            for p in fallback_points:
+                p.provenance = "fallback"
+            return fallback_points
+        except (ImportError, RuntimeError, subprocess.SubprocessError, FileNotFoundError, OSError) as e:
             logger.warning(f"Error executing lume-impact: {e}; using fallback.")
-            return self.analytic_fallback.run_simulation(lattice, setpoints)
+            fallback_points = self.analytic_fallback.run_simulation(lattice, setpoints)
+            for p in fallback_points:
+                p.provenance = "fallback"
+            return fallback_points
 
     def estimate_losses(
         self,
         lattice: Lattice,
-        setpoints: Optional[Dict[str, float]] = None,
+        setpoints: dict[str, float] | None = None,
     ) -> float:
         return self.analytic_fallback.estimate_losses(lattice, setpoints)
 

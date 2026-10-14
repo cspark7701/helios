@@ -8,9 +8,10 @@ Implements:
 2. Constrained Pareto front selection and trade-off visualization export.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 class ParetoSolution:
     """An individual non-dominated configuration on the Pareto front."""
     solution_id: int
-    parameters: Dict[str, float]
+    parameters: dict[str, float]
     transmission_pct: float
     envelope_rms_mm: float
     energy_spread_pct: float
@@ -33,7 +34,7 @@ class NSGAResult:
     """Result of Multi-Objective Pareto optimization."""
     generations_completed: int
     population_size: int
-    pareto_front: List[ParetoSolution]
+    pareto_front: list[ParetoSolution]
     best_transmission_solution: ParetoSolution
     best_envelope_solution: ParetoSolution
 
@@ -44,8 +45,8 @@ class MultiObjectiveParetoOptimizer:
     @classmethod
     def optimize_nsga2(
         cls,
-        eval_fn: Callable[[Dict[str, float]], Tuple[float, float, float]],
-        parameter_bounds: Dict[str, Tuple[float, float]],
+        eval_fn: Callable[[dict[str, float]], tuple[float, float, float]],
+        parameter_bounds: dict[str, tuple[float, float]],
         population_size: int = 24,
         generations: int = 8,
         crossover_prob: float = 0.8,
@@ -78,7 +79,7 @@ class MultiObjectiveParetoOptimizer:
                 scores[i, 2] = dpp
 
             # Fast non-dominated sort
-            fronts = cls._fast_non_dominated_sort(scores)
+            _fronts = cls._fast_non_dominated_sort(scores)
 
             # Crossover & Mutation for next generation
             next_pop = []
@@ -137,12 +138,12 @@ class MultiObjectiveParetoOptimizer:
         )
 
     @staticmethod
-    def _fast_non_dominated_sort(objectives: np.ndarray) -> List[List[int]]:
+    def _fast_non_dominated_sort(objectives: np.ndarray) -> list[list[int]]:
         """Identify non-dominated Pareto fronts from objective matrix."""
         n = objectives.shape[0]
         dominates = [[] for _ in range(n)]
         dom_count = np.zeros(n, dtype=int)
-        fronts: List[List[int]] = [[]]
+        fronts: list[list[int]] = [[]]
 
         for p in range(n):
             for q in range(n):

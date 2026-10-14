@@ -6,10 +6,10 @@ beam physics & agent concepts with low-level EPICS Process Variables (PVs).
 
 from enum import Enum
 from pathlib import Path
-import re
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any
+
 import yaml
+from pydantic import BaseModel, Field
 
 
 class DeviceType(str, Enum):
@@ -30,10 +30,10 @@ class ChannelLimits(BaseModel):
     """Hard and soft operating limits for a channel."""
     min_val: float = Field(..., description="Absolute lower safety limit")
     max_val: float = Field(..., description="Absolute upper safety limit")
-    warn_min: Optional[float] = None
-    warn_max: Optional[float] = None
-    max_slew_rate: Optional[float] = Field(None, description="Maximum change per second")
-    units: str = Field("", description="Engineering units")
+    warn_min: float | None = None
+    warn_max: float | None = None
+    max_slew_rate: float | None = Field(default=None, description="Maximum change per second")
+    units: str = Field(default="", description="Engineering units")
 
 
 class LinacDevice(BaseModel):
@@ -42,21 +42,21 @@ class LinacDevice(BaseModel):
     name: str = Field(..., description="Unique device name, e.g. QD01, CH01, CAV01")
     device_type: DeviceType
     z_position_m: float = Field(0.0, description="Beamline z position in meters")
-    setpoint_pv: Optional[str] = None
-    readback_pv: Optional[str] = None
-    status_pv: Optional[str] = None
-    limits: Optional[ChannelLimits] = None
-    aliases: List[str] = Field(default_factory=list, description="Natural language aliases")
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    setpoint_pv: str | None = None
+    readback_pv: str | None = None
+    status_pv: str | None = None
+    limits: ChannelLimits | None = None
+    aliases: list[str] = Field(default_factory=list, description="Natural language aliases")
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ChannelManager:
     """Manages channel registrations, YAML loading, and bidirectional semantic resolution."""
 
     def __init__(self):
-        self._devices: Dict[str, LinacDevice] = {}  # key: f"{section}:{name}"
-        self._pv_to_device: Dict[str, LinacDevice] = {}
-        self._alias_map: Dict[str, str] = {}
+        self._devices: dict[str, LinacDevice] = {}  # key: f"{section}:{name}"
+        self._pv_to_device: dict[str, LinacDevice] = {}
+        self._alias_map: dict[str, str] = {}
 
     def register_device(self, device: LinacDevice) -> None:
         """Register a device and index its PVs and aliases."""
@@ -73,11 +73,11 @@ class ChannelManager:
         for alias in device.aliases:
             self._alias_map[alias.lower().strip()] = key
 
-    def get_device(self, section: str, name: str) -> Optional[LinacDevice]:
+    def get_device(self, section: str, name: str) -> LinacDevice | None:
         """Fetch device by section and name."""
         return self._devices.get(f"{section.upper()}:{name.upper()}")
 
-    def resolve_pv_from_semantic(self, query: str, pv_type: str = "setpoint") -> Optional[str]:
+    def resolve_pv_from_semantic(self, query: str, pv_type: str = "setpoint") -> str | None:
         """Resolve a PV name from natural language query or semantic identifier.
 
         Examples:
@@ -108,15 +108,15 @@ class ChannelManager:
 
         return None
 
-    def get_device_by_pv(self, pv_name: str) -> Optional[LinacDevice]:
+    def get_device_by_pv(self, pv_name: str) -> LinacDevice | None:
         """Reverse lookup: find device by any associated PV."""
         return self._pv_to_device.get(pv_name)
 
     def filter_devices(
         self,
-        section: Optional[str] = None,
-        device_type: Optional[DeviceType] = None,
-    ) -> List[LinacDevice]:
+        section: str | None = None,
+        device_type: DeviceType | None = None,
+    ) -> list[LinacDevice]:
         """Filter devices by section and/or device type."""
         results = list(self._devices.values())
         if section:
@@ -128,7 +128,7 @@ class ChannelManager:
         results.sort(key=lambda d: d.z_position_m)
         return results
 
-    def _get_pv_by_type(self, dev: LinacDevice, pv_type: str) -> Optional[str]:
+    def _get_pv_by_type(self, dev: LinacDevice, pv_type: str) -> str | None:
         if pv_type == "setpoint":
             return dev.setpoint_pv
         elif pv_type == "readback":
@@ -141,7 +141,7 @@ class ChannelManager:
     def from_yaml_file(cls, path: Path) -> "ChannelManager":
         """Load channel configuration from YAML file."""
         manager = cls()
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         for dev_data in data.get("devices", []):
@@ -153,6 +153,14 @@ class ChannelManager:
 
 def create_baseline_mebt_channel_manager() -> ChannelManager:
     """Create a default channel manager preloaded with representative MEBT devices."""
+    try:
+        from helios.core.facility_config import FacilityConfig
+        cfg = FacilityConfig.load_default("MEBT")
+        if cfg.devices:
+            return cfg.to_channel_manager()
+    except Exception:
+        pass
+
     manager = ChannelManager()
 
     # Quadrupoles
@@ -210,6 +218,15 @@ def create_baseline_mebt_channel_manager() -> ChannelManager:
         readback_pv="MEBT:DIAG:BPM01:X_POS",
         metadata={"pv_y": "MEBT:DIAG:BPM01:Y_POS", "pv_phase": "MEBT:DIAG:BPM01:PHASE"},
         aliases=["mebt bpm 1", "first mebt bpm"],
+    ))
+    manager.register_device(LinacDevice(
+        section="MEBT",
+        name="BPM02",
+        device_type=DeviceType.BPM,
+        z_position_m=1.80,
+        readback_pv="MEBT:DIAG:BPM02:X_POS",
+        metadata={"pv_y": "MEBT:DIAG:BPM02:Y_POS", "pv_phase": "MEBT:DIAG:BPM02:PHASE"},
+        aliases=["mebt bpm 2", "second mebt bpm"],
     ))
     manager.register_device(LinacDevice(
         section="MEBT",

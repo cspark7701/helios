@@ -6,10 +6,10 @@ Implements:
 3. Dual-actuator cavity resonance tracking (stepper motor + piezo) under microphonics.
 """
 
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
-from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 logger = logging.getLogger(__name__)

@@ -4,10 +4,8 @@ Pinpoints beam scraping radiation spikes along the BLM detector array
 and applies localized upstream steerer kicks to steer beam off chamber walls.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple
-import numpy as np
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +16,8 @@ class LossMitigationResult:
     hotspot_location_m: float
     hotspot_blm: str
     measured_loss_w: float
-    upstream_steerers: List[str]
-    applied_correction_a: Dict[str, float]
+    upstream_steerers: list[str]
+    applied_correction_a: dict[str, float]
     predicted_loss_reduction_pct: float
     success: bool
 
@@ -32,9 +30,9 @@ class BeamLossMitigator:
 
     def mitigate_loss_hotspot(
         self,
-        blm_readings: Dict[str, Dict[str, float]],
-        steerer_positions: Dict[str, float],
-        active_steerer_currents: Dict[str, float],
+        blm_readings: dict[str, dict[str, float]],
+        steerer_positions: dict[str, float],
+        active_steerer_currents: dict[str, float],
         target_reduction_pct: float = 75.0,
     ) -> LossMitigationResult:
         """Find max loss hotspot and apply compensatory steering on upstream magnets."""
@@ -69,7 +67,7 @@ class BeamLossMitigator:
         selected_steerers = [pv for pv, _ in upstream_candidates[:2]]
 
         # Compute gentle corrective kick (0.1 to 0.4 A) away from scraping
-        corrections: Dict[str, float] = {}
+        corrections: dict[str, float] = {}
         for pv in selected_steerers:
             curr = active_steerer_currents.get(pv, 0.0)
             # Directional kick away from wall

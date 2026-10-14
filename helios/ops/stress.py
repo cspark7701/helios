@@ -5,10 +5,9 @@ Implements:
 2. Autonomous Mean Time to Recovery (MTTR) calculation and resilience metrics.
 """
 
-from dataclasses import dataclass
 import logging
-import time
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class ResilienceBenchmarkResult:
 class HILStressTestbed:
     """Simulates real-world hardware jitter and evaluates autonomous recovery resilience."""
 
-    def __init__(self, fault_config: Optional[InjectedFaultConfig] = None):
+    def __init__(self, fault_config: InjectedFaultConfig | None = None):
         self.config = fault_config or InjectedFaultConfig()
 
     def simulate_stress_cycles(self, num_cycles: int = 50) -> ResilienceBenchmarkResult:

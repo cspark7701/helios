@@ -6,9 +6,9 @@ film stability, thermal vaporization under multi-kW beam deposition, equilibrium
 distributions, and non-linear energy loss.
 """
 
-from typing import Dict, List, Any, Optional
-from enum import Enum
 import math
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -35,7 +35,7 @@ class StripperPhysicsResult(BaseModel):
     equilibrium_mean_charge_q: float
     selected_charge_state: int
     selected_state_fraction: float
-    charge_state_distribution: Dict[int, float]
+    charge_state_distribution: dict[int, float]
     energy_loss_MeV_per_u: float
     rms_energy_straggling_keV_per_u: float
     film_temperature_rise_C: float
@@ -142,7 +142,7 @@ class LiquidStripperEngine:
 
         # Charge distribution around q_peak (Gaussian width ~ 1.8)
         sigma_q = 1.85
-        csd: Dict[int, float] = {}
+        csd: dict[int, float] = {}
         for q in range(q_peak - 5, q_peak + 6):
             prob = math.exp(-0.5 * ((q - q_peak) / sigma_q) ** 2) / (sigma_q * math.sqrt(2 * math.pi))
             csd[q] = round(float(prob), 4)

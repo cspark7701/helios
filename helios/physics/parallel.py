@@ -6,13 +6,13 @@ Implements:
 3. Fast PyTorch/tensor particle tracking pusher for ensemble envelopes.
 """
 
-from dataclasses import dataclass, field
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
 import numpy as np
 import torch
-
-from helios.physics.lattice import Lattice
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class UQAnalysisResult:
     sample_count: int
     mean_transmission_pct: float
     transmission_std_pct: float
-    confidence_95_transmission_pct: Tuple[float, float]
+    confidence_95_transmission_pct: tuple[float, float]
     mean_orbit_rms_mm: float
     orbit_rms_std_mm: float
     nominal_transmission_pct: float
@@ -35,7 +35,7 @@ class UQAnalysisResult:
 class BatchSimulationOutcome:
     """Result of an individual ensemble simulation run."""
     run_id: int
-    parameters: Dict[str, float]
+    parameters: dict[str, float]
     transmission_pct: float
     max_envelope_x_mm: float
     max_envelope_y_mm: float
@@ -48,15 +48,15 @@ class ParallelSimulationEngine:
 
     @staticmethod
     def run_parameter_sweep(
-        eval_fn: Callable[[Dict[str, float]], Dict[str, float]],
-        base_parameters: Dict[str, float],
+        eval_fn: Callable[[dict[str, float]], dict[str, float]],
+        base_parameters: dict[str, float],
         scan_param: str,
-        scan_range: Tuple[float, float],
+        scan_range: tuple[float, float],
         num_samples: int = 20,
-    ) -> List[BatchSimulationOutcome]:
+    ) -> list[BatchSimulationOutcome]:
         """Execute systematic parameter sweep across uniform intervals."""
         values = np.linspace(scan_range[0], scan_range[1], num_samples)
-        outcomes: List[BatchSimulationOutcome] = []
+        outcomes: list[BatchSimulationOutcome] = []
 
         for idx, val in enumerate(values):
             params = dict(base_parameters)
@@ -93,7 +93,7 @@ class ParallelSimulationEngine:
 
     @staticmethod
     def evaluate_uncertainty_quantification(
-        outcomes: List[BatchSimulationOutcome],
+        outcomes: list[BatchSimulationOutcome],
         parameter_name: str,
         nominal_transmission_pct: float = 98.5,
     ) -> UQAnalysisResult:
@@ -147,9 +147,9 @@ class TensorParticleTracker:
     def track_particle_ensemble(
         self,
         initial_particles: torch.Tensor,  # Shape [N, 6] (x, xp, y, yp, z, dp/p)
-        transfer_matrices: List[torch.Tensor],  # List of [6, 6] tensors per element
+        transfer_matrices: list[torch.Tensor],  # List of [6, 6] tensors per element
         aperture_radius_m: float = 0.02,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Track particle ensemble across transfer matrices with aperture boundary checks."""
         particles = initial_particles.to(self.device).clone()
         alive_mask = torch.ones(particles.shape[0], dtype=torch.bool, device=self.device)

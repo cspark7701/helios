@@ -4,10 +4,8 @@ Models interlock response latency budgets (tau_detect + tau_propagate + tau_actu
 and verifies hardware protection readiness before authorizing beam actuation.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import logging
-from typing import Dict, List, Optional
+from dataclasses import dataclass
 
 from helios.core.schemas import ValidationCheck, ValidationResult
 
@@ -48,8 +46,8 @@ class LatencyBudget:
 class MPSManager:
     """Supervises linac fast interlocks and verifies latency compliance."""
 
-    def __init__(self, channels: Optional[List[MPSInterlockChannel]] = None):
-        self.channels: Dict[str, MPSInterlockChannel] = {}
+    def __init__(self, channels: list[MPSInterlockChannel] | None = None):
+        self.channels: dict[str, MPSInterlockChannel] = {}
         defaults = channels or [
             MPSInterlockChannel("MPS:FAST:DIFF_BPM_LOSS", "Differential BPM fast loss detect", latency_us=2.0),
             MPSInterlockChannel("MPS:FAST:BLM_ION_CHAMBER", "Ionization chamber BLM radiation trip", latency_us=5.0),
@@ -64,12 +62,12 @@ class MPSManager:
         if channel_id in self.channels:
             self.channels[channel_id].is_tripped = is_tripped
 
-    def verify_mps_readiness(self, latency_budget: Optional[LatencyBudget] = None) -> ValidationResult:
+    def verify_mps_readiness(self, latency_budget: LatencyBudget | None = None) -> ValidationResult:
         """Evaluate active interlocks and verify that protection latency budget is met."""
         budget = latency_budget or LatencyBudget()
-        checks: List[ValidationCheck] = []
-        errors: List[str] = []
-        warnings: List[str] = []
+        checks: list[ValidationCheck] = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # 1. Latency budget compliance
         latency_ok = budget.is_compliant

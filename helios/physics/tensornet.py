@@ -5,9 +5,8 @@ Matrix Product States (MPS) via Singular Value Decomposition (SVD), achieving >5
 reduction for large-scale PIC linac tracking while preserving high-order statistical moments.
 """
 
-from typing import List, Tuple, Dict, Any, Optional
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class TensorTrainCompressionResult(BaseModel):
@@ -34,10 +33,10 @@ class TensorTrainDecomposer:
         self,
         bunch_particles: np.ndarray,
         grid_bins_per_dim: int = 8
-    ) -> Tuple[List[np.ndarray], TensorTrainCompressionResult]:
+    ) -> tuple[list[np.ndarray], TensorTrainCompressionResult]:
         """Discretize 6D macroparticles and factorize into Matrix Product State cores."""
         # bunch_particles: (N, 6)
-        n_particles = len(bunch_particles)
+        _n_particles = len(bunch_particles)
         orig_rms_x = float(np.std(bunch_particles[:, 0]))
         orig_rms_y = float(np.std(bunch_particles[:, 2]))
 

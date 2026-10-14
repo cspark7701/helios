@@ -4,11 +4,9 @@ Runs comparative physics benchmarks evaluating beam trajectory, envelope bounds,
 and numerical consistency between ANL TRACK, LBNL IMPACT-Z, and the Analytic Digital Twin.
 """
 
-from dataclasses import dataclass
 import logging
 import time
-from typing import Any, Dict, List, Optional
-import numpy as np
+from dataclasses import dataclass
 
 from helios.physics.engine import (
     AnalyticDigitalTwinEngine,
@@ -16,7 +14,7 @@ from helios.physics.engine import (
     ImpactZSimulator,
     TrackSimulator,
 )
-from helios.physics.lattice import Lattice, TrajectoryPoint, create_baseline_mebt_lattice
+from helios.physics.lattice import Lattice, create_baseline_mebt_lattice
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +36,7 @@ class CodeBenchmarkResult:
 class CrossCodeBenchmarkReport:
     """Comprehensive cross-code consistency report."""
     lattice_name: str
-    benchmarks: Dict[str, CodeBenchmarkResult]
+    benchmarks: dict[str, CodeBenchmarkResult]
     envelope_discrepancy_pct: float
     fastest_code: str
     consistency_passed: bool
@@ -52,12 +50,12 @@ class CrossCodeBenchmarkRunner:
         self.track = TrackSimulator()
         self.impact = ImpactZSimulator()
 
-    def run_benchmark(self, lattice: Optional[Lattice] = None) -> CrossCodeBenchmarkReport:
+    def run_benchmark(self, lattice: Lattice | None = None) -> CrossCodeBenchmarkReport:
         """Run full cross-code benchmark suite."""
         lat = lattice or create_baseline_mebt_lattice()
-        results: Dict[str, CodeBenchmarkResult] = {}
+        results: dict[str, CodeBenchmarkResult] = {}
 
-        codes: List[Tuple[str, BeamDynamicsEngine]] = [
+        codes: list[tuple[str, BeamDynamicsEngine]] = [
             ("AnalyticDigitalTwin", self.analytic),
             ("ANL_TRACK", self.track),
             ("LBNL_IMPACT_Z", self.impact),

@@ -4,9 +4,9 @@ Isolates tripped magnetic elements, reconstructs the control response matrix,
 and recalculates compensatory setpoints across remaining operational magnets.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 class MagnetRecoveryResult:
     """Outcome of magnet power supply trip compensation."""
     tripped_pv: str
-    active_compensators: List[str]
-    corrective_setpoints: Dict[str, float]
+    active_compensators: list[str]
+    corrective_setpoints: dict[str, float]
     predicted_residual_rms_mm: float
     success: bool
 
@@ -31,9 +31,9 @@ class MagnetPowerSupplyRecoverer:
     def recover_tripped_steerer(
         self,
         tripped_pv: str,
-        all_steerers: List[str],
-        bpm_readings_mm: Dict[str, float],
-        response_matrix: Optional[np.ndarray] = None,
+        all_steerers: list[str],
+        bpm_readings_mm: dict[str, float],
+        response_matrix: np.ndarray | None = None,
     ) -> MagnetRecoveryResult:
         """Re-steer orbit around a tripped steering magnet using remaining healthy steerers."""
         if tripped_pv not in all_steerers:

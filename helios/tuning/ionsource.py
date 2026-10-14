@@ -5,8 +5,8 @@ gas mixing, extraction bias) and orchestrates fast multi-species beam switching 
 LEBT magnetic rigidity boundaries.
 """
 
-from typing import Dict, List, Any, Optional
 import math
+
 from pydantic import BaseModel, Field
 
 
@@ -25,7 +25,7 @@ class ChargeStateDistribution(BaseModel):
     species: str
     mass_amu: float
     target_charge_state: int
-    charge_currents_uA: Dict[int, float]
+    charge_currents_uA: dict[int, float]
     total_extracted_current_uA: float
     peak_charge_state: int
     target_state_current_uA: float
@@ -69,7 +69,7 @@ class ECRSourceOptimizer:
 
         # Build Gaussian-like distribution around q_peak
         width = 3.5
-        currents: Dict[int, float] = {}
+        currents: dict[int, float] = {}
         total_I = 150.0 * (params.microwave_power_kW / 2.0) * (params.extraction_voltage_kV / 30.0)
 
         for q in range(max(1, q_peak - 12), q_peak + 13):
@@ -134,7 +134,7 @@ class MultiSpeciesFastSwitcher:
         # p = sqrt(2 * m * E_kin)
         # m = mass_amu * 931.494 MeV / c^2
         # T_kin = mass_amu * energy_per_u_keV * 1e-3 MeV
-        c = 299792458.0
+        _c = 299792458.0
         e_charge = 1.602176634e-19
         amu_kg = 1.66053906660e-27
 
@@ -150,7 +150,7 @@ class MultiSpeciesFastSwitcher:
         self,
         source_species: str,
         target_species: str,
-        target_q: Optional[int] = None
+        target_q: int | None = None
     ) -> SpeciesLatticeScaling:
         """Calculate magnet scaling factors and ramp duration for seamless species changeover."""
         src_info = self.SPECIES_DB[source_species]

@@ -4,7 +4,8 @@ Provides a standard Gymnasium API (reset, step) wrapped around accelerator
 digital twin physics, domain randomization, and multi-objective rewards.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
 import numpy as np
 
 try:
@@ -27,9 +28,9 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
 
     def __init__(
         self,
-        lattice: Optional[Lattice] = None,
-        steerer_pvs: Optional[List[str]] = None,
-        bpm_pvs: Optional[List[str]] = None,
+        lattice: Lattice | None = None,
+        steerer_pvs: list[str] | None = None,
+        bpm_pvs: list[str] | None = None,
         max_steps: int = 50,
         domain_randomization: bool = False,
         target_rms_mm: float = 0.10,
@@ -44,13 +45,35 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
         self.domain_randomization = domain_randomization
         self.target_rms_mm = target_rms_mm
 
-        self.steerer_pvs = steerer_pvs or [
-            "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
-            "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET",
-        ]
-        self.bpm_pvs = bpm_pvs or [
-            "MEBT:BPM:01", "MEBT:BPM:02", "MEBT:BPM:03", "MEBT:BPM:04",
-        ]
+        if steerer_pvs is not None:
+            self.steerer_pvs = steerer_pvs
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                self.steerer_pvs = cfg.steerers if cfg.steerers else [
+                    "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET",
+                ]
+            except Exception:
+                self.steerer_pvs = [
+                    "MEBT:DCH:01:I_SET", "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET", "MEBT:DCV:02:I_SET",
+                ]
+
+        if bpm_pvs is not None:
+            self.bpm_pvs = bpm_pvs
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                self.bpm_pvs = cfg.bpms if cfg.bpms else [
+                    "MEBT:BPM:01", "MEBT:BPM:02", "MEBT:BPM:03", "MEBT:BPM:04",
+                ]
+            except Exception:
+                self.bpm_pvs = [
+                    "MEBT:BPM:01", "MEBT:BPM:02", "MEBT:BPM:03", "MEBT:BPM:04",
+                ]
 
         self.num_actuators = len(self.steerer_pvs)
         self.num_bpms = len(self.bpm_pvs)
@@ -67,8 +90,8 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
             low=-20.0, high=20.0, shape=(obs_dim,), dtype=np.float32
         )
 
-        self.state_setpoints: Dict[str, float] = {}
-        self.quad_misalignments: Dict[str, float] = {}
+        self.state_setpoints: dict[str, float] = {}
+        self.quad_misalignments: dict[str, float] = {}
 
     def _get_obs(self) -> np.ndarray:
         """Run beam dynamics tracking and format observation vector."""
@@ -98,9 +121,9 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
 
     def reset(
         self,
-        seed: Optional[int] = None,
-        options: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         """Reset environment to distorted initial orbit state."""
         super().reset(seed=seed)
         self.current_step = 0
@@ -122,7 +145,7 @@ class LinacGymEnv(gym.Env if HAVE_GYMNASIUM else object):
         info = {"initial_rms_mm": float(np.sqrt(np.mean(obs[:-1] ** 2)))}
         return obs, info
 
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         """Execute action delta and return step transition."""
         self.current_step += 1
         action = np.clip(action, self.action_space.low, self.action_space.high)

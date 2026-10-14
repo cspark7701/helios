@@ -6,15 +6,14 @@ Implements:
 3. Tamper-evident secure audit certificate generation.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
 import hashlib
 import hmac
 import logging
 import secrets
 import time
-from typing import Dict, List, Optional, Set
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class Permission(str, Enum):
     OVERRIDE_INTERLOCK = "OVERRIDE_INTERLOCK"
 
 
-ROLE_PERMISSIONS: Dict[UserRole, Set[Permission]] = {
+ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
     UserRole.VIEWER: {Permission.READ_TELEMETRY, Permission.SIMULATE},
     UserRole.PHYSICIST: {
         Permission.READ_TELEMETRY,
@@ -68,9 +67,9 @@ class AuthToken:
 class RBACManager:
     """Manages role-based access control and token verification."""
 
-    def __init__(self, secret_key: Optional[str] = None):
+    def __init__(self, secret_key: str | None = None):
         self._secret = (secret_key or secrets.token_hex(32)).encode("utf-8")
-        self._active_tokens: Dict[str, AuthToken] = {}
+        self._active_tokens: dict[str, AuthToken] = {}
 
     def issue_token(self, username: str, role: UserRole, validity_seconds: float = 3600.0) -> AuthToken:
         """Generate authenticated session token."""

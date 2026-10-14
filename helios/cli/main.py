@@ -6,10 +6,10 @@ and capability dispatch for heavy ion linac operators and physicists.
 
 import json
 from pathlib import Path
-from typing import Optional
+
+import typer
 from rich.console import Console
 from rich.table import Table
-import typer
 
 from helios.agents.orchestrator import HeliosOrchestrator
 from helios.core.capabilities import get_default_registry
@@ -68,7 +68,7 @@ def channels(section: str = typer.Option("MEBT", help="Linac section filter")):
 
 
 @app.command()
-def tools(query: Optional[str] = typer.Option(None, help="Optional intent query to test classifier")):
+def tools(query: str | None = typer.Option(None, help="Optional intent query to test classifier")):
     """List agent capabilities or dynamically classify intent."""
     reg = get_default_registry()
 
@@ -102,7 +102,7 @@ def tune_orbit(
     section: str = typer.Option("MEBT", help="Linac section to tune (e.g. MEBT, LEBT)"),
     plan_id: str = typer.Option("00099", help="Execution plan ID"),
     autonomy: int = typer.Option(3, help="Autonomy level (0 to 4)"),
-    model_dir: Optional[Path] = typer.Option(None, "--model-dir", "-m", help="Path to physics simulation model directory (e.g. examples/lebt)"),
+    model_dir: Path | None = typer.Option(None, "--model-dir", "-m", help="Path to physics simulation model directory (e.g. examples/lebt)"),
     use_track: bool = typer.Option(True, "--track/--analytic", help="Use ANL TRACK beam dynamics code if available"),
     conversion_factor: float = typer.Option(0.168, "--conversion-factor", "-c", help="Steerer current conversion factor in A/mrad"),
     current_increment: float = typer.Option(0.05, "--current-increment", "-i", help="Power supply current step / increment limit in Amperes"),
@@ -126,7 +126,7 @@ def tune_orbit(
             current_increment_a=current_increment,
         )
         elapsed_s = res.get("elapsed_time_s", time.perf_counter() - start_time)
-        console.print(f"[bold green]✔ Closed-Loop Orbit Correction Completed![/bold green]")
+        console.print("[bold green]✔ Closed-Loop Orbit Correction Completed![/bold green]")
         console.print(f"  Horizontal RMS Improvement : [bold cyan]{res['improvement_pct']:+.1f}%[/bold cyan] ({res['initial_rms_x_mm']:.4f} mm -> {res['corrected_rms_x_mm']:.4f} mm)")
         console.print(f"  Orbit Correction Execution Time: [bold yellow]{elapsed_s:.2f} seconds[/bold yellow]")
         return
@@ -136,9 +136,12 @@ def tune_orbit(
 
     # Seed mock BPM offsets
     orch.control.put(f"{section}:DIAG:BPM01:X_POS", 0.75)
+    orch.control.put(f"{section}:DIAG:BPM01:Y_POS", 0.10)
     orch.control.put(f"{section}:DIAG:BPM02:X_POS", 1.10)
+    orch.control.put(f"{section}:DIAG:BPM02:Y_POS", -0.15)
     orch.control.put(f"{section}:PSC:CH01:CurrentSet", 0.0)
     orch.control.put(f"{section}:PSC:CH01:CurrentAct", 0.0)
+    orch.control.put("MPS:GLOBAL:INTERLOCK_OK", 1)
 
     level = AutonomyLevel(autonomy)
     plan = orch.run_orbit_correction_loop(
@@ -179,7 +182,7 @@ def plans():
 @app.command()
 def chat(
     provider: str = typer.Option("mock", help="LLM provider ('mock', 'openai', 'ollama')"),
-    model: Optional[str] = typer.Option(None, help="LLM model name"),
+    model: str | None = typer.Option(None, help="LLM model name"),
 ):
     """Launch interactive conversational operator console."""
     from helios.agents.planner import NaturalLanguagePlanner
@@ -245,6 +248,7 @@ def dashboard(
 ):
     """Launch the HELIOS real-time operator web dashboard."""
     import uvicorn
+
     from helios.dashboard.app import create_dashboard_app
 
     console.print(f"[bold green]Starting HELIOS Operator Console at http://{host}:{port}[/bold green]")
@@ -259,6 +263,7 @@ def report(
 ):
     """Generate and display an automated commissioning shift handover report."""
     from datetime import datetime, timezone
+
     from helios.ops.reporting import CommissioningReportGenerator, ShiftSummaryData
 
     data = ShiftSummaryData(

@@ -1,0 +1,157 @@
+# HELIOS Facility Configuration: MEBT
+name: "HELIOS_MEBT"
+section: "MEBT"
+description: "Medium Energy Beam Transport baseline section configuration"
+
+steerers:
+  - "MEBT:DCH:01:I_SET"
+  - "MEBT:DCV:01:I_SET"
+  - "MEBT:DCH:02:I_SET"
+  - "MEBT:DCV:02:I_SET"
+
+bpms:
+  - "MEBT:BPM:01"
+  - "MEBT:BPM:02"
+  - "MEBT:BPM:03"
+  - "MEBT:BPM:04"
+
+quadrupoles:
+  - "MEBT:QUAD:01:B_SET"
+  - "MEBT:QUAD:02:B_SET"
+  - "MEBT:QUAD:03:B_SET"
+  - "MEBT:QUAD:04:B_SET"
+
+cavities:
+  - "MEBT:CAV:01:AMP_SET"
+  - "MEBT:CAV:02:AMP_SET"
+
+panic_pvs:
+  - "MEBT:CAV:01:AMP_SET"
+  - "MEBT:CAV:02:AMP_SET"
+  - "MEBT:DCH:01:I_SET"
+  - "MEBT:DCV:01:I_SET"
+  - "MEBT:DCH:02:I_SET"
+  - "MEBT:DCV:02:I_SET"
+
+conversion_factor_a_per_mrad: 0.168
+current_increment_a: 0.05
+
+devices:
+  - section: MEBT
+    name: QD01
+    device_type: QUADRUPOLE
+    z_position_m: 0.25
+    setpoint_pv: "MEBT:PSC:QD01:CurrentSet"
+    readback_pv: "MEBT:PSC:QD01:CurrentAct"
+    status_pv: "MEBT:PSC:QD01:Status"
+    limits:
+      min_val: -50.0
+      max_val: 50.0
+      max_slew_rate: 5.0
+      units: "A"
+    aliases:
+      - "mebt quad 01"
+      - "mebt first quadrupole"
+      - "mebt qd1"
+
+  - section: MEBT
+    name: QF02
+    device_type: QUADRUPOLE
+    z_position_m: 0.60
+    setpoint_pv: "MEBT:PSC:QF02:CurrentSet"
+    readback_pv: "MEBT:PSC:QF02:CurrentAct"
+    status_pv: "MEBT:PSC:QF02:Status"
+    limits:
+      min_val: -50.0
+      max_val: 50.0
+      max_slew_rate: 5.0
+      units: "A"
+    aliases:
+      - "mebt quad 02"
+      - "mebt second quadrupole"
+      - "mebt qf2"
+
+  - section: MEBT
+    name: CH01
+    device_type: STEERER_H
+    z_position_m: 0.35
+    setpoint_pv: "MEBT:PSC:CH01:CurrentSet"
+    readback_pv: "MEBT:PSC:CH01:CurrentAct"
+    limits:
+      min_val: -10.0
+      max_val: 10.0
+      max_slew_rate: 2.0
+      units: "A"
+    aliases:
+      - "mebt horizontal steerer 1"
+      - "mebt ch1"
+
+  - section: MEBT
+    name: CV01
+    device_type: STEERER_V
+    z_position_m: 0.35
+    setpoint_pv: "MEBT:PSC:CV01:CurrentSet"
+    readback_pv: "MEBT:PSC:CV01:CurrentAct"
+    limits:
+      min_val: -10.0
+      max_val: 10.0
+      max_slew_rate: 2.0
+      units: "A"
+    aliases:
+      - "mebt vertical steerer 1"
+      - "mebt cv1"
+
+  - section: MEBT
+    name: BPM01
+    device_type: BPM
+    z_position_m: 0.80
+    readback_pv: "MEBT:DIAG:BPM01:X_POS"
+    metadata:
+      pv_y: "MEBT:DIAG:BPM01:Y_POS"
+      pv_phase: "MEBT:DIAG:BPM01:PHASE"
+    aliases:
+      - "mebt bpm 1"
+      - "first mebt bpm"
+
+  - section: MEBT
+    name: BPM02
+    device_type: BPM
+    z_position_m: 1.80
+    readback_pv: "MEBT:DIAG:BPM02:X_POS"
+    metadata:
+      pv_y: "MEBT:DIAG:BPM02:Y_POS"
+      pv_phase: "MEBT:DIAG:BPM02:PHASE"
+    aliases:
+      - "mebt bpm 2"
+      - "second mebt bpm"
+
+  - section: MEBT
+    name: BLM01
+    device_type: BLM
+    z_position_m: 0.85
+    readback_pv: "MEBT:DIAG:BLM01:DOSE"
+    limits:
+      min_val: 0.0
+      max_val: 100.0
+      units: "uGy/s"
+    aliases:
+      - "mebt blm 1"
+
+  - section: MEBT
+    name: CAV01
+    device_type: RF_CAVITY
+    z_position_m: 1.20
+    setpoint_pv: "MEBT:RF:CAV01:AmpSet"
+    readback_pv: "MEBT:RF:CAV01:AmpAct"
+    status_pv: "MEBT:RF:CAV01:Interlock"
+    limits:
+      min_val: 0.0
+      max_val: 150.0
+      max_slew_rate: 10.0
+      units: "kV"
+    metadata:
+      phase_set_pv: "MEBT:RF:CAV01:PhaseSet"
+      phase_act_pv: "MEBT:RF:CAV01:PhaseAct"
+    aliases:
+      - "mebt buncher 1"
+      - "mebt rf cavity 1"

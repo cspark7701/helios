@@ -5,10 +5,12 @@ dynamic peer discovery, heartbeat health monitoring, orchestrator failover elect
 and disconnected edge autonomy with state synchronization.
 """
 
-from typing import Dict, List, Any, Optional, Callable
 import time
 import uuid
+from collections.abc import Callable
 from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +32,7 @@ class AgentMeshNode(BaseModel):
     node_id: str
     node_type: MeshNodeType
     address: str
-    capabilities: List[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
     status: NodeStatus = NodeStatus.ONLINE
     last_heartbeat: float = Field(default_factory=time.time)
     priority_rank: int = Field(default=10)
@@ -42,7 +44,7 @@ class AgentMeshMessage(BaseModel):
     sender_id: str
     target_id: str  # specific node_id or "*" for broadcast
     topic: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     timestamp: float = Field(default_factory=time.time)
     priority: int = Field(default=1, ge=1, le=5)
 
@@ -52,11 +54,11 @@ class DistributedAgentMesh:
 
     def __init__(self, heartbeat_timeout_s: float = 5.0):
         self.heartbeat_timeout_s = heartbeat_timeout_s
-        self.nodes: Dict[str, AgentMeshNode] = {}
-        self.subscribers: Dict[str, List[Callable[[AgentMeshMessage], None]]] = {}
-        self.message_history: List[AgentMeshMessage] = []
-        self.edge_offline_buffers: Dict[str, List[AgentMeshMessage]] = {}
-        self.active_orchestrator_id: Optional[str] = None
+        self.nodes: dict[str, AgentMeshNode] = {}
+        self.subscribers: dict[str, list[Callable[[AgentMeshMessage], None]]] = {}
+        self.message_history: list[AgentMeshMessage] = []
+        self.edge_offline_buffers: dict[str, list[AgentMeshMessage]] = {}
+        self.active_orchestrator_id: str | None = None
 
     def register_node(self, node: AgentMeshNode) -> None:
         """Register a node in the mesh and update orchestrator election if needed."""
@@ -106,7 +108,7 @@ class DistributedAgentMesh:
             self.publish(msg)
         return len(buffered)
 
-    def check_liveness_and_elect_orchestrator(self) -> Optional[str]:
+    def check_liveness_and_elect_orchestrator(self) -> str | None:
         """Check peer liveness and trigger failover election if active orchestrator has timed out."""
         now = time.time()
         for node_id, node in self.nodes.items():

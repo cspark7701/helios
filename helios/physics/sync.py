@@ -6,11 +6,11 @@ Implements:
 3. Golden baseline snapshot archive and semantic diff comparison.
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class ModelDriftStatus:
     discrepancy_rms_mm: float
     drift_detected: bool
     recalibration_recommended: bool
-    affected_subsystems: List[str]
+    affected_subsystems: list[str]
 
 
 class DigitalTwinKalmanFilter:
@@ -124,17 +124,17 @@ class GoldenBaselineArchive:
     """Manages versioned golden machine setpoints with semantic diffing."""
 
     def __init__(self):
-        self._baselines: Dict[str, Dict[str, float]] = {}
+        self._baselines: dict[str, dict[str, float]] = {}
 
-    def save_golden(self, name: str, setpoints: Dict[str, float]) -> None:
+    def save_golden(self, name: str, setpoints: dict[str, float]) -> None:
         """Store golden machine state configuration."""
         self._baselines[name] = dict(setpoints)
 
-    def get_golden(self, name: str) -> Optional[Dict[str, float]]:
+    def get_golden(self, name: str) -> dict[str, float] | None:
         """Retrieve golden setpoints by name."""
         return self._baselines.get(name)
 
-    def diff_against_golden(self, name: str, current_setpoints: Dict[str, float], tolerance: float = 1e-3) -> Dict[str, Any]:
+    def diff_against_golden(self, name: str, current_setpoints: dict[str, float], tolerance: float = 1e-3) -> dict[str, Any]:
         """Compute semantic difference between current machine state and golden baseline."""
         golden = self._baselines.get(name)
         if not golden:

@@ -5,8 +5,8 @@ eigenmodes excited by cryoplant helium pressure ripple, and implements an adapti
 Filtered-X LMS (FxLMS) fast piezo feedforward controller cancelling microphonics jitter.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 import math
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -15,8 +15,8 @@ class MicrophonicsSpectrum(BaseModel):
     """Mechanical resonance eigenmodes and external disturbance sources."""
     cavity_id: str
     lfd_coefficient_Hz_per_MV2: float = Field(default=2.8, ge=0.5, le=10.0)
-    mechanical_eigenmodes_Hz: List[float] = Field(default_factory=lambda: [32.0, 68.0, 118.0, 195.0])
-    mode_quality_factors_Qm: List[float] = Field(default_factory=lambda: [80.0, 120.0, 95.0, 60.0])
+    mechanical_eigenmodes_Hz: list[float] = Field(default_factory=lambda: [32.0, 68.0, 118.0, 195.0])
+    mode_quality_factors_Qm: list[float] = Field(default_factory=lambda: [80.0, 120.0, 95.0, 60.0])
     ambient_noise_std_Hz: float = Field(default=8.5, ge=0.5)
 
 
@@ -70,7 +70,7 @@ class AdaptiveFxLMSPiezoController:
             amp = 12.0 * math.exp(-mode_f / 150.0)
             disturbance += amp * np.sin(2.0 * np.pi * mode_f * t + np.random.uniform(0, 2 * np.pi))
 
-        raw_detuning = lfd_static + disturbance
+        _raw_detuning = lfd_static + disturbance
         raw_rms = float(np.std(disturbance))
 
         # 3. Adaptive FxLMS execution

@@ -5,10 +5,8 @@ in high-intensity heavy-ion linacs, maps phase advances onto Hofmann stability c
 and autonomously rematches lattice parameters away from emittance-exchange stopbands.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 from enum import Enum
-import math
-import numpy as np
+
 from pydantic import BaseModel, Field
 
 

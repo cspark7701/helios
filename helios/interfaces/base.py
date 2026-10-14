@@ -4,13 +4,12 @@ Defines the contract for control system drivers (EPICS CA/PVA and Mock),
 incorporating atomic actuation, readback verification, and slew-rate limiting.
 """
 
-from abc import ABC, abstractmethod
-import asyncio
-from datetime import datetime, timezone
 import logging
 import math
 import time
-from typing import Any, Callable, Dict, List, Optional
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ class SlewRateLimiter:
         target_val: float,
         max_slew_rate: float,
         step_interval_s: float = 0.1,
-    ) -> List[float]:
+    ) -> list[float]:
         """Generate intermediate setpoints ensuring rate-of-change never exceeds max_slew_rate.
 
         Args:
@@ -65,6 +64,45 @@ class SlewRateLimiter:
         return trajectory
 
 
+class MissingReadbackError(ControlInterfaceError):
+    """Raised when a setpoint or diagnostic PV readback returns None or cannot be read."""
+
+
+class InMemoryPVStore:
+    """In-memory dictionary store for simulated PV read/write/subscribe operations."""
+
+    def __init__(self, initial_pvs: dict[str, Any] | None = None):
+        self._pvs: dict[str, Any] = dict(initial_pvs or {})
+        self._subscribers: dict[str, list[Callable[[str, Any], None]]] = {}
+
+    def get(self, pv_name: str) -> Any:
+        return self._pvs.get(pv_name)
+
+    def set(self, pv_name: str, value: Any) -> None:
+        self._pvs[pv_name] = value
+
+    def put(self, pv_name: str, value: Any) -> bool:
+        self._pvs[pv_name] = value
+        for cb in self._subscribers.get(pv_name, []):
+            try:
+                cb(pv_name, value)
+            except Exception as e:
+                logger.error(f"Error in subscriber callback for {pv_name}: {e}")
+        return True
+
+    def subscribe(self, pv_name: str, callback: Callable[[str, Any], None]) -> None:
+        if pv_name not in self._subscribers:
+            self._subscribers[pv_name] = []
+        self._subscribers[pv_name].append(callback)
+
+    def unsubscribe(self, pv_name: str) -> None:
+        self._subscribers.pop(pv_name, None)
+
+    def clear(self) -> None:
+        self._pvs.clear()
+        self._subscribers.clear()
+
+
 class BaseControlInterface(ABC):
     """Abstract interface defining required control system interactions."""
 
@@ -76,13 +114,13 @@ class BaseControlInterface(ABC):
     def put(self, pv_name: str, value: Any, wait: bool = True, timeout: float = 5.0) -> bool:
         """Write a value to a Process Variable."""
 
-    @abstractmethod
-    def get_many(self, pv_names: List[str]) -> Dict[str, Any]:
+    def get_many(self, pv_names: list[str]) -> dict[str, Any]:
         """Read multiple Process Variables in batch."""
+        return {pv: self.get(pv) for pv in pv_names}
 
-    @abstractmethod
-    def put_many(self, setpoints: Dict[str, Any], wait: bool = True, timeout: float = 5.0) -> Dict[str, bool]:
+    def put_many(self, setpoints: dict[str, Any], wait: bool = True, timeout: float = 5.0) -> dict[str, bool]:
         """Write multiple Process Variables in batch."""
+        return {pv: self.put(pv, val, wait=wait, timeout=timeout) for pv, val in setpoints.items()}
 
     @abstractmethod
     def subscribe(self, pv_name: str, callback: Callable[[str, Any], None]) -> None:
@@ -99,7 +137,7 @@ class BaseControlInterface(ABC):
         target_val: float,
         tolerance: float = 0.01,
         timeout: float = 10.0,
-        max_slew_rate: Optional[float] = None,
+        max_slew_rate: float | None = None,
         poll_interval: float = 0.05,
     ) -> bool:
         """Atomic write with optional slew-rate ramping and readback convergence verification.
@@ -117,13 +155,17 @@ class BaseControlInterface(ABC):
             True if readback converged within tolerance before timeout.
 
         Raises:
+            MissingReadbackError: If current setpoint is None and ramping is required.
             ReadbackTimeoutError: If readback fails to converge before timeout expires.
         """
         start_time = time.monotonic()
 
         # Enforce slew-rate limiting if requested
         if max_slew_rate and max_slew_rate > 0:
-            current_val = float(self.get(setpoint_pv) or 0.0)
+            current_raw = self.get(setpoint_pv)
+            if current_raw is None:
+                raise MissingReadbackError(f"Cannot ramp setpoint for {setpoint_pv}: current value is None")
+            current_val = float(current_raw)
             trajectory = SlewRateLimiter.calculate_trajectory(
                 current_val=current_val,
                 target_val=target_val,

@@ -4,15 +4,14 @@ Maintains pre-actuation baseline setpoints, provides crash-resilient SQLite-pers
 checkpoints, and executes emergency machine shutdown protocols.
 """
 
-from collections import deque
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import json
 import logging
-from pathlib import Path
 import sqlite3
-from typing import Dict, List, Optional
 import uuid
+from collections import deque
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 
 from helios.interfaces.base import BaseControlInterface
 
@@ -25,7 +24,7 @@ class RollbackCheckpoint:
     checkpoint_id: str
     label: str
     timestamp: datetime
-    setpoints: Dict[str, float]
+    setpoints: dict[str, float]
 
 
 class PersistentRollbackJournal:
@@ -59,7 +58,7 @@ class PersistentRollbackJournal:
             )
             conn.commit()
 
-    def load_all_checkpoints(self) -> List[RollbackCheckpoint]:
+    def load_all_checkpoints(self) -> list[RollbackCheckpoint]:
         """Load all checkpoints ordered by timestamp ascending."""
         results = []
         with sqlite3.connect(str(self.db_path)) as conn:
@@ -91,12 +90,12 @@ class RollbackController:
         self,
         control_interface: BaseControlInterface,
         max_stack_size: int = 20,
-        journal_path: Optional[Path] = None,
+        journal_path: Path | None = None,
     ):
         self.control = control_interface
         self.max_stack_size = max_stack_size
         self._stack: deque[RollbackCheckpoint] = deque(maxlen=max_stack_size)
-        self.journal: Optional[PersistentRollbackJournal] = None
+        self.journal: PersistentRollbackJournal | None = None
 
         if journal_path:
             self.journal = PersistentRollbackJournal(journal_path)
@@ -105,7 +104,7 @@ class RollbackController:
             for cp in persisted:
                 self._stack.append(cp)
 
-    def create_checkpoint(self, label: str, setpoints: Dict[str, float]) -> str:
+    def create_checkpoint(self, label: str, setpoints: dict[str, float]) -> str:
         """Register a setpoint dictionary as a new rollback checkpoint."""
         cp_id = str(uuid.uuid4())[:8]
         cp = RollbackCheckpoint(
@@ -122,7 +121,7 @@ class RollbackController:
         logger.info(f"Registered rollback checkpoint '{label}' (ID: {cp_id}) with {len(setpoints)} setpoints")
         return cp_id
 
-    def capture_baseline_from_hardware(self, label: str, pvs: List[str]) -> str:
+    def capture_baseline_from_hardware(self, label: str, pvs: list[str]) -> str:
         """Query active hardware setpoints and save as baseline checkpoint."""
         current_vals = {}
         for pv in pvs:
@@ -132,7 +131,7 @@ class RollbackController:
 
         return self.create_checkpoint(label=label, setpoints=current_vals)
 
-    def trigger_rollback(self, checkpoint_id: Optional[str] = None) -> bool:
+    def trigger_rollback(self, checkpoint_id: str | None = None) -> bool:
         """Restore machine to target or most recent checkpoint."""
         if not self._stack:
             logger.warning("Rollback triggered but checkpoint stack is empty!")
@@ -155,21 +154,36 @@ class RollbackController:
         results = self.control.put_many(target_cp.setpoints, wait=True)
         return all(results.values())
 
-    def panic_shutdown(self, pvs_to_zero: Optional[List[str]] = None) -> bool:
+    def panic_shutdown(self, pvs_to_zero: list[str] | None = None) -> bool:
         """EMERGENCY PANIC BUTTON: Instantly zero critical power and de-energize beamline."""
-        zero_targets = pvs_to_zero or [
-            "MEBT:CAV:01:AMP_SET",
-            "MEBT:CAV:02:AMP_SET",
-            "MEBT:DCH:01:I_SET",
-            "MEBT:DCV:01:I_SET",
-            "MEBT:DCH:02:I_SET",
-            "MEBT:DCV:02:I_SET",
-        ]
+        if pvs_to_zero is not None:
+            zero_targets = pvs_to_zero
+        else:
+            try:
+                from helios.core.facility_config import FacilityConfig
+                cfg = FacilityConfig.load_default("MEBT")
+                zero_targets = cfg.panic_pvs if cfg.panic_pvs else [
+                    "MEBT:CAV:01:AMP_SET",
+                    "MEBT:CAV:02:AMP_SET",
+                    "MEBT:DCH:01:I_SET",
+                    "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET",
+                    "MEBT:DCV:02:I_SET",
+                ]
+            except Exception:
+                zero_targets = [
+                    "MEBT:CAV:01:AMP_SET",
+                    "MEBT:CAV:02:AMP_SET",
+                    "MEBT:DCH:01:I_SET",
+                    "MEBT:DCV:01:I_SET",
+                    "MEBT:DCH:02:I_SET",
+                    "MEBT:DCV:02:I_SET",
+                ]
         shutdown_setpoints = {pv: 0.0 for pv in zero_targets}
         logger.critical(f"EMERGENCY PANIC SHUTDOWN: Zeroing {len(shutdown_setpoints)} PVs immediately!")
         results = self.control.put_many(shutdown_setpoints, wait=True)
         return all(results.values())
 
-    def list_checkpoints(self) -> List[RollbackCheckpoint]:
+    def list_checkpoints(self) -> list[RollbackCheckpoint]:
         """List all available checkpoints from newest to oldest."""
         return list(reversed(self._stack))

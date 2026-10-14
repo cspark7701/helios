@@ -68,6 +68,11 @@ def test_fast_physics_surrogate_preflight():
     res_bad = surrogate.validate_plan_setpoints(extreme_setpoints)
     assert not res_bad.is_valid or res_bad.projected_beam_loss > 0.0
 
+    # R-06 regression: verifier rejects results that fell back when high-fidelity backend requested
+    res_fallback_rejected = surrogate.validate_plan_setpoints(safe_setpoints, required_backend="TRACK")
+    assert not res_fallback_rejected.is_valid
+    assert any("fell back from TRACK" in err for err in res_fallback_rejected.errors)
+
 
 def test_track_simulator_deck_generation(tmp_path):
     """Verify TrackSimulator deck generation (track.dat and sclinac.dat)."""

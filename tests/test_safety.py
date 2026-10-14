@@ -117,3 +117,79 @@ def test_autonomy_policy_engine_rules():
     # With operator confirmation: authorized
     auth_ok, _ = AutonomyPolicyEngine.evaluate_plan_authorization(plan, operator_confirmed=True)
     assert auth_ok
+
+
+def test_guarded_control_interface_token_enforcement():
+    """Verify GuardedControlInterface blocks unapproved writes and allows tokenized writes."""
+    from helios.core.schemas import PlanStep
+    from helios.safety.gatekeeper import GuardedControlInterface, SafetyInterlockError
+
+    channels = create_baseline_mebt_channel_manager()
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MPS:GLOBAL:INTERLOCK_OK", 1)
+    gatekeeper = SafetyGatekeeper(channel_manager=channels, control_interface=ctrl)
+
+    guarded = gatekeeper.guarded_control
+    assert isinstance(guarded, GuardedControlInterface)
+
+    # 1. Direct write without token fails
+    with pytest.raises(SafetyInterlockError) as exc_info:
+        guarded.put("MEBT:PSC:CH01:CurrentSet", 2.0)
+    assert "no valid SafetyGatekeeper authorization token" in str(exc_info.value)
+
+    # 2. Direct write with invalid token fails
+    with pytest.raises(SafetyInterlockError):
+        guarded.put("MEBT:PSC:CH01:CurrentSet", 2.0, token="fake-token")
+
+    # 3. Validate setpoints -> mint token -> write succeeds
+    val_res = gatekeeper.validate_setpoints({"MEBT:PSC:CH01:CurrentSet": 2.0})
+    assert val_res.is_valid
+    token = val_res.authorization_token
+    assert token is not None
+
+    success = guarded.put("MEBT:PSC:CH01:CurrentSet", 2.0, token=token)
+    assert success is True
+    assert guarded.get("MEBT:PSC:CH01:CurrentSet") == 2.0
+
+    # 4. Trying to write a different unapproved value with the same token fails
+    with pytest.raises(SafetyInterlockError):
+        guarded.put("MEBT:PSC:CH01:CurrentSet", 3.0, token=token)
+
+
+def test_safety_gatekeeper_execute_plan_authorization():
+    """Verify SafetyGatekeeper.execute validates plan tokens before actuation."""
+    from helios.core.schemas import PlanStep
+    from helios.safety.gatekeeper import SafetyInterlockError
+
+    channels = create_baseline_mebt_channel_manager()
+    ctrl = MockControlInterface()
+    ctrl.set_initial_pv("MPS:GLOBAL:INTERLOCK_OK", 1)
+    gatekeeper = SafetyGatekeeper(channel_manager=channels, control_interface=ctrl)
+
+    step = PlanStep(
+        step_id="step-1",
+        name="Set CH01",
+        target_agent="HELIOS-Control",
+        action="caput",
+        target="MEBT_CH01",
+        parameters={"pv": "MEBT:PSC:CH01:CurrentSet", "value": 1.5},
+    )
+    plan = ExecutionPlan(
+        plan_id="00031",
+        title="Steering Test",
+        objective="Test token execution",
+        steps=[step],
+    )
+
+    # Executing unvalidated plan without safety token raises SafetyInterlockError
+    with pytest.raises(SafetyInterlockError) as exc:
+        gatekeeper.execute(plan)
+    assert "No approved safety token found" in str(exc.value)
+
+    # Validate setpoints through gatekeeper and attach result
+    val_res = gatekeeper.validate_setpoints({"MEBT:PSC:CH01:CurrentSet": 1.5})
+    plan.validation_records.append(val_res)
+
+    assert gatekeeper.execute(plan) is True
+    assert ctrl.get("MEBT:PSC:CH01:CurrentSet") == 1.5
+

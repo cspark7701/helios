@@ -5,10 +5,9 @@ hydrodynamic shock pressures via the Grüneisen equation of state, von Mises the
 and critical heat flux (CHF) cooling water boiling margins up to 400 kW beam power.
 """
 
-from typing import Dict, List, Any, Optional
-from enum import Enum
 import math
-import numpy as np
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 

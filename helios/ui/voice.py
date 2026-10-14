@@ -4,8 +4,9 @@ Parses natural language and voice directives from control room physicists into
 structured, verifiable execution plans conforming to the Plan-First Osprey architecture.
 """
 
-from typing import Dict, List, Any, Optional
 import re
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -14,8 +15,8 @@ class OperatorIntent(BaseModel):
     raw_utterance: str
     action_type: str  # orbit_correction, species_switch, cavity_tune, collimator_adjust, quench_check, transmission_opt
     target_subsystem: str  # LEBT, RFQ, MEBT, SCL1, SCL2, HEBT, SWITCHYARD, ALL
-    target_devices: List[str] = Field(default_factory=list)
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    target_devices: list[str] = Field(default_factory=list)
+    parameters: dict[str, Any] = Field(default_factory=dict)
     confidence: float = Field(..., ge=0.0, le=1.0)
     requires_human_confirmation: bool = True
     synthesized_plan_summary: str

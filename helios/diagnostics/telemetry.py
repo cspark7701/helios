@@ -5,7 +5,7 @@ RMS orbit distortion, transmission, and time-of-flight (ToF) beam energy.
 """
 
 import math
-from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 from helios.core.schemas import TelemetrySnapshot
@@ -15,7 +15,7 @@ class TelemetryProcessor:
     """Processes real-time accelerator diagnostic readouts."""
 
     @staticmethod
-    def compute_rms_orbit(bpm_positions: Dict[str, float]) -> float:
+    def compute_rms_orbit(bpm_positions: dict[str, float]) -> float:
         """Calculate RMS orbit distortion in millimeters."""
         if not bpm_positions:
             return 0.0
@@ -67,13 +67,13 @@ class TelemetryProcessor:
 
     @staticmethod
     def process_snapshot(
-        bpm_x: Dict[str, float],
-        bpm_y: Dict[str, float],
-        blm_losses: Dict[str, float],
+        bpm_x: dict[str, float],
+        bpm_y: dict[str, float],
+        blm_losses: dict[str, float],
         upstream_current_ma: float,
         downstream_current_ma: float,
         section: str = "MEBT",
-    ) -> Tuple[TelemetrySnapshot, Dict[str, float]]:
+    ) -> tuple[TelemetrySnapshot, dict[str, float]]:
         """Construct a validated TelemetrySnapshot and return computed summary metrics."""
         trans_pct = TelemetryProcessor.compute_transmission(upstream_current_ma, downstream_current_ma)
         rms_x = TelemetryProcessor.compute_rms_orbit(bpm_x)

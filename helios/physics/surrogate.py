@@ -4,8 +4,6 @@ Implements high-speed surrogate evaluation for sub-second pre-flight
 validation of proposed operational plans and setpoint batches.
 """
 
-from typing import Dict, List, Optional
-import numpy as np
 
 from helios.core.schemas import ValidationCheck, ValidationResult
 from helios.physics.engine import AnalyticDigitalTwinEngine
@@ -20,7 +18,7 @@ class FastPhysicsSurrogate:
         self.max_rms_envelope_mm = max_rms_envelope_mm
         self.digital_twin = AnalyticDigitalTwinEngine(create_baseline_mebt_lattice())
 
-    def predict(self, setpoints: Dict[str, float]) -> Dict[str, float]:
+    def predict(self, setpoints: dict[str, float]) -> dict[str, float]:
         """Predict downstream beam metrics given candidate magnet/RF setpoints."""
         traj = self.digital_twin.run_simulation(setpoints=setpoints)
         if not traj:
@@ -40,15 +38,16 @@ class FastPhysicsSurrogate:
 
     def validate_plan_setpoints(
         self,
-        setpoints: Dict[str, float],
+        setpoints: dict[str, float],
         agent_name: str = "HELIOS-Physics",
+        required_backend: str | None = None,
     ) -> ValidationResult:
         """Execute pre-flight digital twin verification and generate ValidationResult."""
         pred = self.predict(setpoints)
 
-        checks: List[ValidationCheck] = []
-        errors: List[str] = []
-        warnings: List[str] = []
+        checks: list[ValidationCheck] = []
+        errors: list[str] = []
+        warnings: list[str] = []
 
         # Check 1: Beam Loss Tolerance
         loss_val = pred["loss_pct"]
@@ -76,13 +75,25 @@ class FastPhysicsSurrogate:
         if not env_passed:
             errors.append(f"Beam envelope ({max_envelope:.2f} mm) violates vacuum chamber aperture stay-clear")
 
-        is_valid = loss_passed and env_passed
+        # Check 3: Backend Fidelity Check (R-06)
+        fidelity_passed = True
+        if required_backend and required_backend.lower() not in ("analytic", "surrogate"):
+            fidelity_passed = False
+            checks.append(ValidationCheck(
+                check_name="Backend Fidelity Verification",
+                passed=False,
+                message=f"Required high-fidelity backend '{required_backend}' fell back to analytic model",
+            ))
+            errors.append(f"High-fidelity simulation verification failed: fell back from {required_backend}")
+
+        is_valid = loss_passed and env_passed and fidelity_passed
 
         return ValidationResult(
             is_valid=is_valid,
             validator_agent=agent_name,
             checks=checks,
             projected_beam_loss=loss_val,
+            provenance="analytic",
             warnings=warnings,
             errors=errors,
         )

@@ -5,8 +5,8 @@ and transverse-field Ising formulations to solve hard combinatorial linac tuning
 (discrete steerer polarities, integer collimator staging) without classical local-trap freezing.
 """
 
-from typing import Dict, List, Any, Optional, Tuple, Callable
 import math
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -24,7 +24,7 @@ class QuantumAnnealingConfig(BaseModel):
 
 class QuantumAnnealingResult(BaseModel):
     """Optimization outcome from simulated quantum annealing."""
-    best_spin_configuration: List[int]
+    best_spin_configuration: list[int]
     best_energy: float
     total_sweeps: int
     trotter_slices: int

@@ -4,7 +4,6 @@ Enforces operational boundaries and human-in-the-loop (HITL) authorization
 protocols across the 5 autonomy levels defined in HELIOS AGENTS.md.
 """
 
-from typing import Tuple
 from helios.core.schemas import AutonomyLevel, ExecutionPlan, PlanState
 
 
@@ -31,7 +30,7 @@ class AutonomyPolicyEngine:
     def evaluate_plan_authorization(
         plan: ExecutionPlan,
         operator_confirmed: bool = False,
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check whether a plan is authorized to proceed to execution.
 
         Returns:

@@ -8,11 +8,11 @@ Implements:
 5. Dynamic collimator jaw optimization preserving core beam transmission above 99.5%.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass
+
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class PhaseSpaceReconstruction:
     """Reconstructed 2D phase space distribution (e.g., x-x' or y-y')."""
     grid_size: int
-    x_range_mm: Tuple[float, float]
-    xp_range_mrad: Tuple[float, float]
+    x_range_mm: tuple[float, float]
+    xp_range_mrad: tuple[float, float]
     density_matrix: np.ndarray  # 2D normalized probability density
     emittance_rms_mm_mrad: float
     alpha: float
@@ -50,7 +50,7 @@ class LostParticleMap3D:
     """Continuous 3D loss distribution along linac vacuum chamber."""
     z_positions_m: np.ndarray
     loss_density_w_per_m: np.ndarray
-    hotspots: List[Dict[str, float]]
+    hotspots: list[dict[str, float]]
     total_power_loss_w: float
 
 
@@ -59,8 +59,8 @@ class PhaseSpaceTomographyMENT:
 
     @staticmethod
     def reconstruct_2d_phase_space(
-        projections: List[np.ndarray],
-        projection_angles_rad: List[float],
+        projections: list[np.ndarray],
+        projection_angles_rad: list[float],
         grid_size: int = 64,
         x_span_mm: float = 20.0,
         xp_span_mrad: float = 10.0,

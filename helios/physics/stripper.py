@@ -4,12 +4,17 @@ Models heavy ion charge state redistribution, mean energy loss (dE/dx),
 multiple Coulomb scattering angular spread, and stripper foil lifetime degradation.
 """
 
-from dataclasses import dataclass
 import math
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
-from helios.physics.species import AMU_MEV, C_LIGHT, IonSpecies, MultiChargeBeam, MultiChargeComponent
+from helios.physics.species import (
+    C_LIGHT,
+    IonSpecies,
+    MultiChargeBeam,
+    MultiChargeComponent,
+)
 
 BOHR_VELOCITY_M_S = 2.18769126364e6  # Bohr velocity v0 = e^2 / (4*pi*eps0*hbar)
 
@@ -58,7 +63,7 @@ class StrippingOutcome:
 class StripperPhysicsEngine:
     """Calculates charge distribution, energy loss, and foil heating."""
 
-    def __init__(self, foil: Optional[StripperFoil] = None):
+    def __init__(self, foil: StripperFoil | None = None):
         self.foil = foil or StripperFoil(foil_id="STRIPPER_01")
 
     def estimate_equilibrium_charge(self, incoming: IonSpecies) -> float:

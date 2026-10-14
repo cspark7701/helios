@@ -4,9 +4,8 @@ Provides beamline element representations and linear transfer matrices (R-matric
 for particle tracking and beam envelope propagation.
 """
 
-from abc import ABC, abstractmethod
 import math
-from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -181,7 +180,7 @@ class RFCavity(Element):
         # Longitudinal focusing matrix element R_65: d(delta_p/p) / d(z)
         if self.voltage_kv > 0 and kinetic_energy_mev_u > 0:
             phi_rad = math.radians(self.phase_deg)
-            omega_rf = 2 * math.pi * self.frequency_mhz * 1e6
+            _omega_rf = 2 * math.pi * self.frequency_mhz * 1e6
             # Thin kick approximation
             R[5, 4] = - (self.voltage_kv * 1e3 * math.sin(phi_rad)) / (kinetic_energy_mev_u * 1e6)
         return R

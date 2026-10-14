@@ -5,8 +5,8 @@ dynamic thermal dissipation at 2.0 K sub-atmospheric bath and 4.5 K / 50 K shiel
 and coordinates cavity gradient setpoints against central cryoplant refrigeration capacity.
 """
 
-from typing import Dict, List, Any, Optional
 import math
+
 from pydantic import BaseModel, Field
 
 
@@ -40,7 +40,7 @@ class CryoBalancingResult(BaseModel):
     available_2K_capacity_W: float
     cooling_margin_percent: float
     status: str  # NOMINAL, CONSTRAINED, SURGE_RISK
-    adjusted_voltages_MV: Dict[str, float]
+    adjusted_voltages_MV: dict[str, float]
     total_linac_voltage_MV: float
 
 
@@ -68,7 +68,7 @@ class CryoplantThermodynamicOptimizer:
     def evaluate_cavity_thermal(
         self,
         cavity: CavityCryoState,
-        voltage_MV: Optional[float] = None
+        voltage_MV: float | None = None
     ) -> CavityCryoState:
         """Evaluate Q0 and heat load for given cavity and voltage setpoint."""
         v_mv = voltage_MV if voltage_MV is not None else cavity.voltage_MV
@@ -95,7 +95,7 @@ class CryoplantThermodynamicOptimizer:
 
     def balance_linac_heat_load(
         self,
-        cavities: List[CavityCryoState],
+        cavities: list[CavityCryoState],
         target_total_voltage_MV: float,
         cryoplant: CryoplantCapacity
     ) -> CryoBalancingResult:
@@ -110,7 +110,7 @@ class CryoplantThermodynamicOptimizer:
         evaluated_cavs = [self.evaluate_cavity_thermal(c, voltage_MV=v_per_cav) for c in cavities]
         tot_2k = sum(c.total_heat_load_W for c in evaluated_cavs)
 
-        adjusted_voltages: Dict[str, float] = {}
+        adjusted_voltages: dict[str, float] = {}
 
         if tot_2k <= safe_2k_limit:
             adjusted_voltages = {c.cavity_id: c.voltage_MV for c in evaluated_cavs}

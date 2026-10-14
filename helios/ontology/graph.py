@@ -5,10 +5,9 @@ Enables causal topological queries across the accelerator lattice:
 - Path traversal for localized fault mitigation and orbit response tracing.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Any, Dict, List, Optional
-import numpy as np
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +26,13 @@ class TopologyNeighbor:
 class BeamlineKnowledgeGraph:
     """Traverses linear accelerator topology graph for spatial reasoning."""
 
-    def __init__(self, elements: Optional[List[Dict[str, Any]]] = None):
-        self._elements: Dict[str, Dict[str, Any]] = {}
-        self._ordered_ids: List[str] = []
+    def __init__(self, elements: list[dict[str, Any]] | None = None):
+        self._elements: dict[str, dict[str, Any]] = {}
+        self._ordered_ids: list[str] = []
         if elements:
             self.load_elements(elements)
 
-    def load_elements(self, elements: List[Dict[str, Any]]) -> None:
+    def load_elements(self, elements: list[dict[str, Any]]) -> None:
         """Ingest elements and sort by beamline position z."""
         sorted_elems = sorted(elements, key=lambda e: float(e.get("z_position_m", 0.0)))
         self._elements.clear()
@@ -44,18 +43,18 @@ class BeamlineKnowledgeGraph:
             self._elements[elem_id] = e
             self._ordered_ids.append(elem_id)
 
-    def get_element(self, element_id: str) -> Optional[Dict[str, Any]]:
+    def get_element(self, element_id: str) -> dict[str, Any] | None:
         """Fetch element by identifier."""
         return self._elements.get(element_id)
 
     def find_nearest_neighbors(
         self,
         target_id: str,
-        target_type: Optional[str] = None,
+        target_type: str | None = None,
         max_neighbors: int = 2,
         upstream_only: bool = False,
         downstream_only: bool = False,
-    ) -> List[TopologyNeighbor]:
+    ) -> list[TopologyNeighbor]:
         """Query nearest elements matching type filter along the beamline."""
         if target_id not in self._elements:
             raise KeyError(f"Target element '{target_id}' not found in knowledge graph")
@@ -63,7 +62,7 @@ class BeamlineKnowledgeGraph:
         target = self._elements[target_id]
         target_z = float(target.get("z_position_m", 0.0))
 
-        candidates: List[TopologyNeighbor] = []
+        candidates: list[TopologyNeighbor] = []
 
         for eid, elem in self._elements.items():
             if eid == target_id:
@@ -98,7 +97,7 @@ class BeamlineKnowledgeGraph:
         candidates.sort(key=lambda n: n.distance_m)
         return candidates[:max_neighbors]
 
-    def find_affecting_steerers(self, bpm_id: str, max_steerers: int = 2) -> List[TopologyNeighbor]:
+    def find_affecting_steerers(self, bpm_id: str, max_steerers: int = 2) -> list[TopologyNeighbor]:
         """Find upstream steerers capable of correcting orbit at specified BPM."""
         return self.find_nearest_neighbors(
             target_id=bpm_id,

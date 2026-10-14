@@ -4,24 +4,26 @@ Executive coordinator implementing LBNL Osprey Plan-First closed-loop workflows,
 delegating tasks across Physics, Diagnostics, Tuner, Safety, and Control agents.
 """
 
-from datetime import datetime, timezone
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
-from helios.core.capabilities import CapabilityRegistry, get_default_registry
+from helios.core.capabilities import get_default_registry
 from helios.core.plan_engine import PlanArtifactStore, PlanLifecycleManager
 from helios.core.schemas import (
     AutonomyLevel,
     ExecutionPlan,
-    PlanState,
-    StepStatus,
-    TelemetrySnapshot,
 )
 from helios.diagnostics.anomaly import LinacAnomalyDetector
 from helios.diagnostics.telemetry import TelemetryProcessor
-from helios.interfaces.base import BaseControlInterface
-from helios.interfaces.channel_map import ChannelManager, create_baseline_mebt_channel_manager
+from helios.interfaces.base import (
+    BaseControlInterface,
+    ControlInterfaceError,
+    MissingReadbackError,
+)
+from helios.interfaces.channel_map import (
+    ChannelManager,
+    create_baseline_mebt_channel_manager,
+)
 from helios.interfaces.epics import MockControlInterface
 from helios.optimization.workflows import OrbitCorrectionWorkflow
 from helios.physics.lattice import Lattice, create_baseline_mebt_lattice
@@ -38,10 +40,10 @@ class HeliosOrchestrator:
 
     def __init__(
         self,
-        lattice: Optional[Lattice] = None,
-        channel_manager: Optional[ChannelManager] = None,
-        control_interface: Optional[BaseControlInterface] = None,
-        base_dir: Optional[Path] = None,
+        lattice: Lattice | None = None,
+        channel_manager: ChannelManager | None = None,
+        control_interface: BaseControlInterface | None = None,
+        base_dir: Path | None = None,
     ):
         self.lattice = lattice or create_baseline_mebt_lattice()
         self.channels = channel_manager or create_baseline_mebt_channel_manager()
@@ -61,8 +63,8 @@ class HeliosOrchestrator:
         self,
         plan_id: str,
         section: str = "MEBT",
-        steerers: Optional[List[str]] = None,
-        bpms: Optional[List[str]] = None,
+        steerers: list[str] | None = None,
+        bpms: list[str] | None = None,
         autonomy_level: AutonomyLevel = AutonomyLevel.BOUNDED_AUTONOMOUS,
         operator_confirmed: bool = True,
     ) -> ExecutionPlan:
@@ -86,11 +88,18 @@ class HeliosOrchestrator:
         bpm_x = {}
         bpm_y = {}
         for b in bpms:
-            dev = self.channels.get_device(section, b.replace(f"{section}_", ""))
-            pv_x = dev.readback_pv if dev else f"{section}:DIAG:{b}:X_POS"
-            pv_y = dev.metadata.get("pv_y") if dev else f"{section}:DIAG:{b}:Y_POS"
-            bpm_x[b] = float(self.control.get(pv_x) or 0.0)
-            bpm_y[b] = float(self.control.get(pv_y) or 0.0)
+            b_name = b.replace(f"{section}_", "")
+            dev = self.channels.get_device(section, b_name)
+            pv_x = dev.readback_pv if dev else f"{section}:DIAG:{b_name}:X_POS"
+            pv_y = (dev.metadata.get("pv_y") if dev and dev.metadata.get("pv_y") else f"{section}:DIAG:{b_name}:Y_POS")
+            val_x = self.control.get(pv_x)
+            val_y = self.control.get(pv_y)
+            if val_x is None or val_y is None:
+                raise MissingReadbackError(
+                    f"Diagnostics BPM telemetry unreadable on {b} ({pv_x}={val_x}, {pv_y}={val_y}). Aborting plan."
+                )
+            bpm_x[b] = float(val_x)
+            bpm_y[b] = float(val_y)
 
         # Step 2: Formulate Correction Plan (Tuner)
         plan, proposed_setpoints = self.orbit_workflow.build_orbit_correction_plan(
@@ -123,7 +132,11 @@ class HeliosOrchestrator:
         # Register rollback targets in plan
         for pv in proposed_setpoints.keys():
             current_sp = self.control.get(pv)
-            plan.rollback_targets[pv] = float(current_sp or 0.0)
+            if current_sp is None:
+                raise MissingReadbackError(
+                    f"Cannot capture rollback target for unreadable setpoint PV '{pv}'. Aborting plan."
+                )
+            plan.rollback_targets[pv] = float(current_sp)
 
         # Step 5: Save Active Execution Plan Artifact
         self.store.save_active(plan)
@@ -143,20 +156,21 @@ class HeliosOrchestrator:
         )
 
         try:
-            for step in plan.steps:
-                step.status = StepStatus.RUNNING
-                pv = step.parameters["pv"]
-                val = step.parameters["value"]
-                success = self.control.put(pv, val, wait=True)
-                if success:
-                    step.status = StepStatus.SUCCESS
-                    step.result = {"actuated_value": val}
-                else:
-                    step.status = StepStatus.FAILED
-                    raise RuntimeError(f"Caput failed on PV {pv}")
+            # Actuate hardware through Safety Gatekeeper
+            self.safety_gatekeeper.execute(plan)
 
             # Step 8: Post-actuation Telemetry Verification (Diagnostics)
-            post_bpm_x = {b: float(self.control.get(f"{section}:DIAG:{b}:X_POS") or 0.0) for b in bpms}
+            post_bpm_x = {}
+            for b in bpms:
+                b_name = b.replace(f"{section}_", "")
+                dev = self.channels.get_device(section, b_name)
+                post_pv = dev.readback_pv if dev else f"{section}:DIAG:{b_name}:X_POS"
+                raw_post = self.control.get(post_pv)
+                if raw_post is None:
+                    raise MissingReadbackError(
+                        f"Post-actuation diagnostic telemetry unreadable on BPM {b} ({post_pv}). Verification failed."
+                    )
+                post_bpm_x[b] = float(raw_post)
             post_rms = self.telemetry_processor.compute_rms_orbit(post_bpm_x)
             plan.provenance_metadata["post_rms_x_mm"] = post_rms
 
@@ -165,7 +179,7 @@ class HeliosOrchestrator:
             self.store.archive_completed(plan)
             logger.info(f"Plan {plan.plan_id} completed successfully and archived.")
 
-        except Exception as e:
+        except (ControlInterfaceError, RuntimeError, TimeoutError) as e:
             logger.error(f"Execution failed, initiating automatic rollback: {e}")
             plan_manager.abort_or_fail(str(e))
             self.rollback_controller.trigger_rollback()

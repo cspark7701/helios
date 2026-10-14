@@ -4,11 +4,10 @@ Maintains historical in-memory and file-based telemetry logs for provenance,
 post-mortem review, and trend analysis.
 """
 
-from collections import deque
-from datetime import datetime, timezone
 import json
+from collections import deque
 from pathlib import Path
-from typing import Dict, List, Optional
+
 import numpy as np
 
 from helios.core.schemas import TelemetrySnapshot
@@ -25,19 +24,19 @@ class TelemetryArchiver:
         """Append a telemetry snapshot to history buffer."""
         self._history.append(snapshot)
 
-    def get_latest(self) -> Optional[TelemetrySnapshot]:
+    def get_latest(self) -> TelemetrySnapshot | None:
         """Fetch the most recent snapshot."""
         if not self._history:
             return None
         return self._history[-1]
 
-    def get_recent(self, count: int = 10) -> List[TelemetrySnapshot]:
+    def get_recent(self, count: int = 10) -> list[TelemetrySnapshot]:
         """Fetch up to `count` recent snapshots."""
         return list(self._history)[-count:]
 
-    def compute_trend_stats(self, channel_name: str, plane: str = "x") -> Dict[str, float]:
+    def compute_trend_stats(self, channel_name: str, plane: str = "x") -> dict[str, float]:
         """Compute mean, std, and drift over recorded history for a BPM channel."""
-        vals: List[float] = []
+        vals: list[float] = []
         for snap in self._history:
             if plane == "x" and channel_name in snap.bpm_x:
                 vals.append(snap.bpm_x[channel_name])

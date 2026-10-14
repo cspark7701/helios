@@ -5,9 +5,10 @@ Filters and dispatches accelerator domain tools and agent capabilities
 based on operator task intent, keeping LLM prompts lean and context-efficient.
 """
 
-from enum import Enum
 import re
-from typing import Any, Callable, Dict, List, Optional, Set
+from enum import Enum
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -42,38 +43,38 @@ class Capability(BaseModel):
     domain: CapabilityDomain
     target_agent: str = Field(..., description="Agent responsible for executing this tool")
     risk_level: RiskLevel = RiskLevel.LOW
-    keywords: List[str] = Field(default_factory=list, description="Keywords for intent matching")
-    parameters_schema: Dict[str, Any] = Field(default_factory=dict)
-    handler: Optional[Any] = Field(None, exclude=True, description="Callable execution handler")
+    keywords: list[str] = Field(default_factory=list, description="Keywords for intent matching")
+    parameters_schema: dict[str, Any] = Field(default_factory=dict)
+    handler: Any | None = Field(default=None, exclude=True, description="Callable execution handler")
 
 
 class CapabilityRegistry:
     """Central registry and intent-driven dynamic classifier for agent capabilities."""
 
     def __init__(self):
-        self._capabilities: Dict[str, Capability] = {}
+        self._capabilities: dict[str, Capability] = {}
 
     def register(self, capability: Capability) -> None:
         """Register a new capability in the system."""
         self._capabilities[capability.name] = capability
 
-    def get(self, name: str) -> Optional[Capability]:
+    def get(self, name: str) -> Capability | None:
         """Fetch a capability by exact name."""
         return self._capabilities.get(name)
 
-    def list_all(self) -> List[Capability]:
+    def list_all(self) -> list[Capability]:
         """List all registered capabilities."""
         return list(self._capabilities.values())
 
-    def filter_by_domain(self, domain: CapabilityDomain) -> List[Capability]:
+    def filter_by_domain(self, domain: CapabilityDomain) -> list[Capability]:
         """Return capabilities matching a specific subsystem domain."""
         return [c for c in self._capabilities.values() if c.domain == domain]
 
-    def filter_by_agent(self, agent_role: str) -> List[Capability]:
+    def filter_by_agent(self, agent_role: str) -> list[Capability]:
         """Return capabilities assigned to a specific agent."""
         return [c for c in self._capabilities.values() if c.target_agent == agent_role]
 
-    def classify_intent(self, prompt: str, max_tools: int = 10) -> List[Capability]:
+    def classify_intent(self, prompt: str, max_tools: int = 10) -> list[Capability]:
         """Dynamic Capability Classification (Osprey Pattern).
 
         Analyzes the operator's natural language directive or task objective
@@ -82,7 +83,7 @@ class CapabilityRegistry:
         prompt_lower = prompt.lower()
         tokens = set(re.findall(r"\b\w+\b", prompt_lower))
 
-        scored: List[tuple[int, Capability]] = []
+        scored: list[tuple[int, Capability]] = []
 
         for cap in self._capabilities.values():
             score = 0

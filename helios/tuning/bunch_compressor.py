@@ -5,8 +5,8 @@ upstream RF cavity energy-chirp phase/voltage to compress heavy-ion bunch length
 enhance peak current before target or stripper delivery without non-linear filamentation.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 import math
+
 import numpy as np
 from pydantic import BaseModel, Field
 

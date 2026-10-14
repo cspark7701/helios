@@ -5,8 +5,6 @@ loss detection, and sub-5-microsecond dual-actuator beam abort logic (LEBT elect
 chopper + RFQ RF drive cutoff) to prevent prompt punch-through on thin niobium cryomodule walls.
 """
 
-from typing import Dict, List, Any, Optional
-import time
 from pydantic import BaseModel, Field
 
 
@@ -30,7 +28,7 @@ class FastAbortEvent(BaseModel):
     chopper_fire_latency_us: float
     rfq_cutoff_latency_us: float
     total_abort_latency_us: float
-    actuators_fired: List[str]
+    actuators_fired: list[str]
     cryomodule_puncture_prevented: bool
 
 

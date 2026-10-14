@@ -5,13 +5,13 @@ and collimators, calculates multi-isotope Bateman decay cooling curves, and enfo
 mandatory cool-down waiting time interlocks with cryptographic clearance tokens for tunnel access.
 """
 
-from typing import Dict, List, Any, Optional
+import hashlib
 import math
 import time
-import hashlib
-import json
+from typing import Any
+
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class IsotopeDecayInfo(BaseModel):
@@ -32,16 +32,16 @@ class RadiologicalCoolingAssessment(BaseModel):
     tunnel_access_threshold_uSv_hr: float = 25.0
     access_granted: bool
     required_additional_cooling_hours: float
-    dominant_isotopes: Dict[str, float]
-    clearance_token_sha256: Optional[str] = None
+    dominant_isotopes: dict[str, float]
+    clearance_token_sha256: str | None = None
 
 
 class RadiologicalActivationEngine:
     """Calculates residual linac activation and enforces personnel radiation protection interlocks."""
 
     # Standard activation isotopes in stainless steel / copper heavy-ion structures
-    CANONICAL_ISOTOPES = [
-        {"name": "Mn-56", "half_life_days": 0.107, "gamma_MeV": 0.85, "initial_pct": 55.0}, # 2.58 hr
+    CANONICAL_ISOTOPES: list[dict[str, Any]] = [
+        {"name": "Mn-56", "half_life_days": 0.107, "gamma_MeV": 0.85, "initial_pct": 55.0},  # 2.58 hr
         {"name": "Co-58", "half_life_days": 70.86, "gamma_MeV": 0.81, "initial_pct": 20.0},
         {"name": "Mn-54", "half_life_days": 312.2, "gamma_MeV": 0.84, "initial_pct": 15.0},
         {"name": "Co-60", "half_life_days": 1925.0, "gamma_MeV": 1.25, "initial_pct": 10.0},
@@ -62,15 +62,15 @@ class RadiologicalActivationEngine:
         # Rule of thumb for heavy-ion linac: ~15-25 uSv/hr per Watt of beam loss at 1m
         initial_dose_rate_uSv_hr = beam_loss_power_W * 18.5 * min(1.0, irradiation_hours / 24.0)
 
-        isotopes: List[IsotopeDecayInfo] = []
+        isotopes: list[IsotopeDecayInfo] = []
         for iso in self.CANONICAL_ISOTOPES:
-            t_half_hr = iso["half_life_days"] * 24.0
+            t_half_hr = float(iso["half_life_days"]) * 24.0
             lam_hr = math.log(2.0) / t_half_hr
-            init_dose = initial_dose_rate_uSv_hr * (iso["initial_pct"] / 100.0)
+            init_dose = initial_dose_rate_uSv_hr * (float(iso["initial_pct"]) / 100.0)
             isotopes.append(IsotopeDecayInfo(
-                isotope=iso["name"],
-                half_life_days=iso["half_life_days"],
-                gamma_energy_MeV=iso["gamma_MeV"],
+                isotope=str(iso["name"]),
+                half_life_days=float(iso["half_life_days"]),
+                gamma_energy_MeV=float(iso["gamma_MeV"]),
                 initial_dose_rate_uSv_hr=round(init_dose, 3),
                 decay_constant_per_hour=lam_hr
             ))
@@ -78,10 +78,10 @@ class RadiologicalActivationEngine:
         # Current dose rate after cooling_elapsed_hours
         current_dose = 0.0
         active_fractions = {}
-        for iso in isotopes:
-            dose_iso = iso.initial_dose_rate_uSv_hr * math.exp(-iso.decay_constant_per_hour * cooling_elapsed_hours)
+        for dec in isotopes:
+            dose_iso = dec.initial_dose_rate_uSv_hr * math.exp(-dec.decay_constant_per_hour * cooling_elapsed_hours)
             current_dose += dose_iso
-            active_fractions[iso.isotope] = round(dose_iso, 3)
+            active_fractions[dec.isotope] = round(dose_iso, 3)
 
         current_dose = round(current_dose, 2)
         access_granted = current_dose <= self.access_threshold

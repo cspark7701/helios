@@ -4,6 +4,8 @@
   "checks": [
     {"name": "CI contract and workflow validity", "args": ["scripts/ci_contract.py", "validate"]},
     {"name": "HELIOS core import boundary", "args": ["-c", "import helios; print(f'HELIOS core v{helios.__version__} verified')"]},
-    {"name": "HELIOS CLI entrypoint check", "args": ["-m", "helios.cli.main", "--help"]}
+    {"name": "HELIOS CLI entrypoint check", "args": ["-m", "helios.cli.main", "--help"]},
+    {"name": "Ruff code style and lint check", "args": ["-m", "ruff", "check", "helios"]},
+    {"name": "Mypy core safety/interfaces typing gate", "args": ["-m", "mypy", "helios/safety", "helios/interfaces", "helios/core"]}
   ]
 }

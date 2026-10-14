@@ -5,8 +5,8 @@ Provides high-throughput in-memory IPC synchronization between particle dynamics
 sharing and adaptive linac macro-pulse repetition rate clock locking (1 Hz to 100 Hz).
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 import time
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,7 @@ class CoSimFrameHeader(BaseModel):
     mean_energy_MeV_u: float
     total_beam_power_W: float
     total_loss_power_W: float
-    epics_pv_snapshot: Dict[str, float] = Field(default_factory=dict)
+    epics_pv_snapshot: dict[str, float] = Field(default_factory=dict)
 
 
 class ZeroCopyCoSimBridge:
@@ -28,10 +28,10 @@ class ZeroCopyCoSimBridge:
 
     def __init__(self, buffer_capacity: int = 8):
         self.capacity = buffer_capacity
-        self._headers: List[CoSimFrameHeader] = []
+        self._headers: list[CoSimFrameHeader] = []
         # Ring buffers storing NumPy memory arrays
-        self._bunch_buffers: List[np.ndarray] = []
-        self._loss_buffers: List[np.ndarray] = []
+        self._bunch_buffers: list[np.ndarray] = []
+        self._loss_buffers: list[np.ndarray] = []
         self._frame_counter = 0
         self._sim_clock_s = 0.0
 
@@ -40,7 +40,7 @@ class ZeroCopyCoSimBridge:
         rep_rate_Hz: float,
         particles_6d: np.ndarray,
         loss_density_W_m: np.ndarray,
-        epics_pvs: Optional[Dict[str, float]] = None
+        epics_pvs: dict[str, float] | None = None
     ) -> CoSimFrameHeader:
         """Publish macroparticle array (N, 6) and loss map with zero-copy view."""
         self._frame_counter += 1
@@ -77,7 +77,7 @@ class ZeroCopyCoSimBridge:
 
         return header
 
-    def consume_latest_frame(self) -> Optional[Tuple[CoSimFrameHeader, np.ndarray, np.ndarray]]:
+    def consume_latest_frame(self) -> tuple[CoSimFrameHeader, np.ndarray, np.ndarray] | None:
         """Retrieve most recent synchronized frame, bunch array, and loss map."""
         if not self._headers:
             return None

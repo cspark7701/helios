@@ -4,11 +4,11 @@ Provides cryptographic SHA-256 verification and statistical discrepancy certific
 of active heavy-ion linac machine states against authorized Golden Run configurations.
 """
 
-from typing import Dict, List, Any, Optional
 import hashlib
 import json
 import time
 from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -38,17 +38,17 @@ class GoldenRunCertificate(BaseModel):
     compliance_score_percent: float
     sha256_fingerprint: str
     checked_parameters_count: int
-    violating_parameters: Dict[str, Dict[str, float]]
+    violating_parameters: dict[str, dict[str, float]]
     certification_authority: str = "HELIOS-Safety-Authority"
 
 
 class GoldenRunCertificationEngine:
     """Certifies operational accelerator setpoints against baseline golden configurations."""
 
-    def __init__(self, golden_database: Optional[Dict[str, List[GoldenRunParameter]]] = None):
+    def __init__(self, golden_database: dict[str, list[GoldenRunParameter]] | None = None):
         self.golden_db = golden_database or {}
 
-    def register_golden_run(self, run_name: str, parameters: List[GoldenRunParameter]) -> None:
+    def register_golden_run(self, run_name: str, parameters: list[GoldenRunParameter]) -> None:
         """Register a golden baseline run configuration."""
         self.golden_db[run_name] = parameters
 
@@ -57,14 +57,14 @@ class GoldenRunCertificationEngine:
         run_name: str,
         species: str,
         target_energy_MeV_u: float,
-        live_pv_values: Dict[str, float]
+        live_pv_values: dict[str, float]
     ) -> GoldenRunCertificate:
         """Evaluate live PV readings against registered golden baseline."""
         if run_name not in self.golden_db:
             raise KeyError(f"Golden run '{run_name}' is not registered.")
 
         baseline_params = self.golden_db[run_name]
-        violating: Dict[str, Dict[str, float]] = {}
+        violating: dict[str, dict[str, float]] = {}
         passed_count = 0
 
         for p in baseline_params:

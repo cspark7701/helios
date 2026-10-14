@@ -6,9 +6,9 @@ Implements:
 3. Aperture loss detection and energy gain tracking across 3D field maps.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 from helios.physics.fieldmaps import FieldMap3DInterpolator

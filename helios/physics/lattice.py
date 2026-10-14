@@ -4,11 +4,9 @@ Provides multi-element linac lattice tracking, beam envelope evolution,
 and orbit response matrix (ORM) generation for closed-loop steering.
 """
 
-from dataclasses import dataclass, field
-import json
 import math
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 from helios.physics.elements import (
@@ -33,6 +31,7 @@ class TrajectoryPoint:
     sigma_x_mm: float
     sigma_y_mm: float
     loss_fraction: float = 0.0
+    provenance: str = "analytic"
 
 
 class Lattice:
@@ -44,13 +43,13 @@ class Lattice:
         kinetic_energy_mev_u: float = 0.5,
         mass_amu: float = 1.0,
         charge_q: float = 1.0,
-        elements: Optional[List[Element]] = None,
+        elements: list[Element] | None = None,
     ):
         self.name = name
         self.kinetic_energy_mev_u = kinetic_energy_mev_u
         self.mass_amu = mass_amu
         self.charge_q = charge_q
-        self.elements: List[Element] = []
+        self.elements: list[Element] = []
         if elements:
             for elem in elements:
                 self.add_element(elem)
@@ -66,7 +65,7 @@ class Lattice:
         """Total physical length of the lattice in meters."""
         return sum(e.length for e in self.elements)
 
-    def get_element(self, name: str) -> Optional[Element]:
+    def get_element(self, name: str) -> Element | None:
         """Find element by name."""
         for e in self.elements:
             if e.name == name:
@@ -81,7 +80,7 @@ class Lattice:
         emittance_y_mm_mrad: float = 0.3,
         initial_x_mm: float = 0.0,
         initial_y_mm: float = 0.0,
-    ) -> List[TrajectoryPoint]:
+    ) -> list[TrajectoryPoint]:
         """Track beam centroid and RMS envelope (sigma matrix) through the lattice."""
         # 6x1 Centroid state vector in [m, rad, m, rad, m, 1]
         x_vec = np.array([
@@ -106,7 +105,7 @@ class Lattice:
         Sigma[4, 4] = 1e-6
         Sigma[5, 5] = 1e-6
 
-        trajectory: List[TrajectoryPoint] = []
+        trajectory: list[TrajectoryPoint] = []
         cumulative_s = 0.0
 
         # Record initial point
@@ -173,10 +172,10 @@ class Lattice:
 
     def compute_orbit_response_matrix(
         self,
-        steerer_names: List[str],
-        bpm_names: List[str],
+        steerer_names: list[str],
+        bpm_names: list[str],
         kick_mrad: float = 0.5,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Compute horizontal and vertical Orbit Response Matrices (ORM) using perturbation tracking.
 
         Returns:

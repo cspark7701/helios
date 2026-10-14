@@ -4,23 +4,25 @@ Translates high-level natural language control room directives into structured,
 pre-validated Plan-First ExecutionPlans using dynamic capability injection.
 """
 
-from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 import uuid
+from typing import Any
 
-from helios.core.capabilities import Capability, CapabilityRegistry, get_default_registry
+from helios.core.capabilities import (
+    Capability,
+    CapabilityRegistry,
+    get_default_registry,
+)
 from helios.core.llm import BaseLLMClient, LLMMessage, ToolCall, create_llm_client
-from helios.core.plan_engine import PlanLifecycleManager
 from helios.core.schemas import (
     AutonomyLevel,
     ExecutionPlan,
-    PlanState,
     PlanStep,
-    StepStatus,
-    ValidationResult,
 )
-from helios.interfaces.channel_map import ChannelManager, create_baseline_mebt_channel_manager
+from helios.interfaces.channel_map import (
+    ChannelManager,
+    create_baseline_mebt_channel_manager,
+)
 from helios.optimization.workflows import OrbitCorrectionWorkflow, RFPhaseScanWorkflow
 from helios.physics.lattice import Lattice, create_baseline_mebt_lattice
 from helios.physics.surrogate import FastPhysicsSurrogate
@@ -34,10 +36,10 @@ class NaturalLanguagePlanner:
 
     def __init__(
         self,
-        llm_client: Optional[BaseLLMClient] = None,
-        registry: Optional[CapabilityRegistry] = None,
-        channel_manager: Optional[ChannelManager] = None,
-        lattice: Optional[Lattice] = None,
+        llm_client: BaseLLMClient | None = None,
+        registry: CapabilityRegistry | None = None,
+        channel_manager: ChannelManager | None = None,
+        lattice: Lattice | None = None,
     ):
         self.llm = llm_client or create_llm_client(provider="mock")
         self.registry = registry or get_default_registry()
@@ -51,9 +53,9 @@ class NaturalLanguagePlanner:
     def formulate_plan_from_prompt(
         self,
         user_prompt: str,
-        plan_id: Optional[str] = None,
+        plan_id: str | None = None,
         autonomy_level: AutonomyLevel = AutonomyLevel.SUPERVISED,
-    ) -> Tuple[ExecutionPlan, str]:
+    ) -> tuple[ExecutionPlan, str]:
         """Convert natural language directive into a pre-validated ExecutionPlan.
 
         Returns:
@@ -103,7 +105,7 @@ class NaturalLanguagePlanner:
         explanation = response.content or f"Generated execution plan '{plan.title}'."
         return plan, explanation
 
-    def _build_tool_schemas(self, capabilities: List[Capability]) -> List[Dict[str, Any]]:
+    def _build_tool_schemas(self, capabilities: list[Capability]) -> list[dict[str, Any]]:
         """Convert Capability objects into OpenAI-compatible tool JSON schemas."""
         tools = []
         for cap in capabilities:
@@ -158,7 +160,7 @@ class NaturalLanguagePlanner:
             return ExecutionPlan(
                 plan_id=plan_id,
                 title=f"{cav_name} RF Phase Calibration Scan",
-                objective=f"Scan RF phase across grid to determine synchronous phase angle",
+                objective="Scan RF phase across grid to determine synchronous phase angle",
                 autonomy_level=autonomy_level,
                 steps=steps,
             )

@@ -5,10 +5,9 @@ cold-bore linac sections, models heavy-ion atomic charge exchange cross-sections
 (stripping and electron capture), and evaluates ion-induced desorption vacuum runaway margins.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
 import math
-import numpy as np
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 
 class VacuumSegment(BaseModel):

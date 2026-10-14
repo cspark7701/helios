@@ -6,11 +6,9 @@ Implements:
 3. Fast lattice transitions between distinct target energy/species requirements.
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
 import logging
-from typing import Dict, List, Optional, Tuple
-import numpy as np
+from dataclasses import dataclass
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +26,7 @@ class SwitchyardRouteConfig:
     target_vault: TargetVaultID
     switching_dipole_current_a: float
     septum_voltage_kv: float
-    corrector_kicks_mrad: Dict[str, float]
+    corrector_kicks_mrad: dict[str, float]
     active_beamline_length_m: float
     required_energy_mev_u: float
     interlocks_verified: bool = True
@@ -43,7 +41,7 @@ class RouteTransitionOutcome:
     transition_time_s: float
     max_orbit_deviation_mm: float
     losses_projected_w: float
-    actuated_pvs: Dict[str, float]
+    actuated_pvs: dict[str, float]
 
 
 class SwitchyardBeamRouter:
@@ -51,7 +49,7 @@ class SwitchyardBeamRouter:
 
     def __init__(self):
         # Target definitions with baseline dipole currents (A)
-        self._routes: Dict[TargetVaultID, SwitchyardRouteConfig] = {
+        self._routes: dict[TargetVaultID, SwitchyardRouteConfig] = {
             TargetVaultID.BEAM_DUMP: SwitchyardRouteConfig(
                 target_vault=TargetVaultID.BEAM_DUMP,
                 switching_dipole_current_a=0.0,  # Straight ahead
@@ -99,7 +97,7 @@ class SwitchyardBeamRouter:
         delta_i = abs(target_cfg.switching_dipole_current_a - current_cfg.switching_dipole_current_a)
         ramp_time = max(1.0, delta_i / max_slew_rate_a_s)
 
-        actuations: Dict[str, float] = {
+        actuations: dict[str, float] = {
             "HEBT:PS_DIPOLE_SW:I_Set": target_cfg.switching_dipole_current_a,
             "HEBT:SEPTUM01:V_Set": target_cfg.septum_voltage_kv,
         }

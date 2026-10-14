@@ -5,10 +5,9 @@ accelerator lattice elements, enabling analytical gradient backpropagation for
 rapid parameter recovery and physics-informed inverse problem solving.
 """
 
-from typing import List, Dict, Any, Optional, Tuple
 import torch
 import torch.nn as nn
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DifferentiableElement(nn.Module):
@@ -99,7 +98,7 @@ class DifferentiableRFCavity(DifferentiableElement):
 
 class DifferentiableLattice(nn.Module):
     """Complete differentiable beamline lattice."""
-    def __init__(self, elements: List[DifferentiableElement]):
+    def __init__(self, elements: list[DifferentiableElement]):
         super().__init__()
         self.elements = nn.ModuleList(elements)
 
@@ -110,7 +109,7 @@ class DifferentiableLattice(nn.Module):
             state = elem(state)
         return state
 
-    def get_tunable_parameters(self) -> Dict[str, torch.Tensor]:
+    def get_tunable_parameters(self) -> dict[str, torch.Tensor]:
         """Return dict of all learnable parameters with their element names."""
         params = {}
         for elem in self.elements:
@@ -125,8 +124,8 @@ class InverseSolverResult(BaseModel):
     converged: bool
     iterations: int
     final_loss: float
-    recovered_parameters: Dict[str, float]
-    parameter_errors: Dict[str, float]
+    recovered_parameters: dict[str, float]
+    parameter_errors: dict[str, float]
 
 
 class InverseLatticeSolver:
@@ -141,7 +140,7 @@ class InverseLatticeSolver:
         self,
         initial_bunch: torch.Tensor,
         target_bunch: torch.Tensor,
-        ground_truth: Optional[Dict[str, float]] = None,
+        ground_truth: dict[str, float] | None = None,
         loss_tolerance: float = 1e-6
     ) -> InverseSolverResult:
         """Recover perturbed lattice parameters matching target bunch measurements."""

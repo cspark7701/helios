@@ -4,9 +4,8 @@ Implements Actor-Critic policy architectures in PyTorch for autonomous closed-lo
 accelerator trajectory tuning, space charge compensation, and multi-objective control.
 """
 
-from dataclasses import dataclass
 import logging
-from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 
 try:
@@ -47,7 +46,7 @@ if HAVE_TORCH:
             # Critic head (state value V(s))
             self.critic = nn.Linear(hidden_dim, 1)
 
-        def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        def forward(self, obs: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
             features = self.shared(obs)
             mean = self.actor_mean(features)
             value = self.critic(features)

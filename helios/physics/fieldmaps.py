@@ -6,10 +6,9 @@ Implements:
 3. Scalable field scaling factors for cavity voltage and magnet excitation.
 """
 
-from dataclasses import dataclass
 import logging
-from pathlib import Path
-from typing import Optional, Tuple, Union
+from dataclasses import dataclass
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -102,7 +101,7 @@ class FieldMap3DInterpolator:
         scale_e: float = 1.0,
         scale_b: float = 1.0,
         phase_offset_rad: float = 0.0,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Interpolate 3D E [V/m] and B [T] vectors at spatial coordinate (x, y, z)."""
         # Boundary check
         if not (self.x_min <= x <= self.x_max and self.y_min <= y <= self.y_max and self.z_min <= z <= self.z_max):

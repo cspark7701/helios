@@ -5,9 +5,9 @@ uptime, active golden lattice baselines, and executes 50 ms pre-trip circular bu
 to automatically isolate root-cause trip initiators across BPM, BLM, and RF subsystems.
 """
 
-from typing import Dict, List, Any, Optional
 import time
 from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -52,7 +52,7 @@ class TripForensicsReport(BaseModel):
     root_cause: TripRootCause
     primary_initiator_subsystem: str
     primary_event_offset_ms: float
-    sequence_of_events: List[str]
+    sequence_of_events: list[str]
     max_bpm_excursion_mm: float
     peak_blm_radiation_Gy_s: float
     peak_rf_reflection_kW: float
@@ -105,7 +105,7 @@ class LinacLogbookForensicsEngine:
     def analyze_trip_circular_buffer(
         self,
         trip_id: str,
-        buffer_samples: List[CircularBufferSample]
+        buffer_samples: list[CircularBufferSample]
     ) -> TripForensicsReport:
         """Parse pre-trip timeline (-50 ms to 0 ms) and isolate initial failure source."""
         if not buffer_samples:
@@ -114,7 +114,7 @@ class LinacLogbookForensicsEngine:
         max_bpm = max(s.bpm_rms_error_mm for s in buffer_samples)
         max_blm = max(s.blm_total_dose_rate_Gy_s for s in buffer_samples)
         max_rf_refl = max(s.rf_reflected_power_kW for s in buffer_samples)
-        max_vac = max(s.vacuum_pressure_mbar for s in buffer_samples)
+        _max_vac = max(s.vacuum_pressure_mbar for s in buffer_samples)
 
         # Find earliest anomaly threshold crossing
         rf_anom_time = None

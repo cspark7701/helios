@@ -62,21 +62,51 @@ def test_dashboard_physics_plots_endpoints(client):
     assert "trip_threshold_w" in d_blm
 
 
+def get_auth_headers(client, role="ADMIN", username="test_operator"):
+    resp = client.post("/api/auth/token", json={"username": username, "role": role})
+    token = resp.json()["token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_dashboard_plan_approval_and_panic(client):
-    """Verify Human-in-the-Loop plan approval and emergency panic trigger."""
-    # List plans
+    """Verify Human-in-the-Loop plan approval and emergency panic trigger with RBAC permissions."""
+    # List plans (public telemetry/view)
     resp_plans = client.get("/api/plans")
     assert resp_plans.status_code == 200
     plans = resp_plans.json()
     assert len(plans) >= 1
 
-    # Approve plan
-    resp_appr = client.post("/api/plans/00001/approve")
+    # 1. Unauthenticated approval fails with 401
+    resp_unauth = client.post("/api/plans/00001/approve")
+    assert resp_unauth.status_code == 401
+
+    # 2. Viewer attempting approval fails with 403 Forbidden
+    viewer_headers = get_auth_headers(client, role="VIEWER")
+    resp_viewer = client.post("/api/plans/00001/approve", headers=viewer_headers)
+    assert resp_viewer.status_code == 403
+
+    # 3. Physicist / Operator approval succeeds
+    phys_headers = get_auth_headers(client, role="PHYSICIST")
+    resp_appr = client.post("/api/plans/00001/approve", headers=phys_headers)
     assert resp_appr.status_code == 200
     assert resp_appr.json()["status"] == "APPROVED"
 
-    # Emergency panic
-    resp_panic = client.post("/api/emergency/panic")
+    # 4. Plan rejection
+    resp_rej = client.post("/api/plans/00001/reject", headers=phys_headers)
+    assert resp_rej.status_code == 200
+    assert resp_rej.json()["status"] == "REJECTED"
+
+    # 5. Unauthenticated emergency panic fails with 401
+    resp_panic_unauth = client.post("/api/emergency/panic")
+    assert resp_panic_unauth.status_code == 401
+
+    # 6. Physicist attempting panic fails with 403 (requires PANIC_SHUTDOWN permission)
+    resp_panic_phys = client.post("/api/emergency/panic", headers=phys_headers)
+    assert resp_panic_phys.status_code == 403
+
+    # 7. Safety officer / Admin emergency panic succeeds
+    safety_headers = get_auth_headers(client, role="SAFETY_OFFICER")
+    resp_panic = client.post("/api/emergency/panic", headers=safety_headers)
     assert resp_panic.status_code == 200
     assert resp_panic.json()["status"] == "PANIC_EXECUTED"
     assert resp_panic.json()["success"] is True
@@ -114,13 +144,26 @@ def test_plot_generation_functions():
 
 
 def test_dashboard_orbit_tuning_endpoint(client):
-    """Verify orbit tuning API endpoint executes and returns steerer currents and monitors."""
-    resp = client.post("/api/tune/orbit", json={
+    """Verify orbit tuning API endpoint executes with RBAC checks and returns steerer currents and monitors."""
+    payload = {
         "section": "LEBT",
         "engine": "analytic",
         "conversion_factor": 0.168,
         "current_increment": 0.05,
-    })
+    }
+
+    # 1. Unauthenticated call fails with 401
+    resp_unauth = client.post("/api/tune/orbit", json=payload)
+    assert resp_unauth.status_code == 401
+
+    # 2. Viewer call fails with 403 Forbidden
+    viewer_headers = get_auth_headers(client, role="VIEWER")
+    resp_viewer = client.post("/api/tune/orbit", json=payload, headers=viewer_headers)
+    assert resp_viewer.status_code == 403
+
+    # 3. Physicist call succeeds
+    phys_headers = get_auth_headers(client, role="PHYSICIST")
+    resp = client.post("/api/tune/orbit", json=payload, headers=phys_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert data["section"] == "LEBT"

@@ -1,6 +1,6 @@
 """HELIOS Safety Module: Limit validation, interlock monitoring, and rollback engine."""
 
-from helios.safety.gatekeeper import SafetyGatekeeper
+from helios.safety.gatekeeper import GuardedControlInterface, SafetyGatekeeper, SafetyInterlockError
 from helios.safety.mps import (
     LatencyBudget,
     MPSInterlockChannel,
@@ -19,6 +19,7 @@ from helios.safety.srf_protection import (
 
 __all__ = [
     "AutonomyPolicyEngine",
+    "GuardedControlInterface",
     "LatencyBudget",
     "MPSInterlockChannel",
     "MPSManager",
@@ -28,4 +29,5 @@ __all__ = [
     "SRFCavityLimits",
     "SRFProtectionMonitor",
     "SafetyGatekeeper",
+    "SafetyInterlockError",
 ]

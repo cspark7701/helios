@@ -5,10 +5,8 @@ optimal motorized girder mechanical adjustments (cams/jacks) to realign multi-ma
 girders and minimize required orbit corrector currents.
 """
 
-from typing import Dict, List, Any, Optional, Tuple
-import math
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class MagnetFiducialMeasurement(BaseModel):
@@ -45,8 +43,8 @@ class LaserTrackerSurveyAnalyzer:
 
     @staticmethod
     def evaluate_misalignments(
-        measurements: List[MagnetFiducialMeasurement]
-    ) -> Dict[str, Dict[str, float]]:
+        measurements: list[MagnetFiducialMeasurement]
+    ) -> dict[str, dict[str, float]]:
         """Calculate deviations relative to ideal theoretical linac beam axis."""
         deviations = {}
         for m in measurements:
@@ -66,7 +64,7 @@ class LaserTrackerSurveyAnalyzer:
     def optimize_girder_realignment(
         self,
         girder_id: str,
-        girder_elements: List[MagnetFiducialMeasurement]
+        girder_elements: list[MagnetFiducialMeasurement]
     ) -> GirderMoverAdjustment:
         """Find rigid-body displacement (dx, dy, pitch, yaw) minimizing RMS element offsets."""
         if not girder_elements:

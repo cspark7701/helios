@@ -5,9 +5,9 @@ focusing factor B, acceleration parameter A10) and tracks heavy-ion bunching and
 acceleration through Radial Matching, Shaper, Gentle Buncher, and Accelerator sections.
 """
 
-from typing import List, Dict, Any, Optional
-from enum import Enum
 import math
+from enum import Enum
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -64,9 +64,9 @@ class RFQVaneDynamicsEngine:
         self.params = params
         self.wavelength_m = 299792458.0 / (params.rf_frequency_MHz * 1e6)
 
-    def generate_cells(self, total_cells: int = 150) -> List[RFQCell]:
+    def generate_cells(self, total_cells: int = 150) -> list[RFQCell]:
         """Generate cell-by-cell vane modulation profile across four standard sections."""
-        cells: List[RFQCell] = []
+        cells: list[RFQCell] = []
         z = 0.0
         energy = self.params.input_energy_keV_u
 
@@ -141,7 +141,7 @@ class RFQVaneDynamicsEngine:
 
         return cells
 
-    def simulate(self, cells: List[RFQCell], n_macroparticles: int = 1000) -> RFQSimulationSummary:
+    def simulate(self, cells: list[RFQCell], n_macroparticles: int = 1000) -> RFQSimulationSummary:
         """Track macroparticles through the generated cells to evaluate transmission and bunching."""
         np.random.seed(42)
         # Generate initial DC input bunch

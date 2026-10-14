@@ -4,9 +4,9 @@ Provides relativistic kinematics, magnetic rigidity (Brho) calculations,
 and composite multi-charge state beam tracking for heavy ion linear accelerators.
 """
 
-from dataclasses import dataclass, field
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+
 import numpy as np
 
 # Physical constants
@@ -77,7 +77,7 @@ class MultiChargeBeam:
         self,
         name: str,
         total_current_ma: float,
-        components: List[MultiChargeComponent],
+        components: list[MultiChargeComponent],
     ):
         self.name = name
         self.total_current_ma = total_current_ma
@@ -113,7 +113,7 @@ class MultiChargeBeam:
         dispersion_x_m: float = 0.0,
         baseline_sigma_x_mm: float = 1.5,
         baseline_sigma_y_mm: float = 1.5,
-    ) -> Tuple[float, float, float, float]:
+    ) -> tuple[float, float, float, float]:
         """Calculate effective multi-charge centroid and envelope with rigidity dispersion.
 
         Returns:
@@ -155,7 +155,7 @@ class MultiChargeBeam:
 def create_uranium_multicharge_beam(
     energy_mev_u: float = 0.5,
     total_current_ma: float = 2.0,
-    charge_weights: Optional[Dict[int, float]] = None,
+    charge_weights: dict[int, float] | None = None,
 ) -> MultiChargeBeam:
     """Factory for Uranium-238 multi-charge state beam (e.g. U33+/U34+)."""
     weights = charge_weights or {33: 0.5, 34: 0.5}
@@ -175,7 +175,7 @@ def create_uranium_multicharge_beam(
 def create_xenon_multicharge_beam(
     energy_mev_u: float = 0.5,
     total_current_ma: float = 5.0,
-    charge_weights: Optional[Dict[int, float]] = None,
+    charge_weights: dict[int, float] | None = None,
 ) -> MultiChargeBeam:
     """Factory for Xenon-124 / 136 multi-charge state beam."""
     weights = charge_weights or {25: 0.2, 26: 0.6, 27: 0.2}

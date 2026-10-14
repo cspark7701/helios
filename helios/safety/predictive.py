@@ -5,8 +5,8 @@ and superconducting magnets (helium bath temperature, pressure, RF reflected pow
 to forecast impending thermal quenches 100-500 ms before hardware trip.
 """
 
-from typing import List, Dict, Any, Optional
 from enum import Enum
+
 import numpy as np
 from pydantic import BaseModel, Field
 
@@ -33,7 +33,7 @@ class QuenchPredictionResult(BaseModel):
     cavity_id: str
     risk_level: QuenchRiskLevel
     quench_probability: float = Field(..., ge=0.0, le=1.0)
-    estimated_time_to_quench_ms: Optional[float] = None
+    estimated_time_to_quench_ms: float | None = None
     temperature_drift_rate_K_per_s: float
     reflected_power_ratio: float
     recommended_action: str
@@ -56,7 +56,7 @@ class PredictiveQuenchInterlock:
 
     def evaluate_telemetry_window(
         self,
-        telemetry_window: List[CryomoduleTelemetry]
+        telemetry_window: list[CryomoduleTelemetry]
     ) -> QuenchPredictionResult:
         """Analyze a sliding window of cryomodule telemetry samples (typically 50-200 ms)."""
         if not telemetry_window:
