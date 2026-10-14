@@ -3,6 +3,8 @@
 import time
 
 import numpy as np
+import pytest
+
 
 from helios.physics.twin import (
     FacilityTwin,
@@ -89,6 +91,7 @@ def test_twin_preflight_verifier_sub_2ms_and_ood():
 
 def test_linac_surrogate_gym_env():
     """Verify Gymnasium adapter wrapping FacilityTwin."""
+    pytest.importorskip("gymnasium")
     twin = get_facility_twin(facility="mock", section="MEBT")
     env = LinacSurrogateGymEnv(twin=twin, max_steps=20)
 
@@ -112,6 +115,7 @@ def test_linac_surrogate_gym_env():
 
 def test_twin_neural_mpc_optimization():
     """Verify autograd gradient descent through surrogate model."""
+    pytest.importorskip("torch")
     twin = get_facility_twin(facility="mock", section="MEBT")
     mpc = TwinNeuralMPC(twin=twin, horizon=3, num_iterations=15, learning_rate=0.1)
 

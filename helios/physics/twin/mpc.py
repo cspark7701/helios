@@ -6,9 +6,10 @@ from typing import Any
 
 try:
     import torch
-except ImportError as e:
-    from helios._optional import OptionalDependencyError
-    raise OptionalDependencyError("torch", extra="ml", feature="TwinNeuralMPC") from e
+    _HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore[assignment]
+    _HAS_TORCH = False
 
 from helios.physics.twin.protocol import FacilityTwin
 
@@ -29,6 +30,9 @@ class TwinNeuralMPC:
         weight_slew_rate: float = 0.05,
         device: str = "cpu",
     ):
+        if not _HAS_TORCH:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="TwinNeuralMPC")
         self.twin = twin
         self.horizon = horizon
         self.num_iterations = num_iterations

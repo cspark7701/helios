@@ -12,18 +12,27 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-except ImportError as e:
-    from helios._optional import OptionalDependencyError
-    raise OptionalDependencyError("torch", extra="ml", feature="Reinforcement learning agent") from e
+    _HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore[assignment]
+    nn = None  # type: ignore[assignment]
+    optim = None  # type: ignore[assignment]
+    _HAS_TORCH = False
+
+_ModuleBase = nn.Module if _HAS_TORCH and nn is not None else object
 
 logger = logging.getLogger(__name__)
 
 
-class ActorCriticNetwork(nn.Module):
+class ActorCriticNetwork(_ModuleBase):  # type: ignore[misc, valid-type]
     """Continuous Actor-Critic network with Gaussian action distributions."""
 
     def __init__(self, obs_dim: int, action_dim: int, hidden_dim: int = 64):
+        if not _HAS_TORCH or nn is None:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="Reinforcement learning agent")
         super().__init__()
+
         # Shared feature extractor
         self.shared = nn.Sequential(
             nn.Linear(obs_dim, hidden_dim),
@@ -61,6 +70,9 @@ class LinacRLAgent:
         learning_rate: float = 3e-4,
         device: str = "cpu",
     ):
+        if not _HAS_TORCH:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="Reinforcement learning agent")
         self.obs_dim = obs_dim
         self.action_dim = action_dim
         self.device = device

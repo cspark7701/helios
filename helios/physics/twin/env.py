@@ -4,17 +4,21 @@ from typing import Any
 
 import numpy as np
 
+from helios.physics.twin.protocol import FacilityTwin
+
 try:
     import gymnasium as gym
     from gymnasium import spaces
-except ImportError as e:
-    from helios._optional import OptionalDependencyError
-    raise OptionalDependencyError("gymnasium", extra="rl", feature="LinacSurrogateGymEnv") from e
+    _HAS_GYM = True
+except ImportError:
+    gym = None  # type: ignore[assignment]
+    spaces = None  # type: ignore[assignment]
+    _HAS_GYM = False
 
-from helios.physics.twin.protocol import FacilityTwin
+_EnvBase = gym.Env if _HAS_GYM and gym is not None else object
 
 
-class LinacSurrogateGymEnv(gym.Env):
+class LinacSurrogateGymEnv(_EnvBase):  # type: ignore[misc, valid-type]
     """Fast Gymnasium training environment backed by a FacilityTwin surrogate model."""
 
     metadata = {"render_modes": ["human"]}
@@ -27,6 +31,9 @@ class LinacSurrogateGymEnv(gym.Env):
         current_increment_a: float = 0.05,
         jitter_std: float = 0.01,
     ):
+        if not _HAS_GYM:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("gymnasium", extra="rl", feature="LinacSurrogateGymEnv")
         super().__init__()
         self.twin = twin
         self.max_steps = max_steps

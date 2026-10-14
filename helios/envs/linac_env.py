@@ -8,18 +8,23 @@ from typing import Any
 
 import numpy as np
 
-try:
-    import gymnasium as gym
-    from gymnasium import spaces
-except ImportError as e:
-    from helios._optional import OptionalDependencyError
-    raise OptionalDependencyError("gymnasium", extra="rl", feature="Linac Gym Environment") from e
-
 from helios.physics.engine import AnalyticDigitalTwinEngine
 from helios.physics.lattice import Lattice, create_baseline_mebt_lattice
 
+try:
+    import gymnasium as gym
+    from gymnasium import spaces
+    _HAS_GYM = True
+except ImportError:
+    gym = None  # type: ignore[assignment]
+    spaces = None  # type: ignore[assignment]
+    _HAS_GYM = False
 
-class LinacGymEnv(gym.Env):
+_EnvBase = gym.Env if _HAS_GYM and gym is not None else object
+
+
+
+class LinacGymEnv(_EnvBase):  # type: ignore[misc, valid-type]
     """Gymnasium reinforcement learning environment for heavy ion linac orbit & envelope control."""
 
     metadata = {"render_modes": ["human", "rgb_array"]}
@@ -33,6 +38,9 @@ class LinacGymEnv(gym.Env):
         domain_randomization: bool = False,
         target_rms_mm: float = 0.10,
     ):
+        if not _HAS_GYM:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("gymnasium", extra="rl", feature="Linac Gym Environment")
         super().__init__()
         self.lattice = lattice or create_baseline_mebt_lattice()
         self.engine = AnalyticDigitalTwinEngine()

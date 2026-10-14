@@ -5,6 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+pytest.importorskip("torch")
+
 from helios.models.calibration import OnlineModelCalibrator
 from helios.models.surrogate import NeuralLinacSurrogate
 from helios.models.virtual_diagnostics import VirtualBeamLossMonitor, VirtualWireScanner

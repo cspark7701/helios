@@ -3,13 +3,11 @@
 import numpy as np
 import pytest
 
-from helios.envs.linac_env import LinacGymEnv
-from helios.optimization.mpc import NeuralMPCController
-from helios.optimization.rl_agent import LinacRLAgent
-
-
 def test_linac_gym_env_lifecycle_and_randomization():
     """Verify LinacGymEnv Gymnasium API (reset, step, observation/action spaces)."""
+    pytest.importorskip("gymnasium")
+    from helios.envs.linac_env import LinacGymEnv
+
     env = LinacGymEnv(max_steps=10, domain_randomization=True)
 
     # 1. Reset
@@ -32,6 +30,9 @@ def test_linac_gym_env_lifecycle_and_randomization():
 
 def test_linac_rl_agent_inference_and_learning():
     """Verify LinacRLAgent continuous policy evaluation and training."""
+    pytest.importorskip("torch")
+    from helios.optimization.rl_agent import LinacRLAgent
+
     obs_dim = 9
     act_dim = 4
     agent = LinacRLAgent(obs_dim=obs_dim, action_dim=act_dim, hidden_dim=32)
@@ -59,6 +60,9 @@ def test_linac_rl_agent_inference_and_learning():
 
 def test_neural_mpc_controller_receding_horizon():
     """Verify NeuralMPCController multi-step receding horizon trajectory planning."""
+    pytest.importorskip("torch")
+    from helios.optimization.mpc import NeuralMPCController
+
     mpc = NeuralMPCController(horizon_steps=3)
 
     current_setpoints = {

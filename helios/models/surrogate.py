@@ -7,6 +7,7 @@ of beam envelopes, centroid orbits, and beam loss projections.
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -14,9 +15,14 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-except ImportError as e:
-    from helios._optional import OptionalDependencyError
-    raise OptionalDependencyError("torch", extra="ml", feature="Neural linac surrogate") from e
+    _HAS_TORCH = True
+except ImportError:
+    torch = None  # type: ignore[assignment]
+    nn = None  # type: ignore[assignment]
+    optim = None  # type: ignore[assignment]
+    _HAS_TORCH = False
+
+_ModuleBase = nn.Module if _HAS_TORCH and nn is not None else object
 
 logger = logging.getLogger(__name__)
 
@@ -34,26 +40,33 @@ class SurrogatePrediction:
     confidence_score: float
 
 
-class ResidualBlock(nn.Module):
+class ResidualBlock(_ModuleBase):  # type: ignore[misc, valid-type]
     """Residual skip connection block for stable surrogate training."""
 
     def __init__(self, hidden_dim: int):
+        if not _HAS_TORCH or nn is None:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="Neural linac surrogate")
         super().__init__()
         self.fc1 = nn.Linear(hidden_dim, hidden_dim)
         self.relu = nn.GELU()
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Any) -> Any:
         residual = x
         out = self.fc2(self.relu(self.fc1(x)))
         return self.relu(out + residual)
 
 
-class LinacSurrogateNet(nn.Module):
+class LinacSurrogateNet(_ModuleBase):  # type: ignore[misc, valid-type]
     """PyTorch Neural Network for linac beam envelope & loss modeling."""
 
     def __init__(self, input_dim: int = 12, num_locations: int = 20, hidden_dim: int = 64):
+        if not _HAS_TORCH or nn is None:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="Neural linac surrogate")
         super().__init__()
+
         self.input_dim = input_dim
         self.num_locations = num_locations
         self.hidden_dim = hidden_dim
@@ -93,6 +106,9 @@ class NeuralLinacSurrogate:
         hidden_dim: int = 64,
         device: str = "cpu",
     ):
+        if not _HAS_TORCH:
+            from helios._optional import OptionalDependencyError
+            raise OptionalDependencyError("torch", extra="ml", feature="Neural linac surrogate")
         if input_keys is not None:
             self.input_keys = input_keys
         else:
