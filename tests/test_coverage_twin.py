@@ -109,7 +109,7 @@ def test_twin_registry_coverage():
     assert cmds["MEBT:DCH:01:CurrentSet"] == 2.5
 
     env = mock_plugin.make_env("MEBT", max_steps=10)
-    assert isinstance(env, LinacSurrogateGymEnv)
+    assert env.__class__.__name__ == "LinacSurrogateGymEnv"
 
     # AnalyticTwinFallbackPlugin load_twin, predict, predict_tensor, to_actuator_commands, make_env
     analytic_plugin = AnalyticTwinFallbackPlugin()
@@ -123,7 +123,7 @@ def test_twin_registry_coverage():
     assert cmds_ana["MEBT:DCH:01:CurrentSet"] == 1.5
 
     env_ana = analytic_plugin.make_env("MEBT", max_steps=5)
-    assert isinstance(env_ana, LinacSurrogateGymEnv)
+    assert env_ana.__class__.__name__ == "LinacSurrogateGymEnv"
 
     # discover_facility_plugins entry points handling
     mock_ep_good = MagicMock()

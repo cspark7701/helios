@@ -33,7 +33,7 @@ Elevate the total test coverage of the HELIOS codebase from ~90% to **100%** (`-
   - Cover recovery modules: `helios/recovery/loss_mitigation.py`, `magnet_recovery.py`, `rf_rematch.py`.
 
 ### Phase 6: Optimization, Operations, Ontology & UI
-- [ ] **T-07: RL, Operations Harness, Ontology & Web UI (`tests/test_coverage_ops_ui.py`)**
+- [x] **T-07: RL, Operations Harness, Ontology & Web UI (`tests/test_coverage_ops_ui.py`)**
   - Cover uncovered lines in `helios/optimization/rl_agent.py`, `mpc.py`, `workflows.py`, `algorithms.py`, `__init__.py`.
   - Cover `helios/envs/linac_env.py` and `__init__.py`.
   - Cover `helios/ops/broker.py`, `logbook.py`, `golden.py`, `audit.py`, `harness.py`.
