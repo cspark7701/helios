@@ -38,7 +38,7 @@ helios/physics/twin/
 ## 📋 Detailed Task Breakdown
 
 ### Phase 1: Core Protocols and Domain Contracts (`protocol.py`)
-- [ ] **T-01: Define `TwinDomain` with Out-of-Domain (OOD) Detection**
+- [x] **T-01: Define `TwinDomain` with Out-of-Domain (OOD) Detection**
   - Implement `TwinDomain(names, lower, upper)` with physical parameter limits.
   - Provide `out_of_domain(u, margin=0.0) -> list[str]` returning violated control names.
 - [ ] **T-02: Define `FacilityTwin` Container**
