@@ -97,7 +97,7 @@ helios/physics/twin/
 ### Phase 7: Verification Suite & Documentation
 - [x] **T-13: Comprehensive Unit & Integration Tests (`tests/test_twin.py`)**
   - Test protocol compliance, OOD rejection, mock plugin discovery, pre-flight verification latency, and Gym step speed.
-- [ ] **T-14: Package Exports and Documentation**
+- [x] **T-14: Package Exports and Documentation**
   - Export `helios.physics.twin` in `helios/physics/__init__.py`.
   - Update user manuals and architecture documentation.
 

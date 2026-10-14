@@ -56,6 +56,7 @@ from helios.physics.stripper import (
 from helios.physics.surrogate import (
     FastPhysicsSurrogate,
 )
+from helios.physics import twin
 from helios.physics.twin import (
     FacilityPlugin,
     FacilityTwin,
@@ -114,4 +115,5 @@ __all__ = [
     "create_xenon_multicharge_beam",
     "discover_facility_plugins",
     "get_facility_twin",
+    "twin",
 ]
