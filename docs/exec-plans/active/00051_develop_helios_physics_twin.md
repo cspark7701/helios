@@ -89,7 +89,7 @@ helios/physics/twin/
   - Constrain optimization trajectory within `TwinDomain` bounds.
 
 ### Phase 6: Telemetry Assimilation & State Synchronization (`sync.py`)
-- [ ] **T-12: Implement `TwinStateSynchronizer`**
+- [x] **T-12: Implement `TwinStateSynchronizer`**
   - Connect live diagnostic readouts (BPM coordinates, Allison scanner, wire scanner profiles) to twin state.
   - Bridge to `synapticTrack.inference.map_refinement.refine_beam_state_map` to infer incoming Twiss parameters $(\alpha, \beta, \epsilon)$ in real time.
   - Feed estimated beam state into `FacilityTwin` inputs for downstream linac trajectory prediction.

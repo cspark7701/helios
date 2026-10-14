@@ -141,6 +141,12 @@ def test_twin_state_synchronizer():
     assert "rms_residual_mm" in rec
     assert len(sync.telemetry_history) == 1
 
+    # Test MAP beam state refinement
+    refined = sync.refine_beam_state({"sigma_x_mm": 1.5, "sigma_y_mm": 1.4})
+    assert "beta_x_m" in refined
+    assert refined["beta_x_m"] > 0.0
+    assert refined["beta_y_m"] > 0.0
+
 
 def test_safety_gatekeeper_twin_verifier_integration():
     """Verify SafetyGatekeeper wires with TwinPreFlightVerifier and provenance tracking (T-08)."""
