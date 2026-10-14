@@ -21,7 +21,7 @@ except ImportError as e:
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class SurrogatePrediction:
     """Predicted beam dynamics state from neural surrogate."""
     s_positions_m: list[float]

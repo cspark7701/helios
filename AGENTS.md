@@ -180,3 +180,18 @@ In alignment with LBNL's Osprey framework, HELIOS enforces a **Plan-First** orch
 4. **Execution & Provenance**: As steps execute, state, parameters, readbacks, and logs are tracked. Upon completion, the finalized record is archived under `docs/exec-plans/completed/<5-digit>_<plan_name>.md` to maintain full reproducibility.
 5. **Dynamic Capability Classification**: Tools and skills are filtered dynamically per sub-task to minimize prompt size and avoid context pollution across extensive accelerator subsystems.
 
+---
+
+## 7. Data Modeling Standards: Pydantic `BaseModel` vs `@dataclass`
+
+HELIOS enforces a clear separation of data record styles across architectural tiers:
+
+1. **Pydantic `BaseModel` at Trust Boundaries**:
+   - **Where**: System inputs, configuration files (`FacilityConfig`, `ChannelLimits`), HTTP/WebSocket request & response bodies, persistent execution plans (`ExecutionPlan`, `PlanStep`, `SetpointBatch`), and inter-agent message payloads (`AgentMeshMessage`).
+   - **Rationale**: Strict runtime schema validation, serialization/deserialization guarantees, automated JSON schema generation for OpenAPI/tools, and fail-fast coercion at boundary ingress.
+
+2. **Python `@dataclass` (prefer `frozen=True`) for Internal Numerics**:
+   - **Where**: High-frequency physics tracking (`TrajectoryPoint`, `ParticleBatch`), digital twin simulation states (`TwinFrame`, `TwinPrediction`, `SurrogatePrediction`), algorithmic scratchpads (`BBADataPoint`, `NSGA2Individual`), and in-memory safety stacks (`RollbackRecord`).
+   - **Rationale**: Zero validation overhead, minimal memory footprint, compatibility with high-performance numerical routines (NumPy/SciPy/PyTorch), and immutability guarantees (`frozen=True`) for multi-agent concurrency.
+
+

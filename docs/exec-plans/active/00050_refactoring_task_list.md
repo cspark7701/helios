@@ -94,7 +94,7 @@ Priorities: **P0** safety-relevant defect (fix before any live use), **P1** stru
 - [x] **R-17 (S): Modernize type hints.**
   87 modules import `Dict/List/Optional/Tuple` from `typing`, while `requires-python >= 3.10`. Mechanical `ruff --select UP` migration (`dict[str, X]`, `X | None`), done after R-15 so it is enforced.
 
-- [ ] **R-18 (S): Pick one model style for data records.**
+- [x] **R-18 (S): Pick one model style for data records.**
   34 modules use `@dataclass` and 29 use pydantic `BaseModel`, sometimes in one flow (for example plan schemas vs trajectory points). Rule of thumb to document in `AGENTS.md`: pydantic at trust boundaries (config, API, persisted plans), frozen dataclasses for internal numerics. Convert only inconsistent cases.
 
 - [x] **R-19 (S): Package/repo hygiene.**
