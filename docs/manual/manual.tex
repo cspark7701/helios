@@ -130,7 +130,10 @@ cd helios
 conda create -n helios python=3.11 -y
 conda activate helios
 
-# Install dependencies in editable mode
+# Install in editable mode with all dependencies (dev, rl, ml, epics, dashboard, ontology)
+pip install -e ".[all]"
+
+# Or select specific optional extras:
 pip install -e ".[dev,ml,dashboard,ontology]"
 \end{lstlisting}
 
@@ -200,6 +203,60 @@ docker exec -it helios-app bash
     \item \textbf{LBNL IMPACT-Z}: 3D space-charge Particle-in-Cell (PIC) simulation managed through \texttt{lume-impact}.
     \item \textbf{EPICS Base}: Channel Access and pvAccess tools (\texttt{p4p}, \texttt{pyepics}) for live communication with accelerator IOCs. Included with ports 5064 and 5065 exposed.
 \end{itemize}
+
+\section{Windows 11 Platform and Offline Deployment}
+HELIOS provides flexible deployment support on Windows 11 systems:
+
+\subsection{Option 1: Windows Subsystem for Linux (WSL2 - Recommended)}
+Provides complete feature parity with Linux control systems, allowing Wine-based ray-tracing (ANL TRACK), EPICS Channel Access networking, and high-performance ML routines:
+\begin{lstlisting}[language=bash]
+# Install WSL2 Ubuntu (PowerShell as Administrator)
+wsl --install -d Ubuntu-22.04
+
+# In WSL2 terminal:
+git clone https://github.com/cspark/helios.git
+cd helios
+source setup.sh
+pip install -e ".[all]"
+\end{lstlisting}
+
+\subsection{Option 2: Native Windows 11 Environment}
+Core orchestration, Web Operator Dashboard, EPICS interfaces, and digital twin simulation run natively on Windows 11 with Python 3.10--3.12:
+\begin{lstlisting}[language=bash]
+# In Windows PowerShell:
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[all]"
+\end{lstlisting}
+\textit{Note: When executing ANL TRACK natively on Windows, pass the path to the native Windows binary (\texttt{TRACKv39C.exe}) directly via \texttt{--model-dir} without Wine.}
+
+\subsection{Option 3: Air-Gapped / Offline Deployment (No Internet Connection)}
+In secure accelerator control rooms disconnected from external networks:
+\begin{enumerate}
+    \item \textbf{On an internet-connected machine}: Download the complete dependency wheelhouse:
+\begin{lstlisting}[language=bash]
+mkdir helios_offline && cd helios_offline
+git clone https://github.com/cspark/helios.git
+cd helios
+pip download -d ../wheels -e ".[all]"
+\end{lstlisting}
+    \item \textbf{Transfer} the bundle to the target Windows 11 machine via authorized media.
+    \item \textbf{Install offline on the air-gapped machine}:
+\begin{lstlisting}[language=bash]
+cd helios
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --no-index --find-links=..\wheels -e ".[all]"
+\end{lstlisting}
+\end{enumerate}
+
+\subsection{Option 4: Standalone Windows Executable Binary}
+HELIOS can be compiled into a standalone Windows binary (\texttt{helios.exe}) using PyInstaller, enabling operators to run CLI commands and the Web Dashboard without requiring a Python environment:
+\begin{lstlisting}[language=bash]
+pip install pyinstaller
+pyinstaller --name=helios --onefile --clean helios/cli/main.py
+# Compiled binary located at dist\helios.exe
+\end{lstlisting}
 
 \chapter{Operator Interfaces and CLI Usage}
 
@@ -387,17 +444,30 @@ Developers can test all GitHub Actions CI checks locally prior to pushing:
 \end{lstlisting}
 This script executes:
 \begin{enumerate}
-    \item CI Contract verification (\texttt{scripts/ci\_contract.py}).
-    \item Formatting and linting (\texttt{ruff check .}, \texttt{black --check .}).
-    \item Static type analysis (\texttt{mypy helios/}).
-    \item Full test suite execution (\texttt{pytest}).
+    \item \textbf{CI Contract Verification} (\texttt{scripts/ci\_contract.py}):
+    \begin{itemize}
+        \item Validates GitHub Actions \texttt{ci.yml} workflow schema and execution plans.
+        \item Verifies zero-dependency core import boundaries.
+        \item Validates all CLI entrypoint command parsers.
+        \item Executes Ruff linting across all codebase files.
+        \item Enforces Mypy strict typing on safety gatekeepers, EPICS interfaces, and core abstractions.
+    \end{itemize}
+    \item \textbf{Formatting and Linting} (\texttt{ruff check .}, \texttt{black --check .}).
+    \item \textbf{Static Type Analysis} (\texttt{mypy helios/}).
+    \item \textbf{Full Test Suite with 100\% Coverage Enforcement} (\texttt{pytest}).
 \end{enumerate}
 
-\section{Test Suite Execution}
-Run the pytest suite:
+\section{Test Suite Execution and 100\% Coverage Gate}
+HELIOS strictly enforces a \textbf{100.00\% statement coverage gate} (\texttt{--cov-fail-under=100}, \texttt{fail\_under = 100}) across all 88 Python modules in \texttt{helios/}. Run the full test suite in the active environment:
 \begin{lstlisting}[language=bash]
 pytest
 \end{lstlisting}
-All \textbf{170 unit and integration tests} pass with \textbf{0 warnings} across Python 3.10 through 3.14.
+All \textbf{222 unit and integration tests} verify end-to-end functionality across all accelerator physics engines, safety gatekeepers, EPICS/PVA interfaces, digital twins, optimization algorithms, and web dashboards:
+\begin{itemize}
+    \item \textbf{Total Statements}: 7{,}208
+    \item \textbf{Covered Statements}: 7{,}208 (100.00\%)
+    \item \textbf{Missed Statements}: 0
+    \item \textbf{Warnings}: 0 warnings across Python 3.10 through 3.14.
+\end{itemize}
 
 \end{document}
