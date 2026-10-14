@@ -70,7 +70,7 @@ helios/physics/twin/
   - Wire directly into `HELIOS-Safety` (`SafetyGatekeeper`) and `docs/exec-plans/` audit logging.
 
 ### Phase 4: Gymnasium Reinforcement Learning Adapter (`env.py`)
-- [ ] **T-09: Implement `LinacSurrogateGymEnv`**
+- [x] **T-09: Implement `LinacSurrogateGymEnv`**
   - Wrap `FacilityTwin` in the standard Gymnasium API (`reset`, `step`, `action_space`, `observation_space`).
   - Adapt `raon_adapters.legacy.rl_env.SurrogateLEBTEnv` conventions:
     - Observation: normalized diagnostic errors concatenated with normalized control setpoints.
