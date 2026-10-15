@@ -462,7 +462,7 @@ HELIOS strictly enforces a \textbf{100.00\% statement coverage gate} (\texttt{--
 \begin{lstlisting}[language=bash]
 pytest
 \end{lstlisting}
-All \textbf{222 unit and integration tests} verify end-to-end functionality across all accelerator physics engines, safety gatekeepers, EPICS/PVA interfaces, digital twins, optimization algorithms, and web dashboards:
+All \textbf{223 unit and integration tests} verify end-to-end functionality across all accelerator physics engines, safety gatekeepers, EPICS/PVA interfaces, digital twins, optimization algorithms, and web dashboards:
 \begin{itemize}
     \item \textbf{Total Statements}: 7{,}208
     \item \textbf{Covered Statements}: 7{,}208 (100.00\%)
@@ -470,4 +470,14 @@ All \textbf{222 unit and integration tests} verify end-to-end functionality acro
     \item \textbf{Warnings}: 0 warnings across Python 3.10 through 3.14.
 \end{itemize}
 
+\section{Understanding Test Coverage in Accelerator Software}
+Test coverage quantitatively measures the proportion of code executed by the automated test suite:
+\begin{itemize}
+    \item \textbf{Statement Coverage}: Ensures that every line of executable code has run, eliminating unresolved symbol references, missing imports, and runtime type/attribute crashes.
+    \item \textbf{Branch Coverage}: Ensures both normal beam operation paths and machine protection interlock trip/fallback conditions are verified.
+    \item \textbf{Guarantees}: Eliminates unexercised dead code, detects regressions instantly on refactoring, and ensures emergency rollback paths are functional.
+\end{itemize}
+Detailed technical patterns and coverage inspection procedures are documented in \url{docs/test_coverage_guide.md}.
+
 \end{document}
+

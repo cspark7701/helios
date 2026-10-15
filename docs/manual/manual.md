@@ -420,8 +420,17 @@ HELIOS strictly enforces a **100.00% statement coverage gate** (`--cov-fail-unde
 ```bash
 pytest
 ```
-All **222 unit and integration tests** verify end-to-end functionality across all linac subsystems, safety gates, physics engines, digital twins, control interfaces, optimization routines, and user interfaces:
+All **223 unit and integration tests** verify end-to-end functionality across all linac subsystems, safety gates, physics engines, digital twins, control interfaces, optimization routines, and user interfaces:
 - **Total Statements**: 7,208
 - **Covered Statements**: 7,208 (100.00%)
 - **Missed Statements**: 0
 - **Warnings**: 0 warnings across Python 3.10 through 3.14.
+
+### 8.3 Understanding Test Coverage in Accelerator Control
+Test coverage measures the proportion of source code executed by automated tests. In HELIOS:
+- **Statement (Line) Coverage**: Verifies that every executable statement has run at least once, eliminating syntax errors, missing imports, unhandled attribute lookups, and uncallable endpoints.
+- **Branch Coverage**: Evaluates both paths (`True` and `False`) of conditionals (`if/else`, `try/except`), ensuring both normal beam operations and safety trip interlocks are verified.
+- **Guarantees**: Guarantees zero unexercised code, immediate regression detection, and verification of emergency rollback paths. It does not replace physical validation assertions against simulation codes or real telemetry.
+
+For a full breakdown of coverage metrics, hardware testing patterns, and inspection techniques, see the [HELIOS Test Coverage Guide](../test_coverage_guide.md).
+
