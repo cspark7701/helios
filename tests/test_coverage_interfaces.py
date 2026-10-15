@@ -236,8 +236,9 @@ def test_pva_interface_coverage():
     pva_mock.unsubscribe("PVA:ERR")
 
     # 2. Non-mock mode with missing/failed p4p
-    with pytest.raises(ControlInterfaceError):
-        PVAccessInterface(use_mock=False)
+    with patch("helios.interfaces.pva.require", side_effect=ImportError("p4p missing")):
+        with pytest.raises(ControlInterfaceError):
+            PVAccessInterface(use_mock=False)
 
     # 3. Non-mock mode with mocked p4p context
     mock_pva_ctxt = MagicMock()
