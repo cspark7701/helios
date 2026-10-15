@@ -141,13 +141,14 @@ def test_track_run_from_directory_and_lebt_orbit_tuning(tmp_path):
     assert len(traj_base) > 0
     assert traj_base[-1].s_m > 12.0
 
-    x0, y0 = extract_diagnostic_orbit(traj_base)
+    x0, y0, sx0, sy0 = extract_diagnostic_orbit(traj_base)
     assert len(x0) == 6
     assert np.all(np.isfinite(x0))
+    assert len(sx0) == 6
 
     # Single steerer perturbation test
     traj_kicked = sim.run_from_directory(model_dir, steerer_kicks={"STM_1": (1.0, 0.0)})
-    xk, _ = extract_diagnostic_orbit(traj_kicked)
+    xk, _, _, _ = extract_diagnostic_orbit(traj_kicked)
     assert not np.allclose(x0, xk)
 
 
