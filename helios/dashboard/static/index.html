@@ -666,39 +666,74 @@
                         </div>
                     </div>
 
-                    <!-- Interactive Orbit & Wire Scanner Beam Size Trajectory Chart (SVG) -->
-                    <div class="chart-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <!-- Interactive Orbit & Wire Scanner Beam Size Trajectory Charts (Separately Scaled) -->
+                    <div class="chart-box" style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">Beam Centroid Trajectory &amp; Wire Scanner Beam Size Envelope</span>
+                                <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">📊 Transverse Trajectory &amp; Wire Scanner Beam Size Envelopes</span>
                                 <div style="display: flex; gap: 4px; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px;">
-                                    <button type="button" id="plane-btn-both" onclick="setOrbitPlane('both')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: var(--primary-blue); color: #fff;">Both (X &amp; Y)</button>
-                                    <button type="button" id="plane-btn-x" onclick="setOrbitPlane('x')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Horizontal (X)</button>
-                                    <button type="button" id="plane-btn-y" onclick="setOrbitPlane('y')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Vertical (Y)</button>
+                                    <button type="button" id="view-mode-split" onclick="setOrbitViewMode('split')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: var(--primary-blue); color: #fff;">Dual Independent (H &amp; V)</button>
+                                    <button type="button" id="view-mode-x" onclick="setOrbitViewMode('x')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Horizontal (X) Only</button>
+                                    <button type="button" id="view-mode-y" onclick="setOrbitViewMode('y')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Vertical (Y) Only</button>
                                 </div>
                             </div>
-                            <div style="display: flex; gap: 12px; font-size: 11px; flex-wrap: wrap;" id="chart-legend">
-                                <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Init X (mm)
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px; color: var(--primary-blue); font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: var(--primary-blue); border-radius: 50%; display: inline-block;"></span> Corr X (mm)
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px; color: #ea580c; font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: #ea580c; border-radius: 50%; display: inline-block;"></span> Init Y (mm)
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px; color: #9333ea; font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: #9333ea; border-radius: 50%; display: inline-block;"></span> Corr Y (mm)
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px; color: #0284c7; font-weight: 700;">
-                                    <span style="width: 10px; height: 6px; background: rgba(56, 189, 248, 0.4); border: 1px solid #0284c7; display: inline-block;"></span> WS &sigma; Envelope
-                                </span>
-                                <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 700;">
-                                    <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tol
-                                </span>
+                            <div style="font-size: 11px; color: var(--text-muted);">
+                                <em>Separated independent Y-scales prevent horizontal vs vertical offset distortion</em>
                             </div>
                         </div>
-                        <svg id="orbit-chart-svg" width="100%" height="280" viewBox="0 0 900 280"></svg>
+
+                        <!-- Horizontal Plane (X) Chart Container -->
+                        <div id="container-chart-x" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #2563eb;">🔵 Horizontal Plane: Beam Centroid X(z) &amp; Wire Scanner &sigma;<sub>x</sub></span>
+                                    <span id="badge-x-scale" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #eff6ff; color: #1d4ed8; font-weight: 600; border: 1px solid #bfdbfe;">Scale: auto</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; font-size: 11px; flex-wrap: wrap;">
+                                    <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-weight: 600;">
+                                        <span style="width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Init X (mm)
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #2563eb; font-weight: 600;">
+                                        <span style="width: 8px; height: 8px; background: #2563eb; border-radius: 50%; display: inline-block;"></span> Corr X (mm)
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #0284c7; font-weight: 600;">
+                                        <span style="width: 10px; height: 6px; background: rgba(56, 189, 248, 0.4); border: 1px solid #0284c7; display: inline-block;"></span> WS &sigma;<sub>x</sub> Envelope
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 600;">
+                                        <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tol
+                                    </span>
+                                </div>
+                            </div>
+                            <svg id="orbit-chart-x-svg" width="100%" height="210" viewBox="0 0 900 210"></svg>
+                        </div>
+
+                        <!-- Vertical Plane (Y) Chart Container -->
+                        <div id="container-chart-y" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 12px; font-weight: 700; color: #9333ea;">🟣 Vertical Plane: Beam Centroid Y(z) &amp; Wire Scanner &sigma;<sub>y</sub></span>
+                                    <span id="badge-y-scale" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #faf5ff; color: #7e22ce; font-weight: 600; border: 1px solid #e9d5ff;">Scale: auto</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; font-size: 11px; flex-wrap: wrap;">
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #ea580c; font-weight: 600;">
+                                        <span style="width: 8px; height: 8px; background: #ea580c; border-radius: 50%; display: inline-block;"></span> Init Y (mm)
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #9333ea; font-weight: 600;">
+                                        <span style="width: 8px; height: 8px; background: #9333ea; border-radius: 50%; display: inline-block;"></span> Corr Y (mm)
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: #a855f7; font-weight: 600;">
+                                        <span style="width: 10px; height: 6px; background: rgba(168, 85, 247, 0.35); border: 1px solid #9333ea; display: inline-block;"></span> WS &sigma;<sub>y</sub> Envelope
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 600;">
+                                        <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn; Tol
+                                    </span>
+                                </div>
+                            </div>
+                            <svg id="orbit-chart-y-svg" width="100%" height="210" viewBox="0 0 900 210"></svg>
+                        </div>
+
+                        <!-- Hidden fallback svg for backward compatibility -->
+                        <svg id="orbit-chart-svg" style="display: none;"></svg>
                     </div>
 
                     <!-- Steerer Power Supply Actuation Table -->
@@ -990,16 +1025,16 @@
             drawer.classList.toggle('open');
         }
 
-        let activeOrbitPlane = 'both';
+        let currentOrbitViewMode = 'split'; // 'split', 'x', or 'y'
         let cachedOrbitMonitors = null;
         let cachedOrbitTolerance = 0.50;
 
-        function setOrbitPlane(plane) {
-            activeOrbitPlane = plane;
-            ['both', 'x', 'y'].forEach(p => {
-                const btn = document.getElementById(`plane-btn-${p}`);
+        function setOrbitViewMode(mode) {
+            currentOrbitViewMode = mode;
+            ['split', 'x', 'y'].forEach(m => {
+                const btn = document.getElementById(`view-mode-${m}`);
                 if (btn) {
-                    if (p === plane) {
+                    if (m === mode) {
                         btn.style.background = 'var(--primary-blue)';
                         btn.style.color = '#fff';
                     } else {
@@ -1008,83 +1043,144 @@
                     }
                 }
             });
+
+            const contX = document.getElementById('container-chart-x');
+            const contY = document.getElementById('container-chart-y');
+            if (contX) {
+                contX.style.display = (mode === 'split' || mode === 'x') ? 'block' : 'none';
+            }
+            if (contY) {
+                contY.style.display = (mode === 'split' || mode === 'y') ? 'block' : 'none';
+            }
+
             if (cachedOrbitMonitors) {
                 renderOrbitChart(cachedOrbitMonitors, cachedOrbitTolerance);
             }
         }
 
-        function renderOrbitChart(monitors, tolerance) {
-            cachedOrbitMonitors = monitors;
-            cachedOrbitTolerance = tolerance;
-            const svg = document.getElementById('orbit-chart-svg');
-            const w = 900, h = 280;
-            const padL = 60, padR = 40, padT = 25, padB = 40;
+        // Backward compatibility helper
+        function setOrbitPlane(plane) {
+            if (plane === 'both') setOrbitViewMode('split');
+            else if (plane === 'x') setOrbitViewMode('x');
+            else if (plane === 'y') setOrbitViewMode('y');
+        }
+
+        function renderPlaneChart(svgId, monitors, plane, tolerance) {
+            const svg = document.getElementById(svgId);
+            if (!svg || !monitors || monitors.length === 0) return;
+
+            const w = 900, h = 210;
+            const padL = 65, padR = 40, padT = 20, padB = 34;
             const plotW = w - padL - padR;
             const plotH = h - padT - padB;
 
-            if (!monitors || monitors.length === 0) return;
-
             const zMin = 0;
             const zMax = Math.max(...monitors.map(m => m.z_m)) * 1.08;
-
-            let candidateVals = [tolerance * 1.2];
-            monitors.forEach(m => {
-                if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
-                    candidateVals.push(Math.abs(m.x_init_mm), Math.abs(m.x_corr_mm));
-                }
-                if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
-                    candidateVals.push(Math.abs(m.y_init_mm || 0), Math.abs(m.y_corr_mm || 0));
-                }
-            });
-            const maxVal = Math.max(0.60, ...candidateVals);
-            const yMin = -maxVal, yMax = maxVal;
-
             const scaleX = z => padL + (z - zMin) / (zMax - zMin) * plotW;
+
+            let maxVal, tol, isMicro;
+
+            if (plane === 'x') {
+                const maxCentroidX = Math.max(0.05, ...monitors.map(m => Math.max(Math.abs(m.x_init_mm || 0), Math.abs(m.x_corr_mm || 0))));
+                maxVal = Math.max(0.60, maxCentroidX * 1.25, tolerance * 1.15);
+                tol = tolerance;
+                isMicro = false;
+                const badgeX = document.getElementById('badge-x-scale');
+                if (badgeX) {
+                    badgeX.textContent = `Scale: ±${maxVal.toFixed(2)} mm (Tol ±${tol.toFixed(2)} mm)`;
+                }
+            } else {
+                const maxCentroidY = Math.max(0.00005, ...monitors.map(m => Math.max(Math.abs(m.y_init_mm || 0), Math.abs(m.y_corr_mm || 0))));
+                isMicro = maxCentroidY < 0.01;
+                if (isMicro) {
+                    maxVal = Math.max(0.0005, maxCentroidY * 1.4);
+                    tol = maxVal * 0.8;
+                    const badgeY = document.getElementById('badge-y-scale');
+                    if (badgeY) {
+                        badgeY.textContent = `Scale: ±${(maxVal * 1000).toFixed(1)} µm (±${maxVal.toFixed(4)} mm) | Tol ±${(tol * 1000).toFixed(1)} µm`;
+                    }
+                } else {
+                    maxVal = Math.max(0.30, maxCentroidY * 1.25, tolerance * 1.15);
+                    tol = tolerance;
+                    const badgeY = document.getElementById('badge-y-scale');
+                    if (badgeY) {
+                        badgeY.textContent = `Scale: ±${maxVal.toFixed(2)} mm (Tol ±${tol.toFixed(2)} mm)`;
+                    }
+                }
+            }
+
+            const yMin = -maxVal, yMax = maxVal;
             const scaleY = val => padT + (yMax - val) / (yMax - yMin) * plotH;
+            const clampY = y => Math.max(padT, Math.min(padT + plotH, y));
 
-            let html = '';
+            let html = `<defs><clipPath id="clip-${plane}"><rect x="${padL}" y="${padT}" width="${plotW}" height="${plotH}" /></clipPath></defs>`;
 
-            // Grid lines
+            // Grid lines & Zero Reference
             html += `<line x1="${padL}" y1="${padT}" x2="${padL + plotW}" y2="${padT}" stroke="#e2e8f0" />`;
             html += `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#e2e8f0" />`;
+            html += `<line x1="${padL}" y1="${scaleY(maxVal/2)}" x2="${padL + plotW}" y2="${scaleY(maxVal/2)}" stroke="#f8fafc" stroke-dasharray="2,2" />`;
+            html += `<line x1="${padL}" y1="${scaleY(-maxVal/2)}" x2="${padL + plotW}" y2="${scaleY(-maxVal/2)}" stroke="#f8fafc" stroke-dasharray="2,2" />`;
             html += `<line x1="${padL}" y1="${scaleY(0)}" x2="${padL + plotW}" y2="${scaleY(0)}" stroke="#94a3b8" stroke-dasharray="3,3" />`;
 
             // Tolerance zone
-            const tolTop = scaleY(tolerance);
-            const tolBottom = scaleY(-tolerance);
-            html += `<rect x="${padL}" y="${tolTop}" width="${plotW}" height="${tolBottom - tolTop}" fill="#ecfdf5" fill-opacity="0.45" stroke="#10b981" stroke-dasharray="4,4" />`;
+            const tolTop = scaleY(tol);
+            const tolBottom = scaleY(-tol);
+            html += `<rect x="${padL}" y="${tolTop}" width="${plotW}" height="${Math.abs(tolBottom - tolTop)}" fill="#ecfdf5" fill-opacity="0.45" stroke="#10b981" stroke-dasharray="4,4" />`;
 
-            html += `<text x="${padL + 4}" y="${scaleY(tolerance) - 4}" font-size="10" fill="#059669" font-weight="600">+${tolerance.toFixed(2)} mm Tol</text>`;
-            html += `<text x="${padL + 4}" y="${scaleY(-tolerance) + 12}" font-size="10" fill="#059669" font-weight="600">-${tolerance.toFixed(2)} mm Tol</text>`;
-            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="11" fill="#475569" text-anchor="end" font-weight="bold">Centroid / Envelope (mm)</text>`;
-            html += `<text x="${padL + plotW/2}" y="${h - 8}" font-size="11" fill="#475569" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
+            const tolLabel = isMicro ? `±${(tol * 1000).toFixed(1)} µm Tol` : `±${tol.toFixed(2)} mm Tol`;
+            html += `<text x="${padL + 6}" y="${tolTop - 4}" font-size="9" fill="#059669" font-weight="600">+${tolLabel}</text>`;
+            html += `<text x="${padL + 6}" y="${tolBottom + 11}" font-size="9" fill="#059669" font-weight="600">-${tolLabel}</text>`;
 
-            // Wire Scanner RMS Beam Size Envelopes / Error Bars (at wire scanner stations)
+            // Axis labels
+            const axisTitle = plane === 'x' ? 'Centroid X (mm)' : (isMicro ? 'Centroid Y (µm)' : 'Centroid Y (mm)');
+            const axisColor = plane === 'x' ? '#2563eb' : '#9333ea';
+            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="10" fill="${axisColor}" text-anchor="end" font-weight="bold">${axisTitle}</text>`;
+            html += `<text x="${padL + plotW/2}" y="${h - 6}" font-size="10" fill="#64748b" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
+
+            // Tick labels
+            const tickTop = isMicro ? `+${(maxVal * 1000).toFixed(1)}` : `+${maxVal.toFixed(2)}`;
+            const tickBot = isMicro ? `-${(maxVal * 1000).toFixed(1)}` : `-${maxVal.toFixed(2)}`;
+            html += `<text x="${padL - 6}" y="${padT + 9}" font-size="9" fill="#64748b" text-anchor="end">${tickTop}</text>`;
+            html += `<text x="${padL - 6}" y="${scaleY(0) + 3}" font-size="9" fill="#64748b" text-anchor="end">0.0</text>`;
+            html += `<text x="${padL - 6}" y="${padT + plotH}" font-size="9" fill="#64748b" text-anchor="end">${tickBot}</text>`;
+
+            // Wire Scanner RMS Beam Size Envelopes
             monitors.forEach(m => {
                 const px = scaleX(m.z_m);
                 const isWS = (m.type === 'Wire Scanner' || (m.name && m.name.startsWith('WS')));
                 if (isWS) {
-                    if ((activeOrbitPlane === 'x' || activeOrbitPlane === 'both') && m.sigma_x_mm) {
-                        const topX = scaleY(m.x_corr_mm + m.sigma_x_mm);
-                        const botX = scaleY(m.x_corr_mm - m.sigma_x_mm);
-                        const barH = Math.abs(botX - topX);
-                        html += `<rect x="${px - 7}" y="${Math.min(topX, botX)}" width="14" height="${barH}" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner H-Size: &sigma;x = &plusmn;${m.sigma_x_mm.toFixed(2)} mm</title></rect>`;
-                        html += `<line x1="${px - 5}" y1="${topX}" x2="${px + 5}" y2="${topX}" stroke="#2563eb" stroke-width="1.5" />`;
-                        html += `<line x1="${px - 5}" y1="${botX}" x2="${px + 5}" y2="${botX}" stroke="#2563eb" stroke-width="1.5" />`;
-                    }
-                    if ((activeOrbitPlane === 'y' || activeOrbitPlane === 'both') && m.sigma_y_mm) {
-                        const topY = scaleY((m.y_corr_mm || 0) + m.sigma_y_mm);
-                        const botY = scaleY((m.y_corr_mm || 0) - m.sigma_y_mm);
-                        const barH = Math.abs(botY - topY);
-                        html += `<rect x="${px - 5}" y="${Math.min(topY, botY)}" width="10" height="${barH}" fill="rgba(147, 51, 234, 0.12)" stroke="#9333ea" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner V-Size: &sigma;y = &plusmn;${m.sigma_y_mm.toFixed(2)} mm</title></rect>`;
-                        html += `<line x1="${px - 4}" y1="${topY}" x2="${px + 4}" y2="${topY}" stroke="#9333ea" stroke-width="1.5" />`;
-                        html += `<line x1="${px - 4}" y1="${botY}" x2="${px + 4}" y2="${botY}" stroke="#9333ea" stroke-width="1.5" />`;
+                    if (plane === 'x' && m.sigma_x_mm) {
+                        const topX = clampY(scaleY(m.x_corr_mm + m.sigma_x_mm));
+                        const botX = clampY(scaleY(m.x_corr_mm - m.sigma_x_mm));
+                        const barH = Math.max(4, Math.abs(botX - topX));
+                        html += `<g clip-path="url(#clip-${plane})">`;
+                        html += `<rect x="${px - 8}" y="${Math.min(topX, botX)}" width="16" height="${barH}" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner H-Size: &sigma;x = &plusmn;${m.sigma_x_mm.toFixed(2)} mm</title></rect>`;
+                        html += `<line x1="${px - 6}" y1="${topX}" x2="${px + 6}" y2="${topX}" stroke="#2563eb" stroke-width="1.5" />`;
+                        html += `<line x1="${px - 6}" y1="${botX}" x2="${px + 6}" y2="${botX}" stroke="#2563eb" stroke-width="1.5" />`;
+                        html += `</g>`;
+                    } else if (plane === 'y' && m.sigma_y_mm) {
+                        if (isMicro) {
+                            html += `<g clip-path="url(#clip-${plane})">`;
+                            html += `<rect x="${px - 7}" y="${padT + 2}" width="14" height="${plotH - 4}" fill="rgba(147, 51, 234, 0.08)" stroke="#9333ea" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner V-Size: &sigma;y = &plusmn;${m.sigma_y_mm.toFixed(2)} mm</title></rect>`;
+                            html += `<line x1="${px - 5}" y1="${padT + 3}" x2="${px + 5}" y2="${padT + 3}" stroke="#9333ea" stroke-width="1.5" />`;
+                            html += `<line x1="${px - 5}" y1="${padT + plotH - 3}" x2="${px + 5}" y2="${padT + plotH - 3}" stroke="#9333ea" stroke-width="1.5" />`;
+                            html += `</g>`;
+                        } else {
+                            const topY = clampY(scaleY((m.y_corr_mm || 0) + m.sigma_y_mm));
+                            const botY = clampY(scaleY((m.y_corr_mm || 0) - m.sigma_y_mm));
+                            const barH = Math.max(4, Math.abs(botY - topY));
+                            html += `<g clip-path="url(#clip-${plane})">`;
+                            html += `<rect x="${px - 8}" y="${Math.min(topY, botY)}" width="16" height="${barH}" fill="rgba(147, 51, 234, 0.12)" stroke="#9333ea" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner V-Size: &sigma;y = &plusmn;${m.sigma_y_mm.toFixed(2)} mm</title></rect>`;
+                            html += `<line x1="${px - 6}" y1="${topY}" x2="${px + 6}" y2="${topY}" stroke="#9333ea" stroke-width="1.5" />`;
+                            html += `<line x1="${px - 6}" y1="${botY}" x2="${px + 6}" y2="${botY}" stroke="#9333ea" stroke-width="1.5" />`;
+                            html += `</g>`;
+                        }
                     }
                 }
             });
 
-            // Horizontal Plane (X) Trajectories
-            if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
+            // Trajectory Curves
+            if (plane === 'x') {
                 let pathInitX = '';
                 monitors.forEach((m, idx) => {
                     const px = scaleX(m.z_m), py = scaleY(m.x_init_mm);
@@ -1098,10 +1194,7 @@
                     pathCorrX += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
                 });
                 html += `<path d="${pathCorrX}" fill="none" stroke="#2563eb" stroke-width="2.5" />`;
-            }
-
-            // Vertical Plane (Y) Trajectories
-            if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
+            } else {
                 let pathInitY = '';
                 monitors.forEach((m, idx) => {
                     const px = scaleX(m.z_m), py = scaleY(m.y_init_mm || 0.0);
@@ -1120,26 +1213,42 @@
             // Station Data Points & Tooltips
             monitors.forEach(m => {
                 const px = scaleX(m.z_m);
-                const infoTitle = `${m.name} (${m.type || 'Diagnostic'}):&#10;  z = ${m.z_m.toFixed(4)} m&#10;  X_init = ${m.x_init_mm.toFixed(4)} mm, X_corr = ${m.x_corr_mm.toFixed(4)} mm&#10;  Y_init = ${(m.y_init_mm||0).toFixed(4)} mm, Y_corr = ${(m.y_corr_mm||0).toFixed(4)} mm&#10;  WS &sigma;x = ${m.sigma_x_mm ? m.sigma_x_mm.toFixed(2) + ' mm' : 'N/A'}&#10;  WS &sigma;y = ${m.sigma_y_mm ? m.sigma_y_mm.toFixed(2) + ' mm' : 'N/A'}`;
+                const isWS = (m.type === 'Wire Scanner' || (m.name && m.name.startsWith('WS')));
+                const valInit = plane === 'x' ? m.x_init_mm : (m.y_init_mm || 0.0);
+                const valCorr = plane === 'x' ? m.x_corr_mm : (m.y_corr_mm || 0.0);
+                const sigVal = plane === 'x' ? m.sigma_x_mm : m.sigma_y_mm;
+                const sigStr = sigVal ? `\n  WS \u03c3${plane} = \u00b1${sigVal.toFixed(2)} mm` : '';
+                const infoTitle = `${m.name} (${m.type || 'Diagnostic'}):\n  z = ${m.z_m.toFixed(4)} m\n  ${plane.toUpperCase()}_init = ${valInit.toFixed(4)} mm\n  ${plane.toUpperCase()}_corr = ${valCorr.toFixed(4)} mm${sigStr}`;
 
-                if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
+                if (plane === 'x') {
                     const pyInitX = scaleY(m.x_init_mm);
                     const pyCorrX = scaleY(m.x_corr_mm);
                     html += `<circle cx="${px}" cy="${pyInitX}" r="4" fill="#dc2626"><title>${infoTitle}</title></circle>`;
                     html += `<circle cx="${px}" cy="${pyCorrX}" r="4.5" fill="#2563eb"><title>${infoTitle}</title></circle>`;
-                }
-
-                if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
+                } else {
                     const pyInitY = scaleY(m.y_init_mm || 0.0);
                     const pyCorrY = scaleY(m.y_corr_mm || 0.0);
                     html += `<circle cx="${px}" cy="${pyInitY}" r="3.5" fill="#ea580c"><title>${infoTitle}</title></circle>`;
                     html += `<circle cx="${px}" cy="${pyCorrY}" r="4" fill="#9333ea"><title>${infoTitle}</title></circle>`;
                 }
 
-                html += `<text x="${px}" y="${padT + plotH + 18}" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">${m.name}</text>`;
+                html += `<text x="${px}" y="${padT + plotH + 15}" font-size="9" fill="#64748b" text-anchor="middle" font-weight="600">${m.name}</text>`;
+                if (isWS && sigVal) {
+                    const sigColor = plane === 'x' ? '#2563eb' : '#9333ea';
+                    html += `<text x="${px}" y="${padT + plotH + 25}" font-size="8" fill="${sigColor}" text-anchor="middle">&sigma;=${sigVal.toFixed(2)}mm</text>`;
+                }
             });
 
             svg.innerHTML = html;
+        }
+
+        function renderOrbitChart(monitors, tolerance) {
+            cachedOrbitMonitors = monitors;
+            cachedOrbitTolerance = tolerance;
+            if (!monitors || monitors.length === 0) return;
+
+            renderPlaneChart('orbit-chart-x-svg', monitors, 'x', tolerance);
+            renderPlaneChart('orbit-chart-y-svg', monitors, 'y', tolerance);
         }
 
         async function executeOrbitCorrection() {
