@@ -22,18 +22,30 @@ STEERERS: List[str] = ["STM_1", "STM_2", "STM_3", "STM_4", "STM_5"]
 
 # Default hardware power supply conversion calibration for LEBT
 DEFAULT_CONVERSION_FACTOR_A_PER_MRAD: float = 0.168
-DEFAULT_CURRENT_INCREMENT_A: float = 0.05
+DEFAULT_CURRENT_INCREMENT_A: float = 0.01
 
 
-def extract_diagnostic_orbit(trajectory, diagnostics: Dict[str, float] = LEBT_DIAGNOSTICS) -> Tuple[np.ndarray, np.ndarray]:
-    """Sample beam centroid offsets (x, y in mm) at designated diagnostic monitors."""
+def extract_diagnostic_orbit(
+    trajectory,
+    diagnostics: Dict[str, float] = LEBT_DIAGNOSTICS,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Sample beam centroid offsets (x, y) and RMS beam sizes (sigma_x, sigma_y) at designated diagnostic monitors."""
     x_vals: List[float] = []
     y_vals: List[float] = []
+    sx_vals: List[float] = []
+    sy_vals: List[float] = []
     for name, z_target in diagnostics.items():
         closest = min(trajectory, key=lambda p: abs(p.s_m - z_target))
         x_vals.append(closest.x_mm)
         y_vals.append(closest.y_mm)
-    return np.array(x_vals, dtype=float), np.array(y_vals, dtype=float)
+        sx_vals.append(getattr(closest, "sigma_x_mm", 2.5))
+        sy_vals.append(getattr(closest, "sigma_y_mm", 2.5))
+    return (
+        np.array(x_vals, dtype=float),
+        np.array(y_vals, dtype=float),
+        np.array(sx_vals, dtype=float),
+        np.array(sy_vals, dtype=float),
+    )
 
 
 def compute_lebt_response_matrices(
@@ -42,7 +54,7 @@ def compute_lebt_response_matrices(
     delta_kick_mrad: float = 1.0,
     conversion_factor_a_per_mrad: float = DEFAULT_CONVERSION_FACTOR_A_PER_MRAD,
     current_increment_a: float = DEFAULT_CURRENT_INCREMENT_A,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Measure empirical Orbit Response Matrix (ORM) using perturbation tracking in TRACK."""
     print(f"\n[1/4] Running unsteered baseline simulation in {model_dir.name}...")
     base_currents = {s: (0.0, 0.0) for s in STEERERS}
@@ -52,7 +64,7 @@ def compute_lebt_response_matrices(
         conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
         current_increment_a=current_increment_a,
     )
-    x0, y0 = extract_diagnostic_orbit(traj_base)
+    x0, y0, sx0, sy0 = extract_diagnostic_orbit(traj_base)
 
     m = len(LEBT_DIAGNOSTICS)
     n = len(STEERERS)
@@ -73,7 +85,7 @@ def compute_lebt_response_matrices(
             conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
             current_increment_a=current_increment_a,
         )
-        xk, _ = extract_diagnostic_orbit(traj_x)
+        xk, _, _, _ = extract_diagnostic_orbit(traj_x)
         Rx[:, j] = (xk - x0) / effective_dk
 
         # Vertical response
@@ -85,11 +97,11 @@ def compute_lebt_response_matrices(
             conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
             current_increment_a=current_increment_a,
         )
-        _, yk = extract_diagnostic_orbit(traj_y)
+        _, yk, _, _ = extract_diagnostic_orbit(traj_y)
         Ry[:, j] = (yk - y0) / effective_dk
         print(f"      - {stm}: dX/dI={Rx[-1, j] / conversion_factor_a_per_mrad:+.3f} mm/A ({Rx[-1, j]:+.3f} mm/mrad), dY/dI={Ry[-1, j] / conversion_factor_a_per_mrad:+.3f} mm/A at exit")
 
-    return Rx, Ry, x0, y0
+    return Rx, Ry, x0, y0, sx0, sy0
 
 
 def run_tune_orbit_example(
@@ -110,7 +122,7 @@ def run_tune_orbit_example(
     if not simulator.is_available():
         raise RuntimeError(f"TRACK simulator binary or Wine not accessible: {simulator.track_exe}")
 
-    Rx, Ry, x_init, y_init = compute_lebt_response_matrices(
+    Rx, Ry, x_init, y_init, sx_init, sy_init = compute_lebt_response_matrices(
         simulator,
         model_dir,
         conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
@@ -163,11 +175,12 @@ def run_tune_orbit_example(
         conversion_factor_a_per_mrad=conversion_factor_a_per_mrad,
         current_increment_a=current_increment_a,
     )
-    x_corr, y_corr = extract_diagnostic_orbit(traj_corrected)
+    x_corr, y_corr, sx_corr, sy_corr = extract_diagnostic_orbit(traj_corrected)
 
     rms_x_corr = float(np.sqrt(np.mean(x_corr**2)))
     rms_y_corr = float(np.sqrt(np.mean(y_corr**2)))
     improvement_x_pct = ((rms_x_init - rms_x_corr) / max(1e-6, rms_x_init)) * 100.0
+    improvement_y_pct = ((rms_y_init - rms_y_corr) / max(1e-6, rms_y_init)) * 100.0
 
     elapsed_time_s = time.perf_counter() - start_time
 
@@ -175,19 +188,25 @@ def run_tune_orbit_example(
     print(" VERIFICATION & AUDIT RESULTS")
     print("=" * 78)
     print(f"  Horizontal Orbit RMS : {rms_x_init:.4f} mm  -->  {rms_x_corr:.4f} mm  ({improvement_x_pct:+.1f}%)")
-    print(f"  Vertical Orbit RMS   : {rms_y_init:.4f} mm  -->  {rms_y_corr:.4f} mm")
+    print(f"  Vertical Orbit RMS   : {rms_y_init:.4f} mm  -->  {rms_y_corr:.4f} mm  ({improvement_y_pct:+.1f}%)")
     print(f"  Orbit Correction Time: {elapsed_time_s:.2f} seconds")
     print("  Diagnostic Station Summary:")
-    print("  {:<12} {:>10} {:>10} {:>12}".format("Monitor", "z (m)", "X_init(mm)", "X_corr(mm)"))
-    print("  " + "-" * 48)
+    print("  {:<12} {:>10} {:>10} {:>12} {:>10} {:>12} {:>10} {:>10}".format(
+        "Monitor", "z (m)", "X_init(mm)", "X_corr(mm)", "Y_init(mm)", "Y_corr(mm)", "SigX(mm)", "SigY(mm)"
+    ))
+    print("  " + "-" * 88)
     for i, (name, z_pos) in enumerate(LEBT_DIAGNOSTICS.items()):
-        print(f"  {name:<12} {z_pos:>10.4f} {x_init[i]:>10.4f} {x_corr[i]:>12.4f}")
+        print(f"  {name:<12} {z_pos:>10.4f} {x_init[i]:>10.4f} {x_corr[i]:>12.4f} {y_init[i]:>10.4f} {y_corr[i]:>12.4f} {sx_corr[i]:>10.4f} {sy_corr[i]:>10.4f}")
     print("=" * 78 + "\n")
 
     return {
         "initial_rms_x_mm": rms_x_init,
         "corrected_rms_x_mm": rms_x_corr,
+        "initial_rms_y_mm": rms_y_init,
+        "corrected_rms_y_mm": rms_y_corr,
         "improvement_pct": improvement_x_pct,
+        "improvement_x_pct": improvement_x_pct,
+        "improvement_y_pct": improvement_y_pct,
         "elapsed_time_s": elapsed_time_s,
         "steerers": [
             {
@@ -202,9 +221,14 @@ def run_tune_orbit_example(
         "monitors": [
             {
                 "name": name,
+                "type": "Wire Scanner" if "WS" in name else ("Slit Collector" if "Allison" in name else "BPM"),
                 "z_m": round(z_pos, 4),
                 "x_init_mm": round(float(x_init[i]), 4),
                 "x_corr_mm": round(float(x_corr[i]), 4),
+                "y_init_mm": round(float(y_init[i]), 4),
+                "y_corr_mm": round(float(y_corr[i]), 4),
+                "sigma_x_mm": round(float(sx_corr[i]), 4),
+                "sigma_y_mm": round(float(sy_corr[i]), 4),
             }
             for i, (name, z_pos) in enumerate(LEBT_DIAGNOSTICS.items())
         ],

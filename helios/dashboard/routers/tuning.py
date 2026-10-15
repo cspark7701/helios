@@ -37,7 +37,7 @@ async def tune_orbit_endpoint(
     section = req.get("section", "LEBT")
     engine = req.get("engine", "analytic").lower()
     factor = float(req.get("conversion_factor", 0.168))
-    step = float(req.get("current_increment", 0.05))
+    step = float(req.get("current_increment", 0.01))
     logger.info(f"[RBAC AUDIT] Orbit tuning initiated by user '{token.username}' (role '{token.role.value}') on {section}")
 
     if section.upper() == "LEBT" and engine == "track":
@@ -54,7 +54,11 @@ async def tune_orbit_endpoint(
                 "engine": "track",
                 "initial_rms_x_mm": res["initial_rms_x_mm"],
                 "corrected_rms_x_mm": res["corrected_rms_x_mm"],
+                "initial_rms_y_mm": res.get("initial_rms_y_mm", 0.0),
+                "corrected_rms_y_mm": res.get("corrected_rms_y_mm", 0.0),
                 "improvement_pct": res["improvement_pct"],
+                "improvement_x_pct": res.get("improvement_x_pct", res["improvement_pct"]),
+                "improvement_y_pct": res.get("improvement_y_pct", 0.0),
                 "elapsed_time_s": res["elapsed_time_s"],
                 "conversion_factor_a_per_mrad": factor,
                 "current_increment_a": step,

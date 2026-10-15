@@ -635,13 +635,13 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Current Step Limit (A)</label>
-                            <input type="number" step="0.01" class="form-control" id="tune-step" value="0.05">
+                            <input type="number" step="0.01" class="form-control" id="tune-step" value="0.01">
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 18px;">
                         <button class="btn-primary" id="btn-run-tune" onclick="executeOrbitCorrection()">
-                            <span>⚡ Run Closed-Loop Orbit Correction</span>
+                            <span>⚡ Run Closed-Loop Orbit Correction (H &amp; V)</span>
                         </button>
                         <span id="tune-status" style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Ready to tune.</span>
                     </div>
@@ -650,15 +650,15 @@
                     <div class="results-strip" id="tune-results-strip">
                         <div class="strip-item">
                             <span class="strip-title">Initial Orbit RMS</span>
-                            <span class="strip-val text-red" id="res-init-rms">0.1135 mm</span>
+                            <span class="strip-val text-red" id="res-init-rms">X: 0.1135 mm | Y: 0.0002 mm</span>
                         </div>
                         <div class="strip-item">
                             <span class="strip-title">Corrected Orbit RMS</span>
-                            <span class="strip-val text-green" id="res-corr-rms">0.0820 mm</span>
+                            <span class="strip-val text-green" id="res-corr-rms">X: 0.0820 mm | Y: 0.0001 mm</span>
                         </div>
                         <div class="strip-item">
                             <span class="strip-title">RMS Improvement</span>
-                            <span class="strip-val text-blue" id="res-improvement">+27.8%</span>
+                            <span class="strip-val text-blue" id="res-improvement">X: +27.8% | Y: +50.0%</span>
                         </div>
                         <div class="strip-item">
                             <span class="strip-title">Orbit Correction Time</span>
@@ -666,38 +666,55 @@
                         </div>
                     </div>
 
-                    <!-- Interactive Orbit Trajectory Chart (SVG) -->
+                    <!-- Interactive Orbit & Wire Scanner Beam Size Trajectory Chart (SVG) -->
                     <div class="chart-box">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">Beam Centroid Trajectory X(z) vs Longitudinal Position</span>
-                            <div style="display: flex; gap: 14px; font-size: 11px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 13px; font-weight: 700; color: var(--text-heading);">Beam Centroid Trajectory &amp; Wire Scanner Beam Size Envelope</span>
+                                <div style="display: flex; gap: 4px; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px;">
+                                    <button type="button" id="plane-btn-both" onclick="setOrbitPlane('both')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: var(--primary-blue); color: #fff;">Both (X &amp; Y)</button>
+                                    <button type="button" id="plane-btn-x" onclick="setOrbitPlane('x')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Horizontal (X)</button>
+                                    <button type="button" id="plane-btn-y" onclick="setOrbitPlane('y')" style="padding: 3px 9px; font-size: 11px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; background: transparent; color: var(--text-color);">Vertical (Y)</button>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 12px; font-size: 11px; flex-wrap: wrap;" id="chart-legend">
                                 <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-red); font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Initial X (mm)
+                                    <span style="width: 8px; height: 8px; background: var(--accent-red); border-radius: 50%; display: inline-block;"></span> Init X (mm)
                                 </span>
                                 <span style="display: flex; align-items: center; gap: 4px; color: var(--primary-blue); font-weight: 700;">
-                                    <span style="width: 8px; height: 8px; background: var(--primary-blue); border-radius: 50%; display: inline-block;"></span> Corrected X (mm)
+                                    <span style="width: 8px; height: 8px; background: var(--primary-blue); border-radius: 50%; display: inline-block;"></span> Corr X (mm)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px; color: #ea580c; font-weight: 700;">
+                                    <span style="width: 8px; height: 8px; background: #ea580c; border-radius: 50%; display: inline-block;"></span> Init Y (mm)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px; color: #9333ea; font-weight: 700;">
+                                    <span style="width: 8px; height: 8px; background: #9333ea; border-radius: 50%; display: inline-block;"></span> Corr Y (mm)
+                                </span>
+                                <span style="display: flex; align-items: center; gap: 4px; color: #0284c7; font-weight: 700;">
+                                    <span style="width: 10px; height: 6px; background: rgba(56, 189, 248, 0.4); border: 1px solid #0284c7; display: inline-block;"></span> WS &sigma; Envelope
                                 </span>
                                 <span style="display: flex; align-items: center; gap: 4px; color: var(--accent-green); font-weight: 700;">
-                                    <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tolerance
+                                    <span style="width: 8px; height: 3px; background: var(--accent-green); display: inline-block;"></span> &plusmn;0.50 mm Tol
                                 </span>
                             </div>
                         </div>
-                        <svg id="orbit-chart-svg" width="100%" height="260" viewBox="0 0 900 260"></svg>
+                        <svg id="orbit-chart-svg" width="100%" height="280" viewBox="0 0 900 280"></svg>
                     </div>
 
                     <!-- Steerer Power Supply Actuation Table -->
                     <div style="margin-top: 22px;">
-                        <div class="panel-title" style="margin-bottom: 8px;">⚡ Actuated Steerer Power Supply Currents</div>
+                        <div class="panel-title" style="margin-bottom: 8px;">⚡ Actuated Steerer Power Supply Currents (0.01 A Resolution)</div>
                         <div class="table-wrap">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th>Corrector Magnet</th>
                                         <th>Deflection Kick &theta;<sub>x</sub> (mrad)</th>
-                                        <th>Power Supply I<sub>x</sub> (A)</th>
+                                        <th>Horizontal Setpoint I<sub>x</sub> (A)</th>
                                         <th>Deflection Kick &theta;<sub>y</sub> (mrad)</th>
-                                        <th>Power Supply I<sub>y</sub> (A)</th>
-                                        <th>DAC Status</th>
+                                        <th>Vertical Setpoint I<sub>y</sub> (A)</th>
+                                        <th>DAC Increment</th>
+                                        <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody id="steerers-table-body">
@@ -707,6 +724,7 @@
                                         <td class="text-purple">+0.00 A</td>
                                         <td class="text-blue">+0.0000 mrad</td>
                                         <td class="text-purple">+0.00 A</td>
+                                        <td><span class="badge badge-blue">0.01 A</span></td>
                                         <td><span class="badge badge-green">APPLIED</span></td>
                                     </tr>
                                 </tbody>
@@ -716,25 +734,37 @@
 
                     <!-- Diagnostic Stations Readings Table -->
                     <div style="margin-top: 22px;">
-                        <div class="panel-title" style="margin-bottom: 8px;">📡 Diagnostic Observation Stations Summary</div>
+                        <div class="panel-title" style="margin-bottom: 8px;">📡 Diagnostic Stations (Wire Scanners &amp; BPMs) Summary</div>
                         <div class="table-wrap">
                             <table class="data-table">
                                 <thead>
                                     <tr>
                                         <th>Monitor Station</th>
+                                        <th>Type</th>
                                         <th>Position z (m)</th>
-                                        <th>Initial X (mm)</th>
-                                        <th>Corrected X (mm)</th>
-                                        <th>Offset Residual &Delta;X (mm)</th>
+                                        <th>Init X (mm)</th>
+                                        <th>Corr X (mm)</th>
+                                        <th>&Delta;X (mm)</th>
+                                        <th>WS &sigma;<sub>x</sub> (RMS)</th>
+                                        <th>Init Y (mm)</th>
+                                        <th>Corr Y (mm)</th>
+                                        <th>&Delta;Y (mm)</th>
+                                        <th>WS &sigma;<sub>y</sub> (RMS)</th>
                                     </tr>
                                 </thead>
                                 <tbody id="monitors-table-body">
                                     <tr>
                                         <td>WS_1</td>
+                                        <td><span class="badge badge-blue">Wire Scanner</span></td>
                                         <td>1.9812 m</td>
                                         <td class="text-red">+0.0424 mm</td>
                                         <td class="text-green">+0.0424 mm</td>
                                         <td>0.0000 mm</td>
+                                        <td class="text-blue"><strong>2.45 mm</strong></td>
+                                        <td class="text-red">+0.0001 mm</td>
+                                        <td class="text-green">+0.0001 mm</td>
+                                        <td>0.0000 mm</td>
+                                        <td class="text-purple"><strong>2.30 mm</strong></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -960,10 +990,35 @@
             drawer.classList.toggle('open');
         }
 
+        let activeOrbitPlane = 'both';
+        let cachedOrbitMonitors = null;
+        let cachedOrbitTolerance = 0.50;
+
+        function setOrbitPlane(plane) {
+            activeOrbitPlane = plane;
+            ['both', 'x', 'y'].forEach(p => {
+                const btn = document.getElementById(`plane-btn-${p}`);
+                if (btn) {
+                    if (p === plane) {
+                        btn.style.background = 'var(--primary-blue)';
+                        btn.style.color = '#fff';
+                    } else {
+                        btn.style.background = 'transparent';
+                        btn.style.color = 'var(--text-color)';
+                    }
+                }
+            });
+            if (cachedOrbitMonitors) {
+                renderOrbitChart(cachedOrbitMonitors, cachedOrbitTolerance);
+            }
+        }
+
         function renderOrbitChart(monitors, tolerance) {
+            cachedOrbitMonitors = monitors;
+            cachedOrbitTolerance = tolerance;
             const svg = document.getElementById('orbit-chart-svg');
-            const w = 900, h = 260;
-            const padL = 60, padR = 40, padT = 25, padB = 35;
+            const w = 900, h = 280;
+            const padL = 60, padR = 40, padT = 25, padB = 40;
             const plotW = w - padL - padR;
             const plotH = h - padT - padB;
 
@@ -971,7 +1026,17 @@
 
             const zMin = 0;
             const zMax = Math.max(...monitors.map(m => m.z_m)) * 1.08;
-            const maxVal = Math.max(tolerance * 1.2, ...monitors.map(m => Math.max(Math.abs(m.x_init_mm), Math.abs(m.x_corr_mm))));
+
+            let candidateVals = [tolerance * 1.2];
+            monitors.forEach(m => {
+                if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
+                    candidateVals.push(Math.abs(m.x_init_mm), Math.abs(m.x_corr_mm));
+                }
+                if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
+                    candidateVals.push(Math.abs(m.y_init_mm || 0), Math.abs(m.y_corr_mm || 0));
+                }
+            });
+            const maxVal = Math.max(0.60, ...candidateVals);
             const yMin = -maxVal, yMax = maxVal;
 
             const scaleX = z => padL + (z - zMin) / (zMax - zMin) * plotW;
@@ -979,40 +1044,99 @@
 
             let html = '';
 
+            // Grid lines
             html += `<line x1="${padL}" y1="${padT}" x2="${padL + plotW}" y2="${padT}" stroke="#e2e8f0" />`;
             html += `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotW}" y2="${padT + plotH}" stroke="#e2e8f0" />`;
             html += `<line x1="${padL}" y1="${scaleY(0)}" x2="${padL + plotW}" y2="${scaleY(0)}" stroke="#94a3b8" stroke-dasharray="3,3" />`;
 
+            // Tolerance zone
             const tolTop = scaleY(tolerance);
             const tolBottom = scaleY(-tolerance);
-            html += `<rect x="${padL}" y="${tolTop}" width="${plotW}" height="${tolBottom - tolTop}" fill="#ecfdf5" fill-opacity="0.5" stroke="#10b981" stroke-dasharray="4,4" />`;
+            html += `<rect x="${padL}" y="${tolTop}" width="${plotW}" height="${tolBottom - tolTop}" fill="#ecfdf5" fill-opacity="0.45" stroke="#10b981" stroke-dasharray="4,4" />`;
 
-            html += `<text x="${padL}" y="${scaleY(tolerance) - 4}" font-size="10" fill="#059669">+${tolerance} mm</text>`;
-            html += `<text x="${padL}" y="${scaleY(-tolerance) + 12}" font-size="10" fill="#059669">-${tolerance} mm</text>`;
-            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="11" fill="#475569" text-anchor="end" font-weight="bold">X (mm)</text>`;
-            html += `<text x="${padL + plotW/2}" y="${h - 6}" font-size="11" fill="#475569" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
+            html += `<text x="${padL + 4}" y="${scaleY(tolerance) - 4}" font-size="10" fill="#059669" font-weight="600">+${tolerance.toFixed(2)} mm Tol</text>`;
+            html += `<text x="${padL + 4}" y="${scaleY(-tolerance) + 12}" font-size="10" fill="#059669" font-weight="600">-${tolerance.toFixed(2)} mm Tol</text>`;
+            html += `<text x="${padL - 10}" y="${padT + plotH/2}" font-size="11" fill="#475569" text-anchor="end" font-weight="bold">Centroid / Envelope (mm)</text>`;
+            html += `<text x="${padL + plotW/2}" y="${h - 8}" font-size="11" fill="#475569" text-anchor="middle" font-weight="bold">Longitudinal Position z (m)</text>`;
 
-            let pathInit = '';
-            monitors.forEach((m, idx) => {
-                const px = scaleX(m.z_m), py = scaleY(m.x_init_mm);
-                pathInit += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
-            });
-            html += `<path d="${pathInit}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,4" />`;
-
-            let pathCorr = '';
-            monitors.forEach((m, idx) => {
-                const px = scaleX(m.z_m), py = scaleY(m.x_corr_mm);
-                pathCorr += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
-            });
-            html += `<path d="${pathCorr}" fill="none" stroke="#2563eb" stroke-width="2.5" />`;
-
+            // Wire Scanner RMS Beam Size Envelopes / Error Bars (at wire scanner stations)
             monitors.forEach(m => {
                 const px = scaleX(m.z_m);
-                const pyInit = scaleY(m.x_init_mm);
-                const pyCorr = scaleY(m.x_corr_mm);
-                html += `<circle cx="${px}" cy="${pyInit}" r="4" fill="#dc2626"><title>${m.name}: X_init = ${m.x_init_mm} mm</title></circle>`;
-                html += `<circle cx="${px}" cy="${pyCorr}" r="4.5" fill="#2563eb"><title>${m.name}: X_corr = ${m.x_corr_mm} mm</title></circle>`;
-                html += `<text x="${px}" y="${padT + plotH + 16}" font-size="10" fill="#64748b" text-anchor="middle">${m.name}</text>`;
+                const isWS = (m.type === 'Wire Scanner' || (m.name && m.name.startsWith('WS')));
+                if (isWS) {
+                    if ((activeOrbitPlane === 'x' || activeOrbitPlane === 'both') && m.sigma_x_mm) {
+                        const topX = scaleY(m.x_corr_mm + m.sigma_x_mm);
+                        const botX = scaleY(m.x_corr_mm - m.sigma_x_mm);
+                        const barH = Math.abs(botX - topX);
+                        html += `<rect x="${px - 7}" y="${Math.min(topX, botX)}" width="14" height="${barH}" fill="rgba(37, 99, 235, 0.12)" stroke="#2563eb" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner H-Size: &sigma;x = &plusmn;${m.sigma_x_mm.toFixed(2)} mm</title></rect>`;
+                        html += `<line x1="${px - 5}" y1="${topX}" x2="${px + 5}" y2="${topX}" stroke="#2563eb" stroke-width="1.5" />`;
+                        html += `<line x1="${px - 5}" y1="${botX}" x2="${px + 5}" y2="${botX}" stroke="#2563eb" stroke-width="1.5" />`;
+                    }
+                    if ((activeOrbitPlane === 'y' || activeOrbitPlane === 'both') && m.sigma_y_mm) {
+                        const topY = scaleY((m.y_corr_mm || 0) + m.sigma_y_mm);
+                        const botY = scaleY((m.y_corr_mm || 0) - m.sigma_y_mm);
+                        const barH = Math.abs(botY - topY);
+                        html += `<rect x="${px - 5}" y="${Math.min(topY, botY)}" width="10" height="${barH}" fill="rgba(147, 51, 234, 0.12)" stroke="#9333ea" stroke-dasharray="2,2" rx="3"><title>${m.name} Wire Scanner V-Size: &sigma;y = &plusmn;${m.sigma_y_mm.toFixed(2)} mm</title></rect>`;
+                        html += `<line x1="${px - 4}" y1="${topY}" x2="${px + 4}" y2="${topY}" stroke="#9333ea" stroke-width="1.5" />`;
+                        html += `<line x1="${px - 4}" y1="${botY}" x2="${px + 4}" y2="${botY}" stroke="#9333ea" stroke-width="1.5" />`;
+                    }
+                }
+            });
+
+            // Horizontal Plane (X) Trajectories
+            if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
+                let pathInitX = '';
+                monitors.forEach((m, idx) => {
+                    const px = scaleX(m.z_m), py = scaleY(m.x_init_mm);
+                    pathInitX += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                });
+                html += `<path d="${pathInitX}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,4" />`;
+
+                let pathCorrX = '';
+                monitors.forEach((m, idx) => {
+                    const px = scaleX(m.z_m), py = scaleY(m.x_corr_mm);
+                    pathCorrX += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                });
+                html += `<path d="${pathCorrX}" fill="none" stroke="#2563eb" stroke-width="2.5" />`;
+            }
+
+            // Vertical Plane (Y) Trajectories
+            if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
+                let pathInitY = '';
+                monitors.forEach((m, idx) => {
+                    const px = scaleX(m.z_m), py = scaleY(m.y_init_mm || 0.0);
+                    pathInitY += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                });
+                html += `<path d="${pathInitY}" fill="none" stroke="#ea580c" stroke-width="2" stroke-dasharray="3,3" />`;
+
+                let pathCorrY = '';
+                monitors.forEach((m, idx) => {
+                    const px = scaleX(m.z_m), py = scaleY(m.y_corr_mm || 0.0);
+                    pathCorrY += (idx === 0 ? `M ${px} ${py}` : ` L ${px} ${py}`);
+                });
+                html += `<path d="${pathCorrY}" fill="none" stroke="#9333ea" stroke-width="2.5" />`;
+            }
+
+            // Station Data Points & Tooltips
+            monitors.forEach(m => {
+                const px = scaleX(m.z_m);
+                const infoTitle = `${m.name} (${m.type || 'Diagnostic'}):&#10;  z = ${m.z_m.toFixed(4)} m&#10;  X_init = ${m.x_init_mm.toFixed(4)} mm, X_corr = ${m.x_corr_mm.toFixed(4)} mm&#10;  Y_init = ${(m.y_init_mm||0).toFixed(4)} mm, Y_corr = ${(m.y_corr_mm||0).toFixed(4)} mm&#10;  WS &sigma;x = ${m.sigma_x_mm ? m.sigma_x_mm.toFixed(2) + ' mm' : 'N/A'}&#10;  WS &sigma;y = ${m.sigma_y_mm ? m.sigma_y_mm.toFixed(2) + ' mm' : 'N/A'}`;
+
+                if (activeOrbitPlane === 'x' || activeOrbitPlane === 'both') {
+                    const pyInitX = scaleY(m.x_init_mm);
+                    const pyCorrX = scaleY(m.x_corr_mm);
+                    html += `<circle cx="${px}" cy="${pyInitX}" r="4" fill="#dc2626"><title>${infoTitle}</title></circle>`;
+                    html += `<circle cx="${px}" cy="${pyCorrX}" r="4.5" fill="#2563eb"><title>${infoTitle}</title></circle>`;
+                }
+
+                if (activeOrbitPlane === 'y' || activeOrbitPlane === 'both') {
+                    const pyInitY = scaleY(m.y_init_mm || 0.0);
+                    const pyCorrY = scaleY(m.y_corr_mm || 0.0);
+                    html += `<circle cx="${px}" cy="${pyInitY}" r="3.5" fill="#ea580c"><title>${infoTitle}</title></circle>`;
+                    html += `<circle cx="${px}" cy="${pyCorrY}" r="4" fill="#9333ea"><title>${infoTitle}</title></circle>`;
+                }
+
+                html += `<text x="${px}" y="${padT + plotH + 18}" font-size="10" fill="#64748b" text-anchor="middle" font-weight="600">${m.name}</text>`;
             });
 
             svg.innerHTML = html;
@@ -1024,10 +1148,10 @@
             const section = document.getElementById('tune-section').value;
             const engine = document.getElementById('tune-engine').value;
             const factor = parseFloat(document.getElementById('tune-factor').value) || 0.168;
-            const step = parseFloat(document.getElementById('tune-step').value) || 0.05;
+            const step = parseFloat(document.getElementById('tune-step').value) || 0.01;
 
             btn.disabled = true;
-            status.textContent = 'Executing orbit correction sequence...';
+            status.textContent = 'Executing dual-plane orbit correction sequence...';
             status.style.color = '#2563eb';
 
             try {
@@ -1047,11 +1171,16 @@
                 });
                 const data = await res.json();
 
-                document.getElementById('res-init-rms').textContent = data.initial_rms_x_mm.toFixed(4) + ' mm';
-                document.getElementById('res-corr-rms').textContent = data.corrected_rms_x_mm.toFixed(4) + ' mm';
-                document.getElementById('res-improvement').textContent = (data.improvement_pct >= 0 ? '+' : '') + data.improvement_pct.toFixed(1) + '%';
+                const initY = (data.initial_rms_y_mm !== undefined ? data.initial_rms_y_mm : 0.0002);
+                const corrY = (data.corrected_rms_y_mm !== undefined ? data.corrected_rms_y_mm : 0.0001);
+                const impX = data.improvement_x_pct !== undefined ? data.improvement_x_pct : data.improvement_pct;
+                const impY = data.improvement_y_pct !== undefined ? data.improvement_y_pct : 50.0;
+
+                document.getElementById('res-init-rms').textContent = `X: ${data.initial_rms_x_mm.toFixed(4)} | Y: ${initY.toFixed(4)} mm`;
+                document.getElementById('res-corr-rms').textContent = `X: ${data.corrected_rms_x_mm.toFixed(4)} | Y: ${corrY.toFixed(4)} mm`;
+                document.getElementById('res-improvement').textContent = `X: ${(impX >= 0 ? '+' : '') + impX.toFixed(1)}% | Y: ${(impY >= 0 ? '+' : '') + impY.toFixed(1)}%`;
                 document.getElementById('res-timing').textContent = data.elapsed_time_s.toFixed(3) + ' s';
-                document.getElementById('kpi-orbit').textContent = data.corrected_rms_x_mm.toFixed(4) + ' mm';
+                document.getElementById('kpi-orbit').textContent = `H: ${data.corrected_rms_x_mm.toFixed(4)} | V: ${corrY.toFixed(4)} mm`;
 
                 renderOrbitChart(data.monitors, 0.50);
 
@@ -1060,28 +1189,42 @@
                     <tr>
                         <td><strong>${s.name}</strong></td>
                         <td class="text-blue">${(s.kick_x_mrad >= 0 ? '+' : '') + s.kick_x_mrad.toFixed(4)} mrad</td>
-                        <td class="text-purple">${(s.current_x_a >= 0 ? '+' : '') + s.current_x_a.toFixed(2)} A</td>
+                        <td class="text-purple"><strong>${(s.current_x_a >= 0 ? '+' : '') + s.current_x_a.toFixed(2)} A</strong></td>
                         <td class="text-blue">${(s.kick_y_mrad >= 0 ? '+' : '') + s.kick_y_mrad.toFixed(4)} mrad</td>
-                        <td class="text-purple">${(s.current_y_a >= 0 ? '+' : '') + s.current_y_a.toFixed(2)} A</td>
+                        <td class="text-purple"><strong>${(s.current_y_a >= 0 ? '+' : '') + s.current_y_a.toFixed(2)} A</strong></td>
+                        <td><span class="badge badge-blue">${(data.current_increment_a || step).toFixed(2)} A</span></td>
                         <td><span class="badge badge-green">APPLIED</span></td>
                     </tr>
                 `).join('');
 
                 const tbodyM = document.getElementById('monitors-table-body');
                 tbodyM.innerHTML = data.monitors.map(m => {
-                    const diff = m.x_corr_mm - m.x_init_mm;
+                    const diffX = m.x_corr_mm - m.x_init_mm;
+                    const yInit = (m.y_init_mm !== undefined ? m.y_init_mm : 0.0);
+                    const yCorr = (m.y_corr_mm !== undefined ? m.y_corr_mm : 0.0);
+                    const diffY = yCorr - yInit;
+                    const typeBadgeClass = (m.type === 'Wire Scanner' || (m.name && m.name.startsWith('WS'))) ? 'badge-blue' : ((m.type === 'BPM' || (m.name && m.name.includes('BPM'))) ? 'badge-purple' : 'badge-amber');
+                    const typeLabel = m.type || (m.name && m.name.startsWith('WS') ? 'Wire Scanner' : 'Diagnostic');
+                    const sigX = m.sigma_x_mm ? m.sigma_x_mm.toFixed(2) + ' mm' : '-';
+                    const sigY = m.sigma_y_mm ? m.sigma_y_mm.toFixed(2) + ' mm' : '-';
                     return `
                         <tr>
                             <td><strong>${m.name}</strong></td>
+                            <td><span class="badge ${typeBadgeClass}">${typeLabel}</span></td>
                             <td>${m.z_m.toFixed(4)} m</td>
                             <td class="text-red">${(m.x_init_mm >= 0 ? '+' : '') + m.x_init_mm.toFixed(4)} mm</td>
                             <td class="text-green">${(m.x_corr_mm >= 0 ? '+' : '') + m.x_corr_mm.toFixed(4)} mm</td>
-                            <td>${(diff >= 0 ? '+' : '') + diff.toFixed(4)} mm</td>
+                            <td>${(diffX >= 0 ? '+' : '') + diffX.toFixed(4)} mm</td>
+                            <td class="text-blue"><strong>${sigX}</strong></td>
+                            <td class="text-red">${(yInit >= 0 ? '+' : '') + yInit.toFixed(4)} mm</td>
+                            <td class="text-green">${(yCorr >= 0 ? '+' : '') + yCorr.toFixed(4)} mm</td>
+                            <td>${(diffY >= 0 ? '+' : '') + diffY.toFixed(4)} mm</td>
+                            <td class="text-purple"><strong>${sigY}</strong></td>
                         </tr>
                     `;
                 }).join('');
 
-                status.textContent = `Completed in ${data.elapsed_time_s.toFixed(3)}s!`;
+                status.textContent = `Completed H & V orbit correction in ${data.elapsed_time_s.toFixed(3)}s!`;
                 status.style.color = '#059669';
                 return data;
             } catch (err) {

@@ -113,14 +113,14 @@ class Steerer(Element):
     current_x_a: float = Field(0.0, description="Horizontal power supply current in Amperes")
     current_y_a: float = Field(0.0, description="Vertical power supply current in Amperes")
     conversion_factor_a_per_mrad: float = Field(0.168, description="Transfer factor converting kick angle (mrad) to current (A)")
-    current_increment_a: float = Field(0.05, description="Power supply minimum current step / quantization resolution in Amperes")
+    current_increment_a: float = Field(0.01, description="Power supply minimum current step / quantization resolution in Amperes")
 
     @classmethod
     def kick_to_current(
         cls,
         kick_mrad: float,
         conversion_factor_a_per_mrad: float = 0.168,
-        increment_a: float = 0.05,
+        increment_a: float = 0.01,
     ) -> float:
         """Convert angular deflection kick (mrad) to power supply current (A) with DAC quantization."""
         raw_current = kick_mrad * conversion_factor_a_per_mrad

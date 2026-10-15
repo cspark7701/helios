@@ -10,12 +10,12 @@ from helios.physics.elements import Steerer
 
 # Standard baseline diagnostics and response data for fast analytic GUI tuning
 LEBT_STATION_DATA = [
-    {"name": "WS_1", "z_m": 1.9812, "x_init": 0.0424, "y_init": 0.0001},
-    {"name": "Allison", "z_m": 4.0082, "x_init": -0.0264, "y_init": -0.0002},
-    {"name": "WS_2", "z_m": 7.6402, "x_init": 0.0967, "y_init": 0.0003},
-    {"name": "WS_3", "z_m": 9.9872, "x_init": -0.1155, "y_init": -0.0001},
-    {"name": "WS_4", "z_m": 10.7672, "x_init": -0.2281, "y_init": 0.0002},
-    {"name": "BPM_EXIT", "z_m": 12.2832, "x_init": -0.0111, "y_init": -0.0003},
+    {"name": "WS_1", "type": "Wire Scanner", "z_m": 1.9812, "x_init": 0.0424, "y_init": 0.0001, "sigma_x_mm": 2.45, "sigma_y_mm": 2.30},
+    {"name": "Allison", "type": "Slit Collector", "z_m": 4.0082, "x_init": -0.0264, "y_init": -0.0002, "sigma_x_mm": 3.12, "sigma_y_mm": 2.95},
+    {"name": "WS_2", "type": "Wire Scanner", "z_m": 7.6402, "x_init": 0.0967, "y_init": 0.0003, "sigma_x_mm": 4.20, "sigma_y_mm": 3.85},
+    {"name": "WS_3", "type": "Wire Scanner", "z_m": 9.9872, "x_init": -0.1155, "y_init": -0.0001, "sigma_x_mm": 2.85, "sigma_y_mm": 3.10},
+    {"name": "WS_4", "type": "Wire Scanner", "z_m": 10.7672, "x_init": -0.2281, "y_init": 0.0002, "sigma_x_mm": 3.40, "sigma_y_mm": 3.65},
+    {"name": "BPM_EXIT", "type": "BPM", "z_m": 12.2832, "x_init": -0.0111, "y_init": -0.0003, "sigma_x_mm": 3.90, "sigma_y_mm": 4.10},
 ]
 
 LEBT_STEERER_NAMES = ["STM_1", "STM_2", "STM_3", "STM_4", "STM_5"]
@@ -42,7 +42,7 @@ LEBT_RY = np.array([
 def execute_analytic_orbit_correction(
     section: str = "LEBT",
     conversion_factor_a_per_mrad: float = 0.168,
-    current_increment_a: float = 0.05,
+    current_increment_a: float = 0.01,
 ) -> dict[str, Any]:
     """Perform rapid analytic orbit correction for interactive operator console."""
     start_time = time.perf_counter()
@@ -56,7 +56,15 @@ def execute_analytic_orbit_correction(
         y_init = np.array([s["y_init"] for s in stations])
     else:
         stations = [
-            {"name": f"MEBT_BPM_{i+1:02d}", "z_m": round(0.5 + i * 0.45, 3), "x_init": round(0.15 * np.sin(i * 0.9), 4), "y_init": round(-0.10 * np.cos(i * 0.8), 4)}
+            {
+                "name": f"MEBT_BPM_{i+1:02d}",
+                "type": "BPM",
+                "z_m": round(0.5 + i * 0.45, 3),
+                "x_init": round(0.15 * np.sin(i * 0.9), 4),
+                "y_init": round(-0.10 * np.cos(i * 0.8), 4),
+                "sigma_x_mm": round(1.8 + 0.3 * np.sin(i), 3),
+                "sigma_y_mm": round(1.7 + 0.25 * np.cos(i), 3),
+            }
             for i in range(8)
         ]
         steerers = ["MEBT_ST_01", "MEBT_ST_02", "MEBT_ST_03", "MEBT_ST_04"]
@@ -114,16 +122,20 @@ def execute_analytic_orbit_correction(
     rms_x_corr = float(np.sqrt(np.mean(x_corr**2)))
     rms_y_corr = float(np.sqrt(np.mean(y_corr**2)))
     improvement_x_pct = ((rms_x_init - rms_x_corr) / max(1e-6, rms_x_init)) * 100.0
+    improvement_y_pct = ((rms_y_init - rms_y_corr) / max(1e-6, rms_y_init)) * 100.0
 
     monitors_result = []
     for i, s in enumerate(stations):
         monitors_result.append({
             "name": s["name"],
+            "type": s.get("type", "BPM"),
             "z_m": s["z_m"],
             "x_init_mm": round(float(x_init[i]), 4),
             "x_corr_mm": round(float(x_corr[i]), 4),
             "y_init_mm": round(float(y_init[i]), 4),
             "y_corr_mm": round(float(y_corr[i]), 4),
+            "sigma_x_mm": round(float(s.get("sigma_x_mm", 2.5)), 4),
+            "sigma_y_mm": round(float(s.get("sigma_y_mm", 2.5)), 4),
         })
 
     elapsed_time_s = time.perf_counter() - start_time
@@ -136,6 +148,8 @@ def execute_analytic_orbit_correction(
         "initial_rms_y_mm": round(rms_y_init, 4),
         "corrected_rms_y_mm": round(rms_y_corr, 4),
         "improvement_pct": round(improvement_x_pct, 1),
+        "improvement_x_pct": round(improvement_x_pct, 1),
+        "improvement_y_pct": round(improvement_y_pct, 1),
         "elapsed_time_s": round(elapsed_time_s, 3),
         "conversion_factor_a_per_mrad": conversion_factor_a_per_mrad,
         "current_increment_a": current_increment_a,
