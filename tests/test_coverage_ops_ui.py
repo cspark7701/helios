@@ -303,12 +303,19 @@ def test_coverage_dashboard_routes(tmp_path: Path):
         res_rej_err = client.post("/api/plans/9999/reject", headers=headers)
         assert res_rej_err.status_code == 400
 
-    # 7. tuning_router: LEBT track execution
+    # 7. tuning_router: panic, LEBT track execution, fallback on exception, and default payload
+    admin_token = rbac.issue_token("admin_user", UserRole.ADMIN, validity_seconds=60.0)
+    res_panic = client.post("/api/emergency/panic", headers={"Authorization": f"Bearer {admin_token.token_str}"})
+    assert res_panic.status_code == 200
+    assert res_panic.json()["status"] == "PANIC_EXECUTED"
+
     mock_tune_res = {
         "initial_rms_x_mm": 1.2,
         "corrected_rms_x_mm": 0.2,
         "improvement_pct": 83.3,
         "elapsed_time_s": 0.12,
+        "steerers": [{"name": "S1"}],
+        "monitors": [{"name": "B1"}],
     }
     with patch("examples.tune_orbit_lebt.run_tune_orbit_example", return_value=mock_tune_res):
         res_lebt = client.post(
@@ -318,6 +325,22 @@ def test_coverage_dashboard_routes(tmp_path: Path):
         )
         assert res_lebt.status_code == 200
         assert res_lebt.json()["section"] == "LEBT"
+        assert len(res_lebt.json()["steerers"]) == 1
+
+    # Exception in track execution triggers fallback to analytic model (lines 64-66)
+    with patch("examples.tune_orbit_lebt.run_tune_orbit_example", side_effect=RuntimeError("Simulation engine error")):
+        res_fb = client.post(
+            "/api/tune/orbit",
+            headers=headers,
+            json={"section": "LEBT", "engine": "track"},
+        )
+        assert res_fb.status_code == 200
+        assert "initial_rms_x_mm" in res_fb.json()
+
+    # None payload / default payload test
+    res_default = client.post("/api/tune/orbit", headers=headers)
+    assert res_default.status_code == 200
+    assert "initial_rms_x_mm" in res_default.json()
 
     # 8. ws_router: WebSocketDisconnect cleanup
     mock_ws = AsyncMock()

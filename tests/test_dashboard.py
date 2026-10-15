@@ -1,5 +1,6 @@
 """Unit tests for Web Dashboard and Real-Time Visualizations (Phase 13)."""
 
+from unittest.mock import patch
 import pytest
 from starlette.testclient import TestClient
 
@@ -177,6 +178,21 @@ def test_dashboard_orbit_tuning_endpoint(client):
     assert "monitors" in data
     assert len(data["monitors"]) == 6
     assert "elapsed_time_s" in data
+
+    # 4. Physicist call with engine='track' success
+    mock_tune = {
+        "initial_rms_x_mm": 1.1,
+        "corrected_rms_x_mm": 0.15,
+        "improvement_pct": 86.4,
+        "elapsed_time_s": 0.08,
+        "steerers": [{"name": "S1"}],
+        "monitors": [{"name": "B1"}],
+    }
+    with patch("examples.tune_orbit_lebt.run_tune_orbit_example", return_value=mock_tune):
+        resp_track = client.post("/api/tune/orbit", json={"section": "LEBT", "engine": "track"}, headers=phys_headers)
+        assert resp_track.status_code == 200
+        assert resp_track.json()["engine"] == "track"
+        assert len(resp_track.json()["steerers"]) == 1
 
 
 def test_dashboard_prompt_window_endpoint(client):

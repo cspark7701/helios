@@ -1,11 +1,13 @@
 """Unit tests achieving 100% test coverage for helios/interfaces and helios/diagnostics."""
 
+import importlib
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+import helios.interfaces.epics as epics_mod
 from helios.core.schemas import TelemetrySnapshot
 from helios.diagnostics.anomaly import LinacAnomalyDetector
 from helios.diagnostics.archiver import TelemetryArchiver
@@ -121,10 +123,21 @@ def test_base_control_interface_methods():
 # ==============================================================================
 
 def test_epics_interface_coverage():
-    # MockControlInterface: SP -> RB mirroring
-    mock = MockControlInterface()
-    mock.put("MAGNET:SP", 42.0)
+    # MockControlInterface with noise and set_initial_pv
+    mock_noise = MockControlInterface(readback_noise_std=0.05)
+    mock_noise.set_initial_pv("PV:INIT", 10.0)
+    assert mock_noise.get("PV:INIT") is not None
+
+    # MockControlInterface without noise
+    mock = MockControlInterface(response_lag_s=0.001, readback_noise_std=0.0)
+    mock.set_initial_pv("PV:STR", "hello")
+    assert mock.get("PV:STR") == "hello"
+
+    mock.put("MAGNET:SP", 42.0, wait=True)
     assert mock.get("MAGNET:RB") == 42.0
+
+    mock.put("TRIGGER:Set", 1.0, wait=False)
+    assert mock.get("TRIGGER:Act") == 1.0
 
     # MockControlInterface: subscriber callback error branch
     def broken_cb(pv, val):
@@ -135,20 +148,22 @@ def test_epics_interface_coverage():
     mock.unsubscribe("TRIGGER:Set")
     mock.unsubscribe("NONEXISTENT_PV")
 
-    # EPICSInterface without pyepics installed
-    epics_iface = EPICSInterface()
-    epics_iface._has_epics = False
+    # EPICSInterface without pyepics installed (tests lines 87-94)
+    with patch.dict("sys.modules", {"epics": None}):
+        importlib.reload(epics_mod)
+        epics_iface = epics_mod.EPICSInterface()
+        assert epics_iface._has_epics is False
 
-    with pytest.raises(ControlInterfaceError):
-        epics_iface.get("SOME:PV")
-    with pytest.raises(ControlInterfaceError):
-        epics_iface.put("SOME:PV", 10.0)
-    with pytest.raises(ControlInterfaceError):
-        epics_iface.get_many(["SOME:PV"])
-    with pytest.raises(ControlInterfaceError):
-        epics_iface.subscribe("SOME:PV", lambda pv, val: None)
+        with pytest.raises(ControlInterfaceError):
+            epics_iface.get("SOME:PV")
+        with pytest.raises(ControlInterfaceError):
+            epics_iface.put("SOME:PV", 10.0)
+        with pytest.raises(ControlInterfaceError):
+            epics_iface.get_many(["SOME:PV"])
+        with pytest.raises(ControlInterfaceError):
+            epics_iface.subscribe("SOME:PV", lambda pv, val: None)
 
-    # EPICSInterface with mocked pyepics
+    # EPICSInterface with mocked pyepics (tests lines 85-86, 95-126)
     mock_epics = MagicMock()
     mock_epics.caget.return_value = 12.34
     mock_epics.caput.return_value = 1
@@ -157,8 +172,9 @@ def test_epics_interface_coverage():
     mock_epics.PV.return_value = mock_pv_instance
 
     with patch.dict("sys.modules", {"epics": mock_epics}):
-        epics_live = EPICSInterface()
-        epics_live._has_epics = True
+        importlib.reload(epics_mod)
+        epics_live = epics_mod.EPICSInterface()
+        assert epics_live._has_epics is True
 
         assert epics_live.get("LIVE:PV") == 12.34
         assert epics_live.put("LIVE:PV", 5.0) is True
@@ -179,6 +195,8 @@ def test_epics_interface_coverage():
         epics_live.unsubscribe("LIVE:PV")
         mock_pv_instance.clear_callbacks.assert_called_once()
         epics_live.unsubscribe("NONEXISTENT")
+
+    importlib.reload(epics_mod)
 
 
 # ==============================================================================
