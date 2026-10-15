@@ -1,10 +1,10 @@
-# HELIOS: HEavy ion Linac Intelligent Orchestration
+# HELIOS: Heavy Ion Linac Intelligent Orchestration Suite
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-active%20development-orange.svg)](#)
 
-**HELIOS** (**HE**avy ion **L**inac **I**ntelligent **O**rchestration) is an agentic AI framework engineered for autonomous operation, beam tuning, anomaly detection, and physics-informed control of heavy ion linear accelerators.
+**HELIOS** (**H**eavy ion **E**nergy / **L**inac **I**ntelligent **O**rchestration **S**uite) is an agentic AI framework engineered for autonomous operation, beam tuning, anomaly detection, and physics-informed control of heavy ion linear accelerators.
 
 ---
 

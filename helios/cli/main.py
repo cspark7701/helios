@@ -18,7 +18,7 @@ from helios.interfaces.channel_map import create_baseline_mebt_channel_manager
 
 app = typer.Typer(
     name="helios",
-    help="HELIOS: HEavy ion Linac Intelligent Orchestration CLI",
+    help="HELIOS: Heavy Ion Linac Intelligent Orchestration Suite CLI",
     add_completion=False,
 )
 console = Console()

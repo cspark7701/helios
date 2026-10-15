@@ -4,7 +4,7 @@
 
 **Test coverage** (also known as **code coverage**) is a quantitative metric in software engineering that measures the degree to which the source code of a program is executed when a particular test suite runs.
 
-In an accelerator automation and safety framework like **HELIOS** (**HE**avy ion **L**inac **I**ntelligent **O**rchestration), where algorithmic setpoints directly influence high-power RF cavities, superconducting magnets, vacuum gate valves, and beam line diagnostics, test coverage serves as a foundational defense-in-depth barrier. It guarantees that every branch of safety logic, every fallback mode, and every hardware error-handling routine has been executed and evaluated prior to deployment in an accelerator control room.
+In an accelerator automation and safety framework like **HELIOS** (**H**eavy ion **E**nergy / **L**inac **I**ntelligent **O**rchestration **S**uite), where algorithmic setpoints directly influence high-power RF cavities, superconducting magnets, vacuum gate valves, and beam line diagnostics, test coverage serves as a foundational defense-in-depth barrier. It guarantees that every branch of safety logic, every fallback mode, and every hardware error-handling routine has been executed and evaluated prior to deployment in an accelerator control room.
 
 ---
 

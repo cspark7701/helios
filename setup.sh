@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Environment loader for HELIOS Heavy Ion Linac Intelligent Orchestration
+# Environment loader for HELIOS Heavy Ion Linac Intelligent Orchestration Suite
 # ==============================================================================
 # Usage:
 #   source setup.sh

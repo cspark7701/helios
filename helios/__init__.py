@@ -1,4 +1,4 @@
-"""HELIOS: HEavy ion Linac Intelligent Orchestration.
+"""HELIOS: Heavy Ion Linac Intelligent Orchestration Suite.
 
 An agentic AI framework for autonomous heavy ion linear accelerator operations,
 simulation-assisted tuning, and physics-informed control.

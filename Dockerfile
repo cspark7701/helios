@@ -1,4 +1,4 @@
-# Multi-stage production container for HELIOS heavy ion linac orchestration
+# Multi-stage production container for HELIOS heavy ion linac orchestration suite
 
 FROM python:3.11-slim as base
 

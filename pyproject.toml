@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "helios-linac"
 version = "0.1.0"
-description = "HELIOS: HEavy ion Linac Intelligent Orchestration - Agentic AI Framework for Accelerator Control"
+description = "HELIOS: Heavy Ion Linac Intelligent Orchestration Suite - Agentic AI Framework for Accelerator Control"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

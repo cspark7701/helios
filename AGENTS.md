@@ -1,6 +1,6 @@
 # HELIOS Multi-Agent Architecture (AGENTS.md)
 
-This document defines the architectural principles, agent taxonomy, communication protocols, and safety guardrails governing the **HELIOS** (**HE**avy ion **L**inac **I**ntelligent **O**rchestration) framework.
+This document defines the architectural principles, agent taxonomy, communication protocols, and safety guardrails governing the **HELIOS** (**H**eavy ion **E**nergy / **L**inac **I**ntelligent **O**rchestration **S**uite) framework.
 
 ---
 

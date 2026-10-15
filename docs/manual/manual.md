@@ -1,6 +1,6 @@
 # HELIOS User & Developer Reference Manual
 
-**HE**avy ion **L**inac **I**ntelligent **O**rchestration Framework  
+**HE**avy ion **L**inac **I**ntelligent **O**rchestration **S**uite  
 *Autonomous, Safety-First Accelerator Control & Commissioning Platform*
 
 ---

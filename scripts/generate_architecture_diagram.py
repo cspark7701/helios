@@ -74,7 +74,7 @@ def create_helios_architecture_diagram(output_path="docs/manual/architecture.png
     # 1. Header Banner
     ax.text(50, 97.5, "HELIOS System Architecture", ha="center", va="center",
             fontsize=22, fontweight="bold", color=c_header)
-    ax.text(50, 95.2, "Heavy Ion Linac Intelligent Orchestration • Safety-First Plan-First Multi-Agent Platform",
+    ax.text(50, 95.2, "Heavy Ion Linac Intelligent Orchestration Suite • Safety-First Plan-First Multi-Agent Platform",
             ha="center", va="center", fontsize=11.5, color="#475569")
 
     # Layer 1: OPERATOR & CLIENT INTERFACE (Top, y=82.5 to 92.5)
